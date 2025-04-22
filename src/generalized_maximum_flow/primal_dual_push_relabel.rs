@@ -45,7 +45,6 @@ where
             self.pre_process(source, sink);
             while let Some(u) = self.active_nodes.pop_front() {
                 if u == source || u == sink {
-                    eprintln!("{} is no path to sink", u);
                     continue;
                 }
                 self.discharge(u);
@@ -84,8 +83,9 @@ where
 
         // eprintln!("distances {:?}", self.distances);
         for i in self.csr.start[source]..self.csr.start[source + 1] {
-            let delta = self.labeled_residual_capacity(source, i);
+            let delta = self.csr.residual_capacity(i);
             if self.csr.residual_capacity(i) > Flow::zero() && self.reduced_cost(source, i) == 0 {
+                // self.csr.push_labeled_flow(source, i, delta, &self.canonical_labels);
                 self.csr.push_flow(source, i, delta, &self.canonical_labels);
             }
         }
@@ -121,9 +121,11 @@ where
     // push from u
     fn push(&mut self, u: usize, i: usize) {
         let to = self.csr.to[i];
-        let delta = self.labeled_excess(u).min(self.labeled_residual_capacity(u, i));
+        // let delta = self.labeled_excess(u).min(self.labeled_residual_capacity(u, i));
+        let delta = self.csr.excesses[u].min(self.csr.residual_capacity(i));
         let is_zero = self.csr.excesses[to] == Flow::zero();
         if self.is_admissible(u, i) && delta > Flow::zero() {
+            // self.csr.push_labeled_flow(u, i, delta, &self.canonical_labels);
             self.csr.push_flow(u, i, delta, &self.canonical_labels);
             if is_zero {
                 self.active_nodes.push_back(to);
