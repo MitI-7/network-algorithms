@@ -32,11 +32,7 @@ where
         self.distances = vec![0; self.csr.num_nodes].into_boxed_slice();
 
         self.csr.excesses[source] = Flow::max_value();
-        let mut loop_count = 0;
         loop {
-            // eprintln!("loop {}", loop_count);
-            loop_count += 1;
-
             let distance_to_sink = self.csr.calculate_distance_to_sink(sink);
             self.update_canonical_labels(&distance_to_sink, sink);
 
@@ -45,40 +41,17 @@ where
                 break;
             }
 
-            // eprintln!("canonical labels {:?}", self.canonical_labels);
-            // eprintln!("reduced cost");
-            // for u in 0..self.csr.num_nodes {
-            //     for i in self.csr.neighbors(u) {
-            //         if self.reduced_cost(u, i) == 0 {
-            //             eprintln!("re:{}->{}({:?})", u, self.csr.to[i], self.reduced_cost(u, i));
-            //         }
-            //     }
-            // }
-
             // maximum flow
             self.pre_process(source, sink);
-
             while let Some(u) = self.active_nodes.pop_front() {
-                // eprintln!("--------------------------------------------");
-                // eprintln!("check {}", u);
-                // eprintln!("distances {:?}", self.distances);
-                // eprintln!("excesses {:?}", self.csr.excesses);
-
                 if u == source || u == sink {
                     eprintln!("{} is no path to sink", u);
                     continue;
                 }
-                // no path to sink
-                // if u == source || u == sink || self.distances[u] >= self.csr.num_nodes {
-                //     eprintln!("{} is no path to sink", u);
-                //     continue;
-                // }
                 self.discharge(u);
             }
         }
 
-        // eprintln!("end");
-        // eprintln!("excess {:?}", self.csr.excesses);
         for u in 0..graph.num_nodes() {
             graph.excesses[u] = self.csr.excesses[u];
         }
@@ -151,18 +124,7 @@ where
         let delta = self.labeled_excess(u).min(self.labeled_residual_capacity(u, i));
         let is_zero = self.csr.excesses[to] == Flow::zero();
         if self.is_admissible(u, i) && delta > Flow::zero() {
-            // eprintln!(
-            //     "{}->{}, excess:{:?}(labeled:{:?}), residual capacity:{:?}(labeled:{:?}), label:{:?}",
-            //     u,
-            //     to,
-            //     self.csr.excesses[u],
-            //     self.labeled_excess(u),
-            //     self.csr.residual_capacity(i),
-            //     self.labeled_residual_capacity(u, i),
-            //     self.canonical_labels[u]
-            // );
             self.csr.push_flow(u, i, delta, &self.canonical_labels);
-            // eprintln!("push {} -> {} {:?}, excess({}):{:?}", u, to, delta, u, self.csr.excesses[u]);
             if is_zero {
                 self.active_nodes.push_back(to);
             }
@@ -170,14 +132,6 @@ where
     }
 
     fn relabel(&mut self, u: usize) {
-        // eprintln!("relabel {}(distance:{}), excess:{:?}", u, self.distances[u], self.csr.excesses[u]);
-        // for i in self.csr.neighbors(u) {
-        //     if self.csr.residual_capacity(i) > Flow::zero() && self.reduced_cost(u, i) == 0 {
-        //         let to = self.csr.to[i];
-        //         eprintln!("re:{}->{}(cap:{:?})(distance:{:?})", u, to, self.csr.residual_capacity(i), self.distances[to]);
-        //     }
-        // }
-
         let new_distance = self
             .csr
             .neighbors(u)
@@ -185,9 +139,7 @@ where
             .map(|i| self.distances[self.csr.to[i]] + 1)
             .min()
             .unwrap();
-        // .min(self.csr.num_nodes);
 
-        // eprintln!("relabel {}({}->{})", u, self.distances[u], new_distance);
         assert!(new_distance > self.distances[u]);
         self.distances[u] = new_distance;
     }
