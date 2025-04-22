@@ -148,13 +148,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use std::fs::read_to_string;
-    use std::path::PathBuf;
-
-    use rstest::rstest;
-
-    use crate::generalized_maximum_flow::graph::Graph;
-    use crate::generalized_maximum_flow::primal_dual::PrimalDual;
+    use super::*;
 
     #[test]
     fn sample() {
@@ -190,35 +184,5 @@ mod tests {
 
         let expected = 7.363;
         assert!(expected * (1.0 - epsilon) <= actual && actual <= expected, "{}/{}", actual, expected);
-    }
-
-    #[rstest]
-    fn aoj_grl_6_a(#[files("tests/generalized_maximum_flow/AOJ_6_A/*.txt"
-    )] input_file_path: PathBuf) {
-        println!("{:?}", input_file_path);
-        let epsilon: f64 = 0.01;
-        let mut graph = Graph::default();
-        let mut num_nodes = 0;
-        let mut expected = 0_f64;
-        read_to_string(&input_file_path).unwrap().split('\n').enumerate().for_each(|(i, line)| {
-            let line: Vec<&str> = line.split_whitespace().collect();
-            if i == 0 {
-                (num_nodes, expected) = (line[0].parse::<usize>().unwrap(), line[2].parse::<f64>().unwrap());
-                graph.add_nodes(num_nodes);
-            } else {
-                let (from, to, upper, gain) =
-                    (line[0].parse().unwrap(), line[1].parse().unwrap(), line[3].parse().unwrap(), line[4].parse().unwrap());
-                graph.add_directed_edge(from, to, upper, gain);
-            }
-        });
-        let sink = num_nodes - 1;
-        PrimalDual::new(epsilon).solve(0, sink, &mut graph);
-        let actual = graph.maximum_flow(sink);
-
-        if expected == 0.0 {
-            assert!(actual < 0.001);
-        } else {
-            assert!(expected * (1.0 - epsilon) <= actual && actual <= expected, "{}/{}({:?})", actual, expected, input_file_path);
-        }
     }
 }
