@@ -113,15 +113,48 @@ where
     }
 
     #[inline]
+    pub fn push_labeled_flow(&mut self, u: usize, i: usize, labeled_flow: Flow, labels: &[Flow]) {
+        let to = self.to[i];
+        let rev = self.rev_edge_id[i];
+
+        self.flow[i] = self.flow[i] + labeled_flow * labels[u];
+        self.flow[rev] = self.flow[rev] - labeled_flow * labels[to];
+
+        self.excesses[u] = self.excesses[u] - labeled_flow * labels[u];
+        self.excesses[to] = self.excesses[to] + labeled_flow * labels[to];
+
+        if self.flow[i] > self.capacity[i] {
+            self.flow[i] = self.capacity[i];
+            self.flow[rev] = Flow::zero();
+        }
+
+        if self.flow[rev] < Flow::zero() {
+            self.flow[rev] = Flow::zero();
+            self.flow[i] = self.capacity[i];
+        }
+
+        let eps = Flow::from(1e-10).unwrap();
+
+        if self.residual_capacity(i) <= eps || self.flow[rev] <= eps {
+            self.flow[i] = self.capacity[i];
+            self.flow[rev] = Flow::zero();
+        }
+
+        if self.excesses[u] <= eps {
+            self.excesses[u] = Flow::zero();
+        }
+    }
+
+    #[inline]
     pub fn push_flow(&mut self, u: usize, i: usize, flow: Flow, labels: &[Flow]) {
         let to = self.to[i];
         let rev = self.rev_edge_id[i];
 
-        self.flow[i] = self.flow[i] + flow * labels[u];
-        self.flow[rev] = self.flow[rev] - flow * labels[to];
+        self.flow[i] = self.flow[i] + flow;
+        self.flow[rev] = self.flow[rev] - flow * labels[to] / labels[u];
 
-        self.excesses[u] = self.excesses[u] - flow * labels[u];
-        self.excesses[to] = self.excesses[to] + flow * labels[to];
+        self.excesses[u] = self.excesses[u] - flow;
+        self.excesses[to] = self.excesses[to] + flow * labels[to] / labels[u];
 
         if self.flow[i] > self.capacity[i] {
             self.flow[i] = self.capacity[i];
