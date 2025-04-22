@@ -58,10 +58,7 @@ where
                     while v != source {
                         // u -> v
                         let (u, edge_index) = prev[v];
-                        // let edge = &self.csr.inside_edge_list[edge_index];
-
                         dist_to_sink += self.csr.dist[edge_index];
-
                         let a = Flow::from(dist_to_sink).unwrap();
                         canonical_labels[u] = self.csr.base.powf(a);
 
@@ -77,7 +74,7 @@ where
                 while v != source {
                     // u -> v
                     let (u, i) = prev[v];
-                    self.csr.push_flow(u, i, delta, &canonical_labels);
+                    self.csr.push_labeled_flow(u, i, delta, &canonical_labels);
                     v = u;
                 }
 
