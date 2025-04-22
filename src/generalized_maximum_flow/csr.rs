@@ -120,8 +120,8 @@ where
         self.flow[i] = self.flow[i] + flow * labels[u];
         self.flow[rev] = self.flow[rev] - flow * labels[to];
 
-        self.excesses[u] = self.excesses[u] - flow;
-        self.excesses[to] = self.excesses[to] + flow * labels[u];
+        self.excesses[u] = self.excesses[u] - flow * labels[u];
+        self.excesses[to] = self.excesses[to] + flow * labels[to];
 
         if self.flow[i] > self.capacity[i] {
             self.flow[i] = self.capacity[i];
@@ -133,9 +133,15 @@ where
             self.flow[i] = self.capacity[i];
         }
 
-        if self.residual_capacity(i) <= Flow::epsilon() || self.flow[rev] <= Flow::epsilon() {
+        let eps = Flow::from(1e-10).unwrap();
+
+        if self.residual_capacity(i) <= eps || self.flow[rev] <= eps {
             self.flow[i] = self.capacity[i];
             self.flow[rev] = Flow::zero();
+        }
+
+        if self.excesses[u] <= eps {
+            self.excesses[u] = Flow::zero();
         }
     }
 
