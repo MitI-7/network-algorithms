@@ -14,7 +14,7 @@ pub struct CSR<Flow> {
     pub upper: Box<[Flow]>,
     pub rev: Box<[usize]>,
 
-    pub distances: Box<[usize]>, // distance from u to sink in residual network
+    pub distances_to_sink: Box<[usize]>, // distance from u to sink in residual network
     que: VecDeque<usize>,
 }
 
@@ -33,16 +33,16 @@ where
         self.flow = vec![Flow::zero(); self.num_edges * 2].into_boxed_slice();
         self.upper = vec![Flow::zero(); self.num_edges * 2].into_boxed_slice();
         self.rev = vec![usize::MAX; self.num_edges * 2].into_boxed_slice();
-        self.distances = vec![self.num_nodes; self.num_nodes].into_boxed_slice();
+        self.distances_to_sink = vec![self.num_nodes; self.num_nodes].into_boxed_slice();
 
-        let mut degree = vec![0; self.num_nodes];
+        let mut degree = vec![0; self.num_nodes].into_boxed_slice();
         for edge in graph.edges.iter() {
             degree[edge.to] += 1;
             degree[edge.from] += 1;
         }
 
-        for i in 1..=self.num_nodes {
-            self.start[i] += self.start[i - 1] + degree[i - 1];
+        for u in 1..=self.num_nodes {
+            self.start[u] += self.start[u - 1] + degree[u - 1];
         }
 
         let mut counter = vec![0; self.num_nodes];
@@ -51,8 +51,9 @@ where
             let inside_edge_index_u = self.start[u] + counter[u];
             counter[u] += 1;
             let inside_edge_index_v = self.start[v] + counter[v];
-            self.edge_index_to_inside_edge_index[edge_index] = inside_edge_index_u;
             counter[v] += 1;
+
+            self.edge_index_to_inside_edge_index[edge_index] = inside_edge_index_u;
 
             // u -> v
             self.to[inside_edge_index_u] = v;
@@ -70,8 +71,8 @@ where
 
     pub fn set_flow(&self, graph: &mut Graph<Flow>) {
         for edge_id in 0..graph.num_edges() {
-            let i = self.edge_index_to_inside_edge_index[edge_id];
-            graph.edges[edge_id].flow = self.flow[i];
+            let inside_edge_id = self.edge_index_to_inside_edge_index[edge_id];
+            graph.edges[edge_id].flow = self.flow[inside_edge_id];
         }
     }
 
@@ -82,26 +83,25 @@ where
 
     #[inline]
     pub fn push_flow(&mut self, i: usize, flow: Flow) {
-        let rev = self.rev[i];
         self.flow[i] += flow;
-        self.flow[rev] -= flow;
+        self.flow[self.rev[i]] -= flow;
     }
 
     // O(n + m)
     // calculate the distance from u to sink in the residual network
     // if such a path does not exist, distance[u] becomes self.num_nodes
-    pub fn update_distances(&mut self, source: usize, sink: usize) {
+    pub fn update_distances_to_sink(&mut self, source: usize, sink: usize) {
         self.que.clear();
         self.que.push_back(sink);
-        self.distances.fill(self.num_nodes);
-        self.distances[sink] = 0;
+        self.distances_to_sink.fill(self.num_nodes);
+        self.distances_to_sink[sink] = 0;
 
         while let Some(v) = self.que.pop_front() {
             for i in self.neighbors(v) {
                 // e.to -> v
                 let to = self.to[i];
-                if self.flow[i] > Flow::zero() && self.distances[to] == self.num_nodes {
-                    self.distances[to] = self.distances[v] + 1;
+                if self.flow[i] > Flow::zero() && self.distances_to_sink[to] == self.num_nodes {
+                    self.distances_to_sink[to] = self.distances_to_sink[v] + 1;
                     if to != source {
                         self.que.push_back(to);
                     }
@@ -112,7 +112,7 @@ where
 
     #[inline]
     pub fn is_admissible_edge(&self, from: usize, i: usize) -> bool {
-        self.residual_capacity(i) > Flow::zero() && self.distances[from] == self.distances[self.to[i]] + 1
+        self.residual_capacity(i) > Flow::zero() && self.distances_to_sink[from] == self.distances_to_sink[self.to[i]] + 1
     }
 
     pub fn residual_capacity(&self, i: usize) -> Flow {

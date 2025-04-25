@@ -1,7 +1,8 @@
+use crate::data_structures::bit_vector::BitVector;
+use crate::data_structures::radix_heap::RadixHeap;
 use crate::generalized_maximum_flow::graph::Graph;
 use num_traits::{Float, ToPrimitive};
-use std::cmp::Reverse;
-use std::collections::{BinaryHeap, VecDeque};
+use std::collections::VecDeque;
 
 pub type Dist = i32;
 
@@ -13,16 +14,16 @@ pub struct CSR<Flow> {
     pub epsilon: Flow,
     pub edge_index_to_inside_edge_index: Box<[usize]>,
     pub is_lossy: bool,
+    pub max_distance: Dist,
 
     pub start: Box<[usize]>,
     pub from: Box<[usize]>,
     pub to: Box<[usize]>,
     pub flow: Box<[Flow]>,
     pub capacity: Box<[Flow]>,
+    pub gains: Box<[Flow]>,
     pub dist: Box<[Dist]>,
     pub rev_edge_id: Box<[usize]>,
-
-    pub gains: Box<[Flow]>,
 
     pub excesses: Box<[Flow]>,
     pub potentials: Box<[Dist]>,
@@ -85,6 +86,7 @@ where
             let scaled_gain = self.base.powf(c);
             // let dist = -1 * c as Dist; // TODO: check over flow
             let dist: Dist = -c.to_i32().unwrap();
+            self.max_distance = self.max_distance.max(dist);
 
             self.edge_index_to_inside_edge_index[edge_index] = inside_edge_index_u;
             self.gains[edge_index] = edge.gain;
@@ -113,15 +115,22 @@ where
     }
 
     #[inline]
-    pub fn push_labeled_flow(&mut self, u: usize, i: usize, labeled_flow: Flow, labels: &[Flow]) {
+    pub fn push_labeled_flow(&mut self, u: usize, i: usize, labeled_flow: Flow, labels: &[Flow], change_excess: bool) {
         let to = self.to[i];
         let rev = self.rev_edge_id[i];
 
         self.flow[i] = self.flow[i] + labeled_flow * labels[u];
         self.flow[rev] = self.flow[rev] - labeled_flow * labels[to];
 
-        self.excesses[u] = self.excesses[u] - labeled_flow * labels[u];
-        self.excesses[to] = self.excesses[to] + labeled_flow * labels[to];
+        let eps = Flow::from(1e-10).unwrap();
+
+        if change_excess {
+            self.excesses[u] = self.excesses[u] - labeled_flow * labels[u];
+            self.excesses[to] = self.excesses[to] + labeled_flow * labels[to];
+            if self.excesses[u] <= eps {
+                self.excesses[u] = Flow::zero();
+            }
+        }
 
         if self.flow[i] > self.capacity[i] {
             self.flow[i] = self.capacity[i];
@@ -133,15 +142,9 @@ where
             self.flow[i] = self.capacity[i];
         }
 
-        let eps = Flow::from(1e-10).unwrap();
-
         if self.residual_capacity(i) <= eps || self.flow[rev] <= eps {
             self.flow[i] = self.capacity[i];
             self.flow[rev] = Flow::zero();
-        }
-
-        if self.excesses[u] <= eps {
-            self.excesses[u] = Flow::zero();
         }
     }
 
@@ -181,37 +184,37 @@ where
     pub fn calculate_distance_to_sink(&mut self, sink: usize) -> Vec<Dist> {
         let mut distance = vec![Dist::MAX; self.num_nodes];
         let mut distance_to_sink = vec![Dist::MAX; self.num_nodes];
-        let mut visited = vec![false; self.num_nodes];
+        let mut visited = BitVector::new(self.num_nodes);
         distance[sink] = 0;
         distance_to_sink[sink] = 0;
 
-        let mut heap = BinaryHeap::new();
-        heap.push((Reverse(0), sink));
+        let mut heap = RadixHeap::new(self.max_distance * self.num_nodes as Dist);
+        heap.push(0, sink);
 
         let mut farthest = 0;
         while let Some((d, u)) = heap.pop() {
-            if visited[u] {
+            if visited.get(u) {
                 continue;
             }
-            visited[u] = true;
-            farthest = d.0;
+            visited.set(u, true);
+            farthest = d;
 
             for i in self.neighbors(u) {
                 let to = self.to[i];
                 let flow = self.flow[i];
 
-                if flow > Flow::zero() && !visited[to] {
+                if flow > Flow::zero() && !visited.get(to) {
                     let di = self.dist[i];
 
                     // using dist of edge(e.to -> u)
                     let dist = -di - self.potentials[to] + self.potentials[u];
                     assert!(dist >= 0);
 
-                    let new_dist = d.0 + dist;
+                    let new_dist = d + dist;
                     if new_dist < distance[to] {
                         distance[to] = new_dist;
                         distance_to_sink[to] = distance_to_sink[u] - di;
-                        heap.push((Reverse(new_dist), to));
+                        heap.push(new_dist, to);
                     }
                 }
             }
@@ -225,7 +228,7 @@ where
     pub fn calculate_distance_to_sink_with_negative_edge(&mut self, sink: usize) -> Option<Vec<Dist>> {
         let mut distance = vec![Dist::MAX; self.num_nodes];
         let mut distance_to_sink = vec![Dist::MAX; self.num_nodes];
-        let mut in_queue = vec![false; self.num_nodes];
+        let mut in_queue = BitVector::new(self.num_nodes);
         let mut visit_count = vec![0; self.num_nodes];
 
         distance[sink] = 0;
@@ -233,11 +236,11 @@ where
 
         let mut que = VecDeque::new();
         que.push_back(sink);
-        in_queue[sink] = true;
+        in_queue.set(sink, true);
 
         let mut farthest = 0;
         while let Some(u) = que.pop_front() {
-            in_queue[u] = false;
+            in_queue.set(u, false);
             farthest = farthest.max(distance[u]);
 
             for i in self.neighbors(u) {
@@ -260,8 +263,8 @@ where
                             return None;
                         }
 
-                        if !in_queue[to] {
-                            in_queue[to] = true;
+                        if !in_queue.get(to) {
+                            in_queue.set(to, true);
                             que.push_back(to);
                         }
                     }

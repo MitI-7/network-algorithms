@@ -1,3 +1,4 @@
+use crate::data_structures::bit_vector::BitVector;
 use crate::generalized_maximum_flow::csr::{Dist, CSR};
 use crate::generalized_maximum_flow::graph::Graph;
 use crate::generalized_maximum_flow::status::Status;
@@ -14,6 +15,8 @@ pub struct PrimalDualPushRelabel<Flow> {
     distances: Box<[usize]>,
     active_nodes: VecDeque<usize>,
     que: VecDeque<usize>,
+    distance_count: Box<[usize]>,
+    relabel_count: usize,
 }
 
 #[allow(dead_code)]
@@ -30,6 +33,7 @@ where
         self.canonical_labels = vec![Flow::zero(); self.csr.num_nodes];
         self.current_edge = vec![0; self.csr.num_nodes].into_boxed_slice();
         self.distances = vec![0; self.csr.num_nodes].into_boxed_slice();
+        self.distance_count = vec![0; self.csr.num_nodes + 1].into_boxed_slice();
 
         self.csr.excesses[source] = Flow::max_value();
         loop {
@@ -44,10 +48,23 @@ where
             // maximum flow
             self.pre_process(source, sink);
             while let Some(u) = self.active_nodes.pop_front() {
-                if u == source || u == sink {
+                if u == source || u == sink || self.distances[u] == self.csr.num_nodes {
                     continue;
                 }
+                assert!(self.csr.excesses[u] > Flow::zero());
                 self.discharge(u);
+
+                if self.relabel_count % 50000 == 0 {
+                    self.relabel_count = 0;
+                    self.update_distances(source, sink);
+                }
+            }
+
+            self.push_flow_excess_back_to_source(source, sink);
+            for u in 0..self.csr.num_nodes {
+                if u != source && u != sink {
+                    assert_eq!(self.csr.excesses[u], Flow::zero());
+                }
             }
         }
 
@@ -76,16 +93,16 @@ where
     fn pre_process(&mut self, source: usize, sink: usize) {
         self.update_distances(source, sink);
         self.distances[source] = self.csr.num_nodes;
+        self.distance_count.fill(0);
 
         for u in 0..self.csr.num_nodes {
+            self.distance_count[self.distances[u]] += 1;
             self.current_edge[u] = self.csr.start[u];
         }
 
-        // eprintln!("distances {:?}", self.distances);
         for i in self.csr.start[source]..self.csr.start[source + 1] {
             let delta = self.csr.residual_capacity(i);
             if self.csr.residual_capacity(i) > Flow::zero() && self.reduced_cost(source, i) == 0 {
-                // self.csr.push_labeled_flow(source, i, delta, &self.canonical_labels);
                 self.csr.push_flow(source, i, delta, &self.canonical_labels);
             }
         }
@@ -111,7 +128,12 @@ where
         }
         self.current_edge[u] = self.csr.start[u];
 
-        self.relabel(u);
+        // relabel
+        if self.distance_count[self.distances[u]] == 1 {
+            self.gap_relabeling(self.distances[u]);
+        } else {
+            self.relabel(u);
+        }
 
         if self.csr.excesses[u] > Flow::zero() {
             self.active_nodes.push_back(u);
@@ -121,11 +143,9 @@ where
     // push from u
     fn push(&mut self, u: usize, i: usize) {
         let to = self.csr.to[i];
-        // let delta = self.labeled_excess(u).min(self.labeled_residual_capacity(u, i));
         let delta = self.csr.excesses[u].min(self.csr.residual_capacity(i));
         let is_zero = self.csr.excesses[to] == Flow::zero();
         if self.is_admissible(u, i) && delta > Flow::zero() {
-            // self.csr.push_labeled_flow(u, i, delta, &self.canonical_labels);
             self.csr.push_flow(u, i, delta, &self.canonical_labels);
             if is_zero {
                 self.active_nodes.push_back(to);
@@ -134,16 +154,20 @@ where
     }
 
     fn relabel(&mut self, u: usize) {
+        self.relabel_count += 1;
+        self.distance_count[self.distances[u]] -= 1;
+
         let new_distance = self
             .csr
             .neighbors(u)
             .filter(|&i| self.csr.residual_capacity(i) > Flow::zero() && self.reduced_cost(u, i) == 0)
             .map(|i| self.distances[self.csr.to[i]] + 1)
             .min()
-            .unwrap();
+            .unwrap()
+            .min(self.csr.num_nodes);
 
-        assert!(new_distance > self.distances[u]);
         self.distances[u] = new_distance;
+        self.distance_count[self.distances[u]] += 1;
     }
 
     fn update_distances(&mut self, source: usize, sink: usize) {
@@ -164,6 +188,68 @@ where
                 }
             }
         }
+    }
+
+    // gap relabeling heuristic
+    // set distance[u] >= k to distance[u] = n
+    // O(n)
+    fn gap_relabeling(&mut self, k: usize) {
+        for u in 0..self.csr.num_nodes {
+            if self.distances[u] >= k {
+                self.distance_count[self.distances[u]] -= 1;
+                self.distances[u] = self.distances[u].max(self.csr.num_nodes);
+                self.distance_count[self.distances[u]] += 1;
+            }
+        }
+    }
+
+    fn push_flow_excess_back_to_source(&mut self, source: usize, sink: usize) {
+        let mut visited = BitVector::new(self.csr.num_nodes);
+
+        for u in 0..self.csr.num_nodes {
+            if u == source || u == sink {
+                continue;
+            }
+            while self.csr.excesses[u] > Flow::zero() {
+                self.current_edge.iter_mut().enumerate().for_each(|(u, e)| *e = self.csr.start[u]);
+                let alpha = self.dfs(u, source, self.labeled_excess(u), &mut visited);
+                self.csr.excesses[u] = self.csr.excesses[u] - alpha * self.canonical_labels[u];
+                self.csr.excesses[source] = self.csr.excesses[source] + alpha * self.canonical_labels[source];
+
+                let eps = Flow::from(1e-10).unwrap();
+                if self.csr.excesses[u] <= eps {
+                    self.csr.excesses[u] = Flow::zero();
+                }
+                visited.clear();
+            }
+        }
+    }
+
+    fn dfs(&mut self, u: usize, source: usize, labeled_flow: Flow, visited: &mut BitVector) -> Flow {
+        if u == source {
+            return labeled_flow;
+        }
+        visited.set(u, true);
+
+        for i in self.current_edge[u]..self.csr.start[u + 1] {
+            self.current_edge[u] = i;
+            let to = self.csr.to[i];
+            let residual_capacity = self.labeled_residual_capacity(u, i);
+            if visited.get(to) || residual_capacity == Flow::zero() {
+                continue;
+            }
+
+            if self.reduced_cost(u, i) != 0 {
+                continue;
+            }
+
+            let delta = self.dfs(to, source, labeled_flow.min(residual_capacity), visited);
+            if delta > Flow::zero() {
+                self.csr.push_labeled_flow(u, i, delta, &self.canonical_labels, false);
+                return delta;
+            }
+        }
+        Flow::zero()
     }
 
     #[inline]

@@ -74,7 +74,7 @@ where
                 while v != source {
                     // u -> v
                     let (u, i) = prev[v];
-                    self.csr.push_labeled_flow(u, i, delta, &canonical_labels);
+                    self.csr.push_labeled_flow(u, i, delta, &canonical_labels, false);
                     v = u;
                 }
 

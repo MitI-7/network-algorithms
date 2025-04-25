@@ -111,7 +111,7 @@ where
             let to = self.csr.to[i];
             if self.is_admissible(u, i) {
                 if let Some(delta) = self.dfs(to, sink, upper.min(self.labeled_residual_capacity(u, i))) {
-                    self.csr.push_labeled_flow(u, i, delta, &self.canonical_labels);
+                    self.csr.push_labeled_flow(u, i, delta, &self.canonical_labels, false);
                     res = res + delta;
                     if res == upper {
                         return Some(res);
