@@ -2,7 +2,6 @@ use crate::minimum_cost_flow::graph::Graph;
 use num_traits::NumAssign;
 use std::cmp::Reverse;
 use std::collections::BinaryHeap;
-use std::fmt::Debug;
 use std::ops::Neg;
 
 #[derive(Default)]

@@ -62,16 +62,4 @@ where
         let edge = &self.edges[edge_id];
         Some(Edge { from: edge.from, to: edge.to, flow: edge.flow, upper: edge.upper })
     }
-
-    pub fn maximum_flow(&self, source: usize) -> Flow {
-        (0..self.num_edges).fold(Flow::zero(), |mut flow, edge_index| {
-            let edge = self.get_edge(edge_index).unwrap();
-            if edge.from == source {
-                flow += edge.flow;
-            } else if edge.to == source {
-                flow -= edge.flow;
-            }
-            flow
-        })
-    }
 }
