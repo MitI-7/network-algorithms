@@ -68,13 +68,15 @@ where
         }
 
         if cost >= Flow::zero() {
-            self.edges.push(Edge { from, to, flow: Flow::zero(), lower: Flow::zero(), upper: upper - lower, cost });
+            self.edges
+                .push(Edge { from, to, flow: Flow::zero(), lower: Flow::zero(), upper: upper - lower, cost });
             self.excesses[from] -= lower;
             self.excesses[to] += lower;
             self.lowers.push(lower);
             self.is_reversed.push(false);
         } else {
-            self.edges.push(Edge { from: to, to: from, flow: Flow::zero(), lower: Flow::zero(), upper: upper - lower, cost: -cost });
+            self.edges
+                .push(Edge { from: to, to: from, flow: Flow::zero(), lower: Flow::zero(), upper: upper - lower, cost: -cost });
             self.excesses[from] -= upper;
             self.excesses[to] += upper;
             self.lowers.push(lower);

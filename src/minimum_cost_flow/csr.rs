@@ -147,6 +147,14 @@ where
         (dist, prev)
     }
 
+    pub fn minimum_cost(&self) -> Flow {
+        let mut c = Flow::zero();
+        for i in 0..self.num_edges {
+            c += self.flow[i] * self.cost[i];
+        }
+        c
+    }
+
     #[inline]
     pub fn reduced_cost(&self, u: usize, i: usize) -> Flow {
         self.cost[i] - self.potentials[u] + self.potentials[self.to[i]]

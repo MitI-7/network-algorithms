@@ -19,9 +19,9 @@ impl<Flow> PrimalDual<Flow>
 where
     Flow: NumAssign + Neg<Output = Flow> + Ord + Copy,
 {
-    pub fn solve(&mut self, graph: &mut Graph<Flow>) -> Status {
+    pub fn solve(&mut self, graph: &mut Graph<Flow>) -> Result<Flow, Status> {
         if graph.is_unbalance() {
-            return Status::Unbalanced;
+            return Err(Status::Unbalanced);
         }
 
         // transforms the minimum cost flow problem into a problem with a single excess node and a single deficit node.
@@ -42,10 +42,10 @@ where
 
         graph.remove_artificial_sub_graph(&artificial_nodes, &artificial_edges);
         if self.csr.excesses[source] != Flow::zero() || self.csr.excesses[sink] != Flow::zero() {
-            return Status::Infeasible;
+            return Err(Status::Infeasible);
         }
 
-        Status::Optimal
+        Ok(graph.minimum_cost())
     }
 
     // update potentials
