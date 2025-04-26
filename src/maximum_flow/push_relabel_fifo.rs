@@ -1,6 +1,7 @@
 use crate::maximum_flow::csr::CSR;
 use crate::maximum_flow::graph::Graph;
 use crate::maximum_flow::status::Status;
+use crate::maximum_flow::MaximumFlowSolver;
 use num_traits::NumAssign;
 use std::collections::VecDeque;
 
@@ -16,15 +17,11 @@ pub struct PushRelabelFIFO<Flow> {
     distance_count: Vec<usize>,
 }
 
-impl<Flow> PushRelabelFIFO<Flow>
+impl<Flow> MaximumFlowSolver<Flow> for PushRelabelFIFO<Flow>
 where
     Flow: NumAssign + Ord + Copy + Default,
 {
-    pub fn new(&mut self, alpha: usize) -> Self {
-        Self { alpha, ..Default::default() }
-    }
-
-    pub fn solve(&mut self, graph: &mut Graph<Flow>, source: usize, sink: usize, upper: Option<Flow>) -> Result<Flow, Status> {
+    fn solve(&mut self, graph: &mut Graph<Flow>, source: usize, sink: usize, upper: Option<Flow>) -> Result<Flow, Status> {
         if source >= graph.num_nodes() || sink >= graph.num_nodes() || source == sink {
             return Err(Status::BadInput);
         }
@@ -50,6 +47,19 @@ where
         self.csr.set_flow(graph);
 
         Ok(self.excesses[sink])
+    }
+}
+
+impl<Flow> PushRelabelFIFO<Flow>
+where
+    Flow: NumAssign + Ord + Copy + Default,
+{
+    pub fn new(&mut self, alpha: usize) -> Self {
+        Self { alpha, ..Default::default() }
+    }
+
+    pub fn solve(&mut self, graph: &mut Graph<Flow>, source: usize, sink: usize, upper: Option<Flow>) -> Result<Flow, Status> {
+        <Self as MaximumFlowSolver<Flow>>::solve(self, graph, source, sink, upper)
     }
 
     fn pre_process(&mut self, source: usize, sink: usize) {

@@ -1,6 +1,8 @@
 use crate::maximum_flow::csr::CSR;
+use crate::maximum_flow::dinic::Dinic;
 use crate::maximum_flow::graph::Graph;
 use crate::maximum_flow::status::Status;
+use crate::maximum_flow::MaximumFlowSolver;
 use num_traits::NumAssign;
 use std::collections::VecDeque;
 
@@ -11,11 +13,11 @@ pub struct CapacityScaling<Flow> {
     que: VecDeque<usize>,
 }
 
-impl<Flow> CapacityScaling<Flow>
+impl<Flow> MaximumFlowSolver<Flow> for CapacityScaling<Flow>
 where
     Flow: NumAssign + Ord + Copy,
 {
-    pub fn solve(&mut self, graph: &mut Graph<Flow>, source: usize, sink: usize, upper: Option<Flow>) -> Result<Flow, Status> {
+    fn solve(&mut self, graph: &mut Graph<Flow>, source: usize, sink: usize, upper: Option<Flow>) -> Result<Flow, Status> {
         self.csr.build(graph);
         self.current_edge.resize(self.csr.num_nodes, 0);
         let two = Flow::one() + Flow::one();
@@ -55,6 +57,15 @@ where
         }
 
         Ok(flow)
+    }
+}
+
+impl<Flow> CapacityScaling<Flow>
+where
+    Flow: NumAssign + Ord + Copy,
+{
+    pub fn solve(&mut self, graph: &mut Graph<Flow>, source: usize, sink: usize, upper: Option<Flow>) -> Result<Flow, Status> {
+        <Self as MaximumFlowSolver<Flow>>::solve(self, graph, source, sink, upper)
     }
 
     fn bfs(&mut self, source: usize, sink: usize, delta: Flow) {

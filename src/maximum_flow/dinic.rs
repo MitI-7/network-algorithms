@@ -1,6 +1,7 @@
 use crate::maximum_flow::csr::CSR;
 use crate::maximum_flow::graph::Graph;
 use crate::maximum_flow::status::Status;
+use crate::maximum_flow::MaximumFlowSolver;
 use num_traits::NumAssign;
 
 #[derive(Default)]
@@ -9,11 +10,11 @@ pub struct Dinic<Flow> {
     current_edge: Vec<usize>,
 }
 
-impl<Flow> Dinic<Flow>
+impl<Flow> MaximumFlowSolver<Flow> for Dinic<Flow>
 where
     Flow: NumAssign + Ord + Copy,
 {
-    pub fn solve(&mut self, graph: &mut Graph<Flow>, source: usize, sink: usize, upper: Option<Flow>) -> Result<Flow, Status> {
+    fn solve(&mut self, graph: &mut Graph<Flow>, source: usize, sink: usize, upper: Option<Flow>) -> Result<Flow, Status> {
         self.csr.build(graph);
         self.current_edge.resize(graph.num_nodes(), 0);
 
@@ -36,6 +37,15 @@ where
 
         self.csr.set_flow(graph);
         Ok(flow)
+    }
+}
+
+impl<Flow> Dinic<Flow>
+where
+    Flow: NumAssign + Ord + Copy,
+{
+    pub fn solve(&mut self, graph: &mut Graph<Flow>, source: usize, sink: usize, upper: Option<Flow>) -> Result<Flow, Status> {
+        <Self as MaximumFlowSolver<Flow>>::solve(self, graph, source, sink, upper)
     }
 
     fn dfs(&mut self, u: usize, sink: usize, upper: Flow) -> Option<Flow> {
