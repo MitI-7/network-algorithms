@@ -8,7 +8,6 @@ use std::collections::VecDeque;
 #[derive(Default)]
 pub struct PushRelabelFIFO<Flow> {
     csr: CSR<Flow>,
-    excesses: Vec<Flow>,
 
     alpha: usize,
     relabel_count: usize,
@@ -25,10 +24,10 @@ where
         if source >= graph.num_nodes() || sink >= graph.num_nodes() || source == sink {
             return Err(Status::BadInput);
         }
+
         self.csr.build(graph);
 
         self.pre_process(source, sink);
-
         while let Some(u) = self.active_nodes.pop_front() {
             // no path to sink
             if u == source || u == sink || self.csr.distances_to_sink[u] >= self.csr.num_nodes {
@@ -46,7 +45,7 @@ where
 
         self.csr.set_flow(graph);
 
-        Ok(self.excesses[sink])
+        Ok(self.csr.excesses[sink])
     }
 }
 
@@ -63,7 +62,7 @@ where
     }
 
     fn pre_process(&mut self, source: usize, sink: usize) {
-        self.excesses.resize(self.csr.num_nodes, Flow::zero());
+        self.csr.excesses.fill(Flow::zero());
         self.current_edge.resize(self.csr.num_nodes, 0);
         self.distance_count.resize(self.csr.num_nodes + 1, 0);
 
@@ -78,12 +77,12 @@ where
         for i in self.csr.start[source]..self.csr.start[source + 1] {
             let to = self.csr.to[i];
             let delta = self.csr.residual_capacity(i);
-            self.excesses[to] += delta;
+            self.csr.excesses[to] += delta;
             self.csr.push_flow(i, delta);
         }
 
         for u in 0..self.csr.num_nodes {
-            if u != source && u != sink && self.excesses[u] > Flow::zero() {
+            if u != source && u != sink && self.csr.excesses[u] > Flow::zero() {
                 self.active_nodes.push_back(u);
             }
         }
@@ -93,11 +92,11 @@ where
         // push
         for i in self.csr.neighbors(u) {
             self.current_edge[u] = i;
-            if self.excesses[u] > Flow::zero() {
+            if self.csr.excesses[u] > Flow::zero() {
                 self.push(u, i);
             }
 
-            if self.excesses[u] == Flow::zero() {
+            if self.csr.excesses[u] == Flow::zero() {
                 return;
             }
         }
@@ -110,7 +109,7 @@ where
         self.relabel(u);
         // }
 
-        if self.excesses[u] > Flow::zero() {
+        if self.csr.excesses[u] > Flow::zero() {
             self.active_nodes.push_back(u);
         }
     }
@@ -118,12 +117,12 @@ where
     // push from u
     fn push(&mut self, u: usize, i: usize) {
         let to = self.csr.to[i];
-        let delta = self.excesses[u].min(self.csr.residual_capacity(i));
+        let delta = self.csr.excesses[u].min(self.csr.residual_capacity(i));
         if self.csr.is_admissible_edge(u, i) && delta > Flow::zero() {
             self.csr.push_flow(i, delta);
-            self.excesses[u] -= delta;
-            self.excesses[to] += delta;
-            if self.excesses[to] == delta {
+            self.csr.excesses[u] -= delta;
+            self.csr.excesses[to] += delta;
+            if self.csr.excesses[to] == delta {
                 self.active_nodes.push_back(to);
             }
         }
@@ -164,12 +163,12 @@ where
             if u == source || u == sink {
                 continue;
             }
-            while self.excesses[u] > Flow::zero() {
+            while self.csr.excesses[u] > Flow::zero() {
                 let mut visited = vec![false; self.csr.num_nodes];
                 self.current_edge.iter_mut().enumerate().for_each(|(u, e)| *e = self.csr.start[u]);
-                let d = self.dfs(u, source, self.excesses[u], &mut visited);
-                self.excesses[u] -= d;
-                self.excesses[source] += d;
+                let d = self.dfs(u, source, self.csr.excesses[u], &mut visited);
+                self.csr.excesses[u] -= d;
+                self.csr.excesses[source] += d;
             }
         }
     }

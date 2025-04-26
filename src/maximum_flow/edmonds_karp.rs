@@ -15,7 +15,7 @@ where
     Flow: NumAssign + Ord + Copy,
 {
     fn solve(&mut self, graph: &mut Graph<Flow>, source: usize, sink: usize, upper: Option<Flow>) -> Result<Flow, Status> {
-        if source == sink || source >= graph.num_nodes() || sink >= graph.num_nodes() {
+        if source >= graph.num_nodes() || sink >= graph.num_nodes() || source == sink {
             return Err(Status::BadInput);
         }
 

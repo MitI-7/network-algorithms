@@ -13,6 +13,7 @@ pub struct CSR<Flow> {
     pub flow: Box<[Flow]>,
     pub upper: Box<[Flow]>,
     pub rev: Box<[usize]>,
+    pub excesses: Box<[Flow]>,
 
     pub distances_to_sink: Box<[usize]>, // distance from u to sink in residual network
     que: VecDeque<usize>,
@@ -33,6 +34,7 @@ where
         self.flow = vec![Flow::zero(); self.num_edges * 2].into_boxed_slice();
         self.upper = vec![Flow::zero(); self.num_edges * 2].into_boxed_slice();
         self.rev = vec![usize::MAX; self.num_edges * 2].into_boxed_slice();
+        self.excesses = vec![Flow::zero(); self.num_nodes].into_boxed_slice();
         self.distances_to_sink = vec![self.num_nodes; self.num_nodes].into_boxed_slice();
 
         let mut degree = vec![0; self.num_nodes].into_boxed_slice();

@@ -1,5 +1,4 @@
 use crate::maximum_flow::csr::CSR;
-use crate::maximum_flow::dinic::Dinic;
 use crate::maximum_flow::graph::Graph;
 use crate::maximum_flow::status::Status;
 use crate::maximum_flow::MaximumFlowSolver;
@@ -18,6 +17,10 @@ where
     Flow: NumAssign + Ord + Copy,
 {
     fn solve(&mut self, graph: &mut Graph<Flow>, source: usize, sink: usize, upper: Option<Flow>) -> Result<Flow, Status> {
+        if source >= graph.num_nodes() || sink >= graph.num_nodes() || source == sink {
+            return Err(Status::BadInput);
+        }
+
         self.csr.build(graph);
         self.current_edge.resize(self.csr.num_nodes, 0);
         let two = Flow::one() + Flow::one();
