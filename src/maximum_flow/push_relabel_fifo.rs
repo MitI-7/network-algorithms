@@ -75,10 +75,9 @@ where
         }
 
         for i in self.csr.start[source]..self.csr.start[source + 1] {
-            let to = self.csr.to[i];
             let delta = self.csr.residual_capacity(i);
-            self.csr.excesses[to] += delta;
-            self.csr.push_flow(i, delta);
+            self.csr.push_flow(source, i, delta, true);
+            self.csr.excesses[self.csr.to[i]] += delta;
         }
 
         for u in 0..self.csr.num_nodes {
@@ -119,9 +118,7 @@ where
         let to = self.csr.to[i];
         let delta = self.csr.excesses[u].min(self.csr.residual_capacity(i));
         if self.csr.is_admissible_edge(u, i) && delta > Flow::zero() {
-            self.csr.push_flow(i, delta);
-            self.csr.excesses[u] -= delta;
-            self.csr.excesses[to] += delta;
+            self.csr.push_flow(u, i, delta, false);
             if self.csr.excesses[to] == delta {
                 self.active_nodes.push_back(to);
             }
@@ -189,7 +186,7 @@ where
 
             let delta = self.dfs(to, source, flow.min(residual_capacity), visited);
             if delta > Flow::zero() {
-                self.csr.push_flow(i, delta);
+                self.csr.push_flow(u, i, delta, true);
                 return delta;
             }
         }

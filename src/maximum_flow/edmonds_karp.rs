@@ -66,7 +66,7 @@ where
             let mut v = sink;
             while v != source {
                 let (u, edge_id) = prev[v];
-                self.csr.push_flow(edge_id, delta);
+                self.csr.push_flow(u, edge_id, delta, true);
                 v = u;
             }
             f += delta;

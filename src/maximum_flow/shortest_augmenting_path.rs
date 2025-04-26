@@ -56,7 +56,7 @@ where
             if self.csr.is_admissible_edge(u, i) {
                 // advance
                 if let Some(delta) = self.dfs(to, sink, upper.min(self.csr.residual_capacity(i))) {
-                    self.csr.push_flow(i, delta);
+                    self.csr.push_flow(u, i, delta, true);
                     return Some(delta);
                 }
             }

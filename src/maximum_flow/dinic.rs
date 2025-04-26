@@ -69,7 +69,7 @@ where
             }
 
             if let Some(d) = self.dfs(v, sink, residual_capacity.min(upper - res)) {
-                self.csr.push_flow(i, d);
+                self.csr.push_flow(u, i, d, true);
                 res += d;
                 if res == upper {
                     return Some(res);

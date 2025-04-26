@@ -84,9 +84,14 @@ where
     }
 
     #[inline]
-    pub fn push_flow(&mut self, i: usize, flow: Flow) {
+    pub fn push_flow(&mut self, u: usize, i: usize, flow: Flow, without_excess: bool) {
         self.flow[i] += flow;
         self.flow[self.rev[i]] -= flow;
+
+        if !without_excess {
+            self.excesses[u] -= flow;
+            self.excesses[self.to[i]] += flow;
+        }
     }
 
     // O(n + m)

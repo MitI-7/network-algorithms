@@ -59,7 +59,7 @@ where
             }
 
             if let Some(d) = self.dfs(to, sink, flow.min(residual_capacity), visited) {
-                self.csr.push_flow(i, d);
+                self.csr.push_flow(u, i, d, true);
                 return Some(d);
             }
         }
