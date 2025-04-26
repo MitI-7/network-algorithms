@@ -21,7 +21,7 @@ where
         self.csr.build(graph);
         let mut prev = vec![(usize::MAX, usize::MAX); self.csr.num_nodes];
         let mut visited = vec![false; self.csr.num_nodes];
-
+        let upper = upper.unwrap_or_else(|| self.csr.neighbors(source).fold(Flow::zero(), |sum, i| sum + self.csr.upper[i]));
         let mut f = Flow::zero();
         loop {
             prev.fill((usize::MAX, usize::MAX));

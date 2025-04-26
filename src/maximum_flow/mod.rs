@@ -1,3 +1,4 @@
+pub mod capacity_scaling;
 pub mod csr;
 pub mod dinic;
 pub mod edmonds_karp;
