@@ -34,28 +34,31 @@ where
         Self { csr: CSR::default(), active_nodes: VecDeque::new(), current_edge: Vec::new(), alpha: scaling_factor }
     }
 
-    pub fn solve(&mut self, graph: &mut Graph<Flow>) -> Status {
+    pub fn solve(&mut self, graph: &mut Graph<Flow>) -> Result<Flow, Status> {
         if graph.is_unbalance() {
-            return Status::Unbalanced;
+            return Err(Status::Unbalanced);
         }
         self.csr.build(graph);
 
         // all edge costs are non-negative
         if self.csr.excesses.iter().all(|&excess| excess == Flow::zero()) {
-            return Status::Optimal;
+            return Ok(graph.minimum_cost());
         }
 
         if !self.check_feasibility(graph) {
-            return Status::Infeasible;
+            return Err(Status::Infeasible);
         }
 
         self.current_edge.resize(self.csr.num_nodes, 0);
-        let gamma = self.csr.inside_edge_list.iter().map(|e| e.cost).max().unwrap_or(Flow::one()); // all edge costs are non-negative
+        let gamma = self.csr.cost.iter().map(|&c| c).max().unwrap_or(Flow::one()); // all edge costs are non-negative
         let cost_scaling_factor = self.alpha * Flow::from_usize(self.csr.num_nodes).unwrap();
         let mut epsilon = Flow::one().max(gamma * cost_scaling_factor);
 
         // scale cost
-        self.csr.inside_edge_list.iter_mut().for_each(|e| e.cost *= cost_scaling_factor);
+        for i in 0..self.csr.cost.len() {
+            self.csr.cost[i] *= cost_scaling_factor;
+        }
+
         loop {
             epsilon = Flow::one().max(epsilon / self.alpha);
             self.refine(epsilon);
@@ -64,11 +67,13 @@ where
             }
         }
         // unscale cost
-        self.csr.inside_edge_list.iter_mut().for_each(|e| e.cost /= cost_scaling_factor);
+        for i in 0..self.csr.cost.len() {
+            self.csr.cost[i] /= cost_scaling_factor;
+        }
 
         self.csr.set_flow(graph);
 
-        Status::Optimal
+        Ok(graph.minimum_cost())
     }
 
     // make epsilon-optimal flow
@@ -76,15 +81,13 @@ where
         // make 0-optimal pseudo flow
         for u in 0..self.csr.num_nodes {
             for edge_id in self.csr.start[u]..self.csr.start[u + 1] {
-                let edge = &self.csr.inside_edge_list[edge_id];
-
-                let reduced_cost = self.csr.reduced_cost(u, edge);
+                let reduced_cost = self.csr.reduced_cost(u, edge_id);
                 if reduced_cost < Flow::zero() {
-                    self.csr.push_flow(u, edge_id, edge.residual_capacity());
-                    debug_assert!(self.csr.inside_edge_list[edge_id].flow == self.csr.inside_edge_list[edge_id].upper);
+                    self.csr.push_flow(u, edge_id, self.csr.residual_capacity(edge_id));
+                    debug_assert!(self.csr.flow[edge_id] == self.csr.upper[edge_id]);
                 } else if reduced_cost > Flow::zero() {
-                    self.csr.push_flow(u, edge_id, -edge.flow);
-                    debug_assert!(self.csr.inside_edge_list[edge_id].flow == Flow::zero());
+                    self.csr.push_flow(u, edge_id, -self.csr.flow[edge_id]);
+                    debug_assert!(self.csr.flow[edge_id] == Flow::zero());
                 }
             }
         }
@@ -112,31 +115,30 @@ where
         }
     }
 
-    fn is_admissible(&self, u: usize, edge: &InsideEdge<Flow>, _epsilon: Flow) -> bool {
-        self.csr.reduced_cost(u, edge) < Flow::zero()
+    fn is_admissible(&self, u: usize, edge_id: usize, _epsilon: Flow) -> bool {
+        self.csr.reduced_cost(u, edge_id) < Flow::zero()
     }
 
     fn push(&mut self, u: usize, epsilon: Flow) {
         debug_assert!(self.csr.excesses[u] > Flow::zero());
 
         for edge_id in self.csr.start[u]..self.csr.start[u + 1] {
-            let edge = &self.csr.inside_edge_list[edge_id];
-            let to = edge.to;
-            if edge.residual_capacity() <= Flow::zero() {
+            let to = self.csr.to[edge_id];
+            if self.csr.residual_capacity(edge_id) <= Flow::zero() {
                 continue;
             }
 
-            if !self.is_admissible(u, edge, epsilon) {
+            if !self.is_admissible(u, edge_id, epsilon) {
                 continue;
             }
 
             if !self.look_ahead(to, epsilon) {
-                if !self.is_admissible(u, &self.csr.inside_edge_list[edge_id], epsilon) {
+                if !self.is_admissible(u, edge_id, epsilon) {
                     continue;
                 }
             }
 
-            let flow = self.csr.inside_edge_list[edge_id].residual_capacity().min(self.csr.excesses[u]);
+            let flow = self.csr.residual_capacity(edge_id).min(self.csr.excesses[u]);
             self.csr.push_flow(u, edge_id, flow);
 
             if self.csr.excesses[to] > Flow::zero() && self.csr.excesses[to] <= flow {
@@ -161,12 +163,12 @@ where
         let mut current_edges_for_u = 0;
 
         for edge_id in self.csr.start[u]..self.csr.start[u + 1] {
-            if self.csr.inside_edge_list[edge_id].residual_capacity() <= Flow::zero() {
+            if self.csr.residual_capacity(edge_id) <= Flow::zero() {
                 continue;
             }
 
-            let to = self.csr.inside_edge_list[edge_id].to;
-            let cost = self.csr.inside_edge_list[edge_id].cost;
+            let to = self.csr.to[edge_id];
+            let cost = self.csr.cost[edge_id];
 
             let new_potential = self.csr.potentials[to] + cost;
             if mini_potential.is_none() || new_potential < mini_potential.unwrap() {
@@ -213,12 +215,11 @@ where
 
         // search admissible edge
         for edge_id in self.current_edge[u]..self.csr.start[u + 1] {
-            let edge = &self.csr.inside_edge_list[edge_id];
-            if edge.residual_capacity() <= Flow::zero() {
+            if self.csr.residual_capacity(edge_id) <= Flow::zero() {
                 continue;
             }
 
-            if self.is_admissible(u, edge, epsilon) {
+            if self.is_admissible(u, edge_id, epsilon) {
                 self.current_edge[u] = edge_id;
                 return true;
             }
@@ -256,7 +257,7 @@ where
                 maximum_flow_graph.add_directed_edge(u, sink, -excesses[u]);
             }
         }
-        CapacityScaling::default().solve(source, sink, &mut maximum_flow_graph);
-        maximum_flow_graph.maximum_flow(source) >= total_excess
+        let r = CapacityScaling::default().solve(&mut maximum_flow_graph, source, sink, None);
+        r.unwrap() >= total_excess
     }
 }
