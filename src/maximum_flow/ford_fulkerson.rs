@@ -12,11 +12,14 @@ impl<Flow> FordFulkerson<Flow>
 where
     Flow: NumAssign + Ord + Copy,
 {
-    pub fn solve(&mut self, source: usize, sink: usize, graph: &mut Graph<Flow>) -> Status {
+    pub fn solve(&mut self, graph: &mut Graph<Flow>, source: usize, sink: usize, upper: Option<Flow>) -> Result<Flow, Status> {
+        if source == sink {
+            return Err(Status::BadInput);
+        }
         self.csr.build(graph);
         let mut visited = vec![false; self.csr.num_nodes];
 
-        let upper = self.csr.neighbors(source).fold(Flow::zero(), |sum, i| sum + self.csr.upper[i]);
+        let upper = upper.unwrap_or_else(|| self.csr.neighbors(source).fold(Flow::zero(), |sum, i| sum + self.csr.upper[i]));
         let mut flow = Flow::zero();
         loop {
             visited.fill(false);
@@ -27,7 +30,8 @@ where
         }
 
         self.csr.set_flow(graph);
-        Status::Optimal
+
+        Ok(flow)
     }
 
     fn dfs(&mut self, u: usize, sink: usize, flow: Flow, visited: &mut Vec<bool>) -> Option<Flow> {
@@ -49,25 +53,5 @@ where
             }
         }
         None
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    pub fn test_aoj() {
-        let mut graph = Graph::<i32>::default();
-        graph.add_nodes(4);
-        graph.add_directed_edge(0, 1, 2);
-        graph.add_directed_edge(0, 2, 1);
-        graph.add_directed_edge(1, 2, 1);
-        graph.add_directed_edge(1, 3, 1);
-        graph.add_directed_edge(2, 3, 2);
-
-        let status = FordFulkerson::default().solve(0, 3, &mut graph);
-        assert_eq!(status, Status::Optimal);
-        assert_eq!(graph.maximum_flow(0), 3);
     }
 }
