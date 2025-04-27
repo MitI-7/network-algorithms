@@ -1,6 +1,6 @@
-use network_algorithms::maximum_flow::dinic::Dinic;
+use network_algorithms::maximum_flow::dinic;
 use network_algorithms::maximum_flow::graph::Graph;
-use network_algorithms::maximum_flow::push_relabel_highest_label::PushRelabelHighestLabel;
+use network_algorithms::maximum_flow::push_relabel_highest_label;
 
 fn make_sample_graph() -> Graph<i32> {
     let mut graph = Graph::default();
@@ -15,11 +15,10 @@ fn make_sample_graph() -> Graph<i32> {
     graph
 }
 
-fn dinic() {
+fn dinic_sample() {
     let mut graph = make_sample_graph();
-    match Dinic::default().solve(&mut graph, 0, 3, None) {
+    match dinic(&mut graph, 0, 3, None) {
         Ok(value) => {
-            println!("dinic");
             println!("maximum flow:{}", value);
             for edge_id in 0..graph.num_edges() {
                 println!("{:?}", graph.get_edge(edge_id).unwrap());
@@ -31,9 +30,8 @@ fn dinic() {
 
 fn push_relabel() {
     let mut graph = make_sample_graph();
-    match PushRelabelHighestLabel::default().solve(&mut graph, 0, 3, None) {
+    match push_relabel_highest_label(&mut graph, 0, 3, None) {
         Ok(value) => {
-            println!("push relabel");
             println!("maximum flow:{}", value);
             for edge_id in 0..graph.num_edges() {
                 println!("{:?}", graph.get_edge(edge_id).unwrap());
@@ -44,6 +42,9 @@ fn push_relabel() {
 }
 
 fn main() {
-    dinic();
+    println!("dinic");
+    dinic_sample();
+
+    println!("push relabel");
     push_relabel();
 }

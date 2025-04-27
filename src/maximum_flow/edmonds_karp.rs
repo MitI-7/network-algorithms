@@ -85,3 +85,10 @@ where
         <Self as MaximumFlowSolver<Flow>>::solve(self, graph, source, sink, upper)
     }
 }
+
+pub fn edmonds_karp<Flow>(graph: &mut Graph<Flow>, source: usize, sink: usize, upper: Option<Flow>) -> Result<Flow, Status>
+where
+    Flow: NumAssign + Ord + Copy + Default,
+{
+    EdmondsKarp::<Flow>::default().solve(graph, source, sink, upper)
+}
