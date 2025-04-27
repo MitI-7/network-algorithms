@@ -1,4 +1,5 @@
 use crate::minimum_cost_flow::graph::Graph;
+use crate::minimum_cost_flow::spanning_tree_structure::EdgeState::Lower;
 use num_traits::NumAssign;
 use std::cmp::Reverse;
 use std::collections::BinaryHeap;
@@ -11,7 +12,7 @@ pub struct Node<Flow> {
     pub potential: Flow,
 }
 
-#[derive(Default, PartialEq, Debug)]
+#[derive(Clone, Default, PartialEq, Debug)]
 pub enum EdgeState {
     #[default]
     Lower,
@@ -19,41 +20,41 @@ pub enum EdgeState {
     Tree,
 }
 
-#[derive(Default)]
-pub struct InternalEdge<Flow> {
-    pub from: usize,
-    pub to: usize,
-    pub upper: Flow,
-    pub cost: Flow,
-    pub flow: Flow,
-    pub state: EdgeState,
-}
-
-impl<Flow> InternalEdge<Flow>
-where
-    Flow: NumAssign + Neg<Output = Flow> + Ord + Copy,
-{
-    pub fn is_feasible(&self) -> bool {
-        Flow::zero() <= self.flow && self.flow <= self.upper
-    }
-
-    pub fn is_lower(&self) -> bool {
-        self.flow == Flow::zero()
-    }
-
-    pub fn is_upper(&self) -> bool {
-        self.flow == self.upper
-    }
-
-    pub fn residual_capacity(&self) -> Flow {
-        self.upper - self.flow
-    }
-
-    pub fn opposite_side(&self, u: usize) -> usize {
-        debug_assert!(u == self.from || u == self.to);
-        u ^ self.to ^ self.from
-    }
-}
+// #[derive(Default)]
+// pub struct InternalEdge<Flow> {
+//     pub from: usize,
+//     pub to: usize,
+//     pub upper: Flow,
+//     pub cost: Flow,
+//     pub flow: Flow,
+//     pub state: EdgeState,
+// }
+//
+// impl<Flow> InternalEdge<Flow>
+// where
+//     Flow: NumAssign + Neg<Output = Flow> + Ord + Copy,
+// {
+//     pub fn is_feasible(&self) -> bool {
+//         Flow::zero() <= self.flow && self.flow <= self.upper
+//     }
+//
+//     pub fn is_lower(&self) -> bool {
+//         self.flow == Flow::zero()
+//     }
+//
+//     pub fn is_upper(&self) -> bool {
+//         self.flow == self.upper
+//     }
+//
+//     pub fn residual_capacity(&self) -> Flow {
+//         self.upper - self.flow
+//     }
+//
+//     pub fn opposite_side(&self, u: usize) -> usize {
+//         debug_assert!(u == self.from || u == self.to);
+//         u ^ self.to ^ self.from
+//     }
+// }
 
 #[derive(Default)]
 pub struct SpanningTreeStructure<Flow> {
@@ -61,14 +62,19 @@ pub struct SpanningTreeStructure<Flow> {
     pub(crate) num_edges: usize,
     pub(crate) excesses: Vec<Flow>,
 
-    pub(crate) nodes: Vec<Node<Flow>>,
-    pub(crate) edges: Vec<InternalEdge<Flow>>,
+    pub(crate) nodes: Box<[Node<Flow>]>,
+    pub from: Box<[usize]>,
+    pub to: Box<[usize]>,
+    pub upper: Box<[Flow]>,
+    pub cost: Box<[Flow]>,
+    pub flow: Box<[Flow]>,
+    pub state: Box<[EdgeState]>,
 
     pub(crate) root: usize,
-    pub(crate) next_node_dft: Vec<usize>,       // next nodes in depth-first thread
-    pub(crate) prev_node_dft: Vec<usize>,       // previous nodes in depth-first thread
-    pub(crate) last_descendent_dft: Vec<usize>, // last descendants in depth-first thread
-    pub(crate) num_successors: Vec<usize>,      // the number of successors of the node in the tree
+    pub(crate) next_node_dft: Box<[usize]>,       // next nodes in depth-first thread
+    pub(crate) prev_node_dft: Box<[usize]>,       // previous nodes in depth-first thread
+    pub(crate) last_descendent_dft: Box<[usize]>, // last descendants in depth-first thread
+    pub(crate) num_successors: Box<[usize]>,      // the number of successors of the node in the tree
 }
 
 #[allow(dead_code)]
@@ -80,31 +86,41 @@ where
         (self.num_nodes, self.num_edges) = (graph.num_nodes(), graph.num_edges());
         self.excesses = graph.excesses.clone();
 
-        for edge in graph.edges.iter() {
+        self.from = vec![0; graph.num_edges()].into_boxed_slice();
+        self.to = vec![0; graph.num_edges()].into_boxed_slice();
+        self.upper = vec![Flow::zero(); graph.num_edges()].into_boxed_slice();
+        self.cost = vec![Flow::zero(); graph.num_edges()].into_boxed_slice();
+        self.flow = vec![Flow::zero(); graph.num_edges()].into_boxed_slice();
+        self.state = vec![Lower; graph.num_edges()].into_boxed_slice();
+
+        for (i, edge) in graph.edges.iter().enumerate() {
             assert!(edge.upper >= Flow::zero() && edge.cost >= Flow::zero());
-            self.edges
-                .push(InternalEdge { from: edge.from, to: edge.to, flow: edge.flow, upper: edge.upper, cost: edge.cost, state: EdgeState::Lower });
+            self.from[i] = edge.from;
+            self.to[i] = edge.to;
+            self.flow[i] = edge.flow;
+            self.upper[i] = edge.upper;
+            self.cost[i] = edge.cost;
+            self.state[i] = Lower;
         }
 
         self.root = usize::MAX;
-        self.nodes.resize(self.num_nodes, Node { parent: usize::MAX, parent_edge_id: usize::MAX, potential: Flow::zero() });
-        self.next_node_dft.resize(self.num_nodes, usize::MAX);
-        self.prev_node_dft.resize(self.num_nodes, usize::MAX);
-        self.last_descendent_dft.resize(self.num_nodes, usize::MAX);
-        self.num_successors.resize(self.num_nodes, 0);
+        self.nodes = vec![Node { parent: usize::MAX, parent_edge_id: usize::MAX, potential: Flow::zero() }; self.num_nodes].into_boxed_slice();
+        self.next_node_dft = vec![usize::MAX; self.num_nodes].into_boxed_slice();
+        self.prev_node_dft = vec![usize::MAX; self.num_nodes].into_boxed_slice();
+        self.last_descendent_dft = vec![usize::MAX; self.num_nodes].into_boxed_slice();
+        self.num_successors = vec![0; self.num_nodes].into_boxed_slice();
     }
 
     #[inline]
-    pub(crate) fn reduced_cost(&self, edge: &InternalEdge<Flow>) -> Flow {
-        edge.cost - self.nodes[edge.from].potential + self.nodes[edge.to].potential
+    pub(crate) fn reduced_cost(&self, edge_id: usize) -> Flow {
+        self.cost[edge_id] - self.nodes[self.from[edge_id]].potential + self.nodes[self.to[edge_id]].potential
     }
 
     pub(crate) fn update_flow_in_path(&mut self, source: usize, sink: usize, delta: Flow) {
         let mut now = sink;
         while now != source {
             let (parent, edge_id) = (self.nodes[now].parent, self.nodes[now].parent_edge_id);
-            let edge = &mut self.edges[edge_id];
-            edge.flow += if edge.from == parent { delta } else { -delta };
+            self.flow[edge_id] += if self.from[edge_id] == parent { delta } else { -delta };
             now = parent;
         }
         self.excesses[source] -= delta;
@@ -112,23 +128,29 @@ where
     }
 
     pub(crate) fn update_flow_in_cycle(&mut self, entering_edge_id: usize, delta: Flow, apex: usize) {
-        let delta = match self.edges[entering_edge_id].state {
+        let delta = match self.state[entering_edge_id] {
             EdgeState::Upper => -delta,
             _ => delta,
         };
-        self.edges[entering_edge_id].flow += delta;
+        self.flow[entering_edge_id] += delta;
 
-        let mut now = self.edges[entering_edge_id].from;
+        let mut now = self.from[entering_edge_id];
         while now != apex {
-            let edge = &mut self.edges[self.nodes[now].parent_edge_id];
-            edge.flow += if now == edge.from { -delta } else { delta };
+            self.flow[self.nodes[now].parent_edge_id] += if now == self.from[self.nodes[now].parent_edge_id] {
+                -delta
+            } else {
+                delta
+            };
             now = self.nodes[now].parent;
         }
 
-        let mut now = self.edges[entering_edge_id].to;
+        let mut now = self.to[entering_edge_id];
         while now != apex {
-            let edge = &mut self.edges[self.nodes[now].parent_edge_id];
-            edge.flow += if now == edge.from { delta } else { -delta };
+            self.flow[self.nodes[now].parent_edge_id] += if now == self.from[self.nodes[now].parent_edge_id] {
+                delta
+            } else {
+                -delta
+            };
             now = self.nodes[now].parent;
         }
     }
@@ -177,11 +199,10 @@ where
         }
 
         // update potential
-        let entering_edge = &self.edges[entering_edge_id];
-        let delta = if new_root == entering_edge.from {
-            self.reduced_cost(entering_edge)
+        let delta = if new_root == self.from[entering_edge_id] {
+            self.reduced_cost(entering_edge_id)
         } else {
-            -self.reduced_cost(entering_edge)
+            -self.reduced_cost(entering_edge_id)
         };
 
         let mut now = new_root;
@@ -196,8 +217,11 @@ where
 
     // remove leaving_edge_id
     pub(crate) fn detach_tree(&mut self, _root: usize, sub_tree_root: usize, leaving_edge_id: usize) {
-        let leaving_edge = &mut self.edges[leaving_edge_id];
-        leaving_edge.state = if leaving_edge.is_lower() { EdgeState::Lower } else { EdgeState::Upper };
+        self.state[leaving_edge_id] = if self.is_lower(leaving_edge_id) {
+            EdgeState::Lower
+        } else {
+            EdgeState::Upper
+        };
 
         // detach sub tree
         self.nodes[sub_tree_root].parent = usize::MAX;
@@ -212,7 +236,7 @@ where
         self.prev_node_dft[sub_tree_root] = last_t;
 
         let sub_tree_size = self.num_successors[sub_tree_root];
-        let mut now = leaving_edge.opposite_side(sub_tree_root);
+        let mut now = self.opposite_side(sub_tree_root, leaving_edge_id);
         while now != usize::MAX {
             self.num_successors[now] -= sub_tree_size;
             if self.last_descendent_dft[now] == last_t {
@@ -226,7 +250,7 @@ where
     // O(1)
     // add entering_ege_id
     pub(crate) fn attach_tree(&mut self, _root: usize, attach_node: usize, sub_tree_root: usize, entering_edge_id: usize) {
-        self.edges[entering_edge_id].state = EdgeState::Tree;
+        self.state[entering_edge_id] = EdgeState::Tree;
 
         let (p, q) = (attach_node, sub_tree_root); // p -> q
 
@@ -257,10 +281,10 @@ where
     pub(crate) fn shortest_path(&self, source: usize) -> (Vec<Flow>, Vec<Option<usize>>) {
         let mut graph = vec![Vec::new(); self.num_nodes];
         let mut total_cost = Flow::zero();
-        for (edge_id, edge) in self.edges.iter().enumerate() {
-            graph[edge.from].push(edge_id);
-            assert!(edge.cost >= Flow::zero());
-            total_cost += edge.cost;
+        for edge_id in 0..self.num_edges {
+            graph[self.from[edge_id]].push(edge_id);
+            assert!(self.cost[edge_id] >= Flow::zero());
+            total_cost += self.cost[edge_id];
         }
 
         let mut distances = vec![total_cost + Flow::one(); self.num_nodes];
@@ -276,13 +300,13 @@ where
             seen[u] = true;
 
             for &edge_id in graph[u].iter() {
-                let edge = &self.edges[edge_id];
-                let new_dist = now_dist.0 + edge.cost;
+                let new_dist = now_dist.0 + self.cost[edge_id];
 
-                if new_dist < distances[edge.to] {
-                    prev_edge_id[edge.to] = Some(edge_id);
-                    distances[edge.to] = new_dist;
-                    bh.push((Reverse(new_dist), edge.to));
+                let to = self.to[edge_id];
+                if new_dist < distances[to] {
+                    prev_edge_id[to] = Some(edge_id);
+                    distances[to] = new_dist;
+                    bh.push((Reverse(new_dist), to));
                 }
             }
         }
@@ -291,14 +315,19 @@ where
     }
 
     pub fn satisfy_constraints(&self) -> bool {
-        self.edges.iter().all(|edge| edge.is_feasible()) && self.excesses.iter().all(|&excess| excess == Flow::zero())
+        for edge_id in 0..self.num_edges {
+            if !self.is_feasible(edge_id) {
+                return false;
+            }
+        }
+        self.excesses.iter().all(|&excess| excess == Flow::zero())
     }
 
     pub fn satisfy_optimality_conditions(&self) -> bool {
-        self.edges.iter().all(|edge| match edge.state {
-            EdgeState::Tree => self.reduced_cost(edge) == Flow::zero(),
-            EdgeState::Lower => edge.upper == Flow::zero() || self.reduced_cost(edge) >= Flow::zero(),
-            EdgeState::Upper => edge.upper == Flow::zero() || self.reduced_cost(edge) <= Flow::zero(),
+        (0..self.num_edges).into_iter().all(|edge_id| match self.state[edge_id] {
+            EdgeState::Tree => self.reduced_cost(edge_id) == Flow::zero(),
+            EdgeState::Lower => self.upper[edge_id] == Flow::zero() || self.reduced_cost(edge_id) >= Flow::zero(),
+            EdgeState::Upper => self.upper[edge_id] == Flow::zero() || self.reduced_cost(edge_id) <= Flow::zero(),
         })
     }
 
@@ -324,5 +353,26 @@ where
         }
 
         true
+    }
+
+    pub fn is_feasible(&self, edge_id: usize) -> bool {
+        Flow::zero() <= self.flow[edge_id] && self.flow[edge_id] <= self.upper[edge_id]
+    }
+
+    pub fn is_lower(&self, edge_id: usize) -> bool {
+        self.flow[edge_id] == Flow::zero()
+    }
+
+    pub fn is_upper(&self, edge_id: usize) -> bool {
+        self.flow[edge_id] == self.upper[edge_id]
+    }
+
+    pub fn residual_capacity(&self, edge_id: usize) -> Flow {
+        self.upper[edge_id] - self.flow[edge_id]
+    }
+
+    pub fn opposite_side(&self, u: usize, edge_id: usize) -> usize {
+        debug_assert!(u == self.from[edge_id] || u == self.to[edge_id]);
+        u ^ self.to[edge_id] ^ self.from[edge_id]
     }
 }

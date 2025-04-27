@@ -1,10 +1,14 @@
-use crate::minimum_cost_flow::spanning_tree_structure::{EdgeState, InternalEdge, SpanningTreeStructure};
+use crate::minimum_cost_flow::spanning_tree_structure::{EdgeState, SpanningTreeStructure};
 use num_traits::NumAssign;
 use std::ops::Neg;
 
 pub trait PivotRule<Flow> {
     fn new(num_edges: usize) -> Self;
-    fn find_entering_edge<F: Fn(&InternalEdge<Flow>, &SpanningTreeStructure<Flow>) -> Flow>(&mut self, st: &SpanningTreeStructure<Flow>, calculate_violation: F) -> Option<usize>;
+    fn find_entering_edge<F: Fn(usize, &SpanningTreeStructure<Flow>) -> Flow>(
+        &mut self,
+        st: &SpanningTreeStructure<Flow>,
+        calculate_violation: F,
+    ) -> Option<usize>;
 }
 
 pub struct BestEligibleArcPivotRule<Flow> {
@@ -19,12 +23,16 @@ where
         Self { _maker: std::marker::PhantomData }
     }
 
-    fn find_entering_edge<F: Fn(&InternalEdge<Flow>, &SpanningTreeStructure<Flow>) -> Flow>(&mut self, st: &SpanningTreeStructure<Flow>, calculate_violation: F) -> Option<usize> {
+    fn find_entering_edge<F: Fn(usize, &SpanningTreeStructure<Flow>) -> Flow>(
+        &mut self,
+        st: &SpanningTreeStructure<Flow>,
+        calculate_violation: F,
+    ) -> Option<usize> {
         let mut maxi_violation = Flow::zero();
         let mut entering_edge_id = None;
 
-        for (edge_id, edge) in st.edges.iter().enumerate() {
-            let violation = calculate_violation(edge, st);
+        for edge_id in 0..st.num_edges {
+            let violation = calculate_violation(edge_id, st);
             if violation > maxi_violation {
                 maxi_violation = violation;
                 entering_edge_id = Some(edge_id);
@@ -48,10 +56,13 @@ where
         Self { current_edge_id: 0, _maker: std::marker::PhantomData }
     }
 
-    fn find_entering_edge<F: Fn(&InternalEdge<Flow>, &SpanningTreeStructure<Flow>) -> Flow>(&mut self, st: &SpanningTreeStructure<Flow>, calculate_violation: F) -> Option<usize> {
+    fn find_entering_edge<F: Fn(usize, &SpanningTreeStructure<Flow>) -> Flow>(
+        &mut self,
+        st: &SpanningTreeStructure<Flow>,
+        calculate_violation: F,
+    ) -> Option<usize> {
         for _ in 0..st.num_edges {
-            let edge = &st.edges[self.current_edge_id];
-            let violation = calculate_violation(edge, st);
+            let violation = calculate_violation(self.current_edge_id, st);
 
             if violation > Flow::zero() {
                 return Some(self.current_edge_id);
@@ -80,7 +91,11 @@ where
     pub fn new_with_parameter(num_edges: usize, min_block_size: usize, block_size_factor: f64) -> Self {
         assert!(min_block_size > 0);
         assert!(block_size_factor >= 0.0);
-        Self { current_edge_id: 0, block_size: min_block_size.max((block_size_factor * (num_edges as f64).sqrt()) as usize), _maker: std::marker::PhantomData }
+        Self {
+            current_edge_id: 0,
+            block_size: min_block_size.max((block_size_factor * (num_edges as f64).sqrt()) as usize),
+            _maker: std::marker::PhantomData,
+        }
     }
 }
 
@@ -94,14 +109,17 @@ where
         Self::new_with_parameter(num_edges, min_block_size, block_size_factor)
     }
 
-    fn find_entering_edge<F: Fn(&InternalEdge<Flow>, &SpanningTreeStructure<Flow>) -> Flow>(&mut self, st: &SpanningTreeStructure<Flow>, calculate_violation: F) -> Option<usize> {
+    fn find_entering_edge<F: Fn(usize, &SpanningTreeStructure<Flow>) -> Flow>(
+        &mut self,
+        st: &SpanningTreeStructure<Flow>,
+        calculate_violation: F,
+    ) -> Option<usize> {
         let mut maxi_violation = Flow::zero();
         let mut entering_edge_id = None;
         let mut count = self.block_size;
 
         for _ in 0..st.num_edges {
-            let edge = &st.edges[self.current_edge_id];
-            let violation = calculate_violation(edge, st);
+            let violation = calculate_violation(self.current_edge_id, st);
 
             if violation > maxi_violation {
                 maxi_violation = violation;
@@ -140,7 +158,13 @@ impl<Flow> CandidateListPivotRule<Flow>
 where
     Flow: NumAssign + Neg<Output = Flow> + Ord + Copy,
 {
-    pub fn new_with_parameter(num_edges: usize, min_candidate_list_size: usize, candidate_list_size_factor: f64, min_minor_limit: usize, minor_limit_factor: f64) -> Self {
+    pub fn new_with_parameter(
+        num_edges: usize,
+        min_candidate_list_size: usize,
+        candidate_list_size_factor: f64,
+        min_minor_limit: usize,
+        minor_limit_factor: f64,
+    ) -> Self {
         assert!(min_candidate_list_size > 0);
         assert!(candidate_list_size_factor > 0.0);
         assert!(min_minor_limit > 0);
@@ -173,7 +197,11 @@ where
         Self::new_with_parameter(num_edges, min_candidate_list_size, candidate_list_size_factor, min_minor_limit, minor_limit_factor)
     }
 
-    fn find_entering_edge<F: Fn(&InternalEdge<Flow>, &SpanningTreeStructure<Flow>) -> Flow>(&mut self, st: &SpanningTreeStructure<Flow>, calculate_violation: F) -> Option<usize> {
+    fn find_entering_edge<F: Fn(usize, &SpanningTreeStructure<Flow>) -> Flow>(
+        &mut self,
+        st: &SpanningTreeStructure<Flow>,
+        calculate_violation: F,
+    ) -> Option<usize> {
         let mut maxi_violation = Flow::zero();
         let mut entering_edge_id = None;
 
@@ -185,8 +213,7 @@ where
             let mut i = 0;
             while i < self.current_size {
                 let edge_id = self.candidates[i];
-                let edge = &st.edges[edge_id];
-                let violation = calculate_violation(edge, st);
+                let violation = calculate_violation(edge_id, st);
 
                 if violation <= Flow::zero() {
                     // remove ineligible arc from the candidates
@@ -209,10 +236,9 @@ where
         // build a candidate list
         self.current_size = 0;
         for _ in 0..st.num_edges {
-            let edge = &st.edges[self.current_edge_id];
-            let violation = match edge.state {
-                EdgeState::Upper => st.reduced_cost(edge),
-                _ => -st.reduced_cost(edge),
+            let violation = match st.state[self.current_edge_id] {
+                EdgeState::Upper => st.reduced_cost(self.current_edge_id),
+                _ => -st.reduced_cost(self.current_edge_id),
             };
 
             if violation > Flow::zero() {
@@ -252,7 +278,13 @@ impl<Flow> AlteringCandidateListPivotRule<Flow>
 where
     Flow: NumAssign + Neg<Output = Flow> + Ord + Copy,
 {
-    pub fn new_with_parameter(num_edges: usize, min_block_size: usize, block_size_factor: f64, min_head_length: usize, head_length_factor: f64) -> Self {
+    pub fn new_with_parameter(
+        num_edges: usize,
+        min_block_size: usize,
+        block_size_factor: f64,
+        min_head_length: usize,
+        head_length_factor: f64,
+    ) -> Self {
         assert!(min_block_size > 0);
         assert!(block_size_factor > 0.0);
         assert!(min_head_length > 0);
@@ -261,7 +293,13 @@ where
         let block_size = min_block_size.max((block_size_factor * (num_edges as f64).sqrt()) as usize);
         let head_length = min_head_length.max((head_length_factor * block_size as f64) as usize);
 
-        Self { current_edge_id: 0, block_size, head_length, candidates: vec![(usize::MAX, Flow::zero()); head_length + block_size].into_boxed_slice(), current_size: 0 }
+        Self {
+            current_edge_id: 0,
+            block_size,
+            head_length,
+            candidates: vec![(usize::MAX, Flow::zero()); head_length + block_size].into_boxed_slice(),
+            current_size: 0,
+        }
     }
 }
 
@@ -277,13 +315,16 @@ where
         Self::new_with_parameter(num_edges, min_block_size, block_size_factor, min_head_length, head_length_factor)
     }
 
-    fn find_entering_edge<F: Fn(&InternalEdge<Flow>, &SpanningTreeStructure<Flow>) -> Flow>(&mut self, st: &SpanningTreeStructure<Flow>, calculate_violation: F) -> Option<usize> {
+    fn find_entering_edge<F: Fn(usize, &SpanningTreeStructure<Flow>) -> Flow>(
+        &mut self,
+        st: &SpanningTreeStructure<Flow>,
+        calculate_violation: F,
+    ) -> Option<usize> {
         // update candidate cost
         let mut i = 0;
         while i < self.current_size {
             let (edge_id, _) = self.candidates[i];
-            let edge = &st.edges[edge_id];
-            let violation = calculate_violation(edge, st);
+            let violation = calculate_violation(edge_id, st);
 
             if violation <= Flow::zero() {
                 // remove ineligible arc from the candidates
@@ -300,10 +341,9 @@ where
         let mut limit = self.head_length;
 
         for _ in 0..st.num_edges {
-            let edge = &st.edges[self.current_edge_id];
-            let violation = match edge.state {
-                EdgeState::Upper => st.reduced_cost(edge),
-                _ => -st.reduced_cost(edge),
+            let violation = match st.state[self.current_edge_id] {
+                EdgeState::Upper => st.reduced_cost(self.current_edge_id),
+                _ => -st.reduced_cost(self.current_edge_id),
             };
 
             // add eligible arc to the candidates

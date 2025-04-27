@@ -1,4 +1,3 @@
-use crate::minimum_cost_flow::dual_network_simplex::DualNetworkSimplex;
 use crate::minimum_cost_flow::graph::Graph;
 use crate::minimum_cost_flow::network_simplex_pivot_rules::PivotRule;
 use crate::minimum_cost_flow::spanning_tree_structure::{EdgeState, SpanningTreeStructure};
@@ -54,7 +53,7 @@ where
         // copy
         graph.excesses = self.st.excesses.clone();
         for edge_id in 0..graph.num_edges() {
-            graph.edges[edge_id].flow = self.st.edges[edge_id].flow;
+            graph.edges[edge_id].flow = self.st.flow[edge_id];
         }
         graph.remove_artificial_sub_graph(&artificial_nodes, &artificial_edges);
 
@@ -76,11 +75,10 @@ where
 
     pub(crate) fn run(&mut self) {
         while let Some((leaving_edge_id, delta)) = self.select_leaving_edge() {
-            let leaving_edge = &self.st.edges[leaving_edge_id];
-            let t2_now_root = if self.st.nodes[leaving_edge.from].parent == leaving_edge.to {
-                leaving_edge.from
+            let t2_now_root = if self.st.nodes[self.st.from[leaving_edge_id]].parent == self.st.to[leaving_edge_id] {
+                self.st.from[leaving_edge_id]
             } else {
-                leaving_edge.to
+                self.st.to[leaving_edge_id]
             };
 
             self.st.update_flow_in_path(self.st.root, self.sink, delta);
@@ -111,10 +109,10 @@ where
         // make tree structure
         let mut children = vec![Vec::new(); self.st.num_nodes];
         for edge_id in prev_edge_id.iter().filter_map(|&edge_id| edge_id) {
-            let edge = &mut self.st.edges[edge_id];
-            edge.state = EdgeState::Tree;
-            (self.st.nodes[edge.to].parent, self.st.nodes[edge.to].parent_edge_id) = (edge.from, edge_id);
-            children[edge.from].push(edge.to);
+            self.st.state[edge_id] = EdgeState::Tree;
+            let (from, to) = (self.st.from[edge_id], self.st.to[edge_id]);
+            (self.st.nodes[to].parent, self.st.nodes[to].parent_edge_id) = (from, edge_id);
+            children[from].push(to);
         }
         (self.st.nodes[self.st.root].parent, self.st.nodes[self.st.root].parent_edge_id) = (usize::MAX, usize::MAX);
         self.st.last_descendent_dft = (0..self.st.num_nodes).collect();
@@ -159,10 +157,13 @@ where
         let mut now = self.sink;
         while now != self.st.root {
             let (parent, edge_id) = (self.st.nodes[now].parent, self.st.nodes[now].parent_edge_id);
-            let edge = &self.st.edges[edge_id];
-            assert_eq!(edge.state, EdgeState::Tree);
+            assert_eq!(self.st.state[edge_id], EdgeState::Tree);
 
-            let delta = if edge.from == parent { edge.residual_capacity() } else { edge.flow };
+            let delta = if self.st.from[edge_id] == parent {
+                self.st.residual_capacity(edge_id)
+            } else {
+                self.st.flow[edge_id]
+            };
             // select the edge closest to the source as the leaving edge
             if leaving_edge_id.is_none() || delta <= mini_delta {
                 mini_delta = delta;
@@ -191,28 +192,29 @@ where
         let mut entering_edge_id = None;
         let mut t2_new_root = None;
         let mut mini_delta = Flow::zero();
-        for (edge_id, edge) in self.st.edges.iter().enumerate() {
+        for edge_id in 0..self.st.num_edges {
             if edge_id == leaving_edge_id {
                 continue;
             }
 
             // t1 -> t2 and lower
-            if is_t1_node[edge.from] && !is_t1_node[edge.to] && edge.state == EdgeState::Lower && edge.upper != Flow::zero() {
-                let reduced_cost = self.st.reduced_cost(edge);
+            let (from, to) = (self.st.from[edge_id], self.st.to[edge_id]);
+            if is_t1_node[from] && !is_t1_node[to] && self.st.state[edge_id] == EdgeState::Lower && self.st.upper[edge_id] != Flow::zero() {
+                let reduced_cost = self.st.reduced_cost(edge_id);
                 if reduced_cost < mini_delta || entering_edge_id.is_none() {
                     mini_delta = reduced_cost;
                     entering_edge_id = Some(edge_id);
-                    t2_new_root = Some(edge.to);
+                    t2_new_root = Some(to);
                 }
             }
 
             // t2 -> t1 and upper
-            if !is_t1_node[edge.from] && is_t1_node[edge.to] && edge.state == EdgeState::Upper {
-                let reduced_cost = -self.st.reduced_cost(edge);
+            if !is_t1_node[from] && is_t1_node[to] && self.st.state[edge_id] == EdgeState::Upper {
+                let reduced_cost = -self.st.reduced_cost(edge_id);
                 if reduced_cost < mini_delta || entering_edge_id.is_none() {
                     mini_delta = reduced_cost;
                     entering_edge_id = Some(edge_id);
-                    t2_new_root = Some(edge.from);
+                    t2_new_root = Some(from);
                 }
             }
         }
@@ -221,7 +223,7 @@ where
 
     fn dual_pivot(&mut self, leaving_edge_id: usize, entering_edge_id: usize, t2_now_root: usize, t2_new_root: usize) {
         if leaving_edge_id == entering_edge_id {
-            self.st.edges[entering_edge_id].state = match self.st.edges[entering_edge_id].state {
+            self.st.state[entering_edge_id] = match self.st.state[entering_edge_id] {
                 EdgeState::Upper => EdgeState::Lower,
                 EdgeState::Lower => EdgeState::Upper,
                 _ => panic!("state of entering edge {entering_edge_id} is invalid."),
@@ -233,8 +235,7 @@ where
         self.st.detach_tree(self.st.root, t2_now_root, leaving_edge_id);
 
         // enter entering edge
-        let entering_edge = &mut self.st.edges[entering_edge_id];
-        let attach_node = entering_edge.opposite_side(t2_new_root);
+        let attach_node = self.st.opposite_side(t2_new_root, entering_edge_id);
         self.st.re_rooting(t2_now_root, t2_new_root, entering_edge_id);
         self.st.attach_tree(self.st.root, attach_node, t2_new_root, entering_edge_id);
     }
