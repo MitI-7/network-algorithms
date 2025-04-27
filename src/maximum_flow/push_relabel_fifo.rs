@@ -53,10 +53,6 @@ impl<Flow> PushRelabelFIFO<Flow>
 where
     Flow: NumAssign + Ord + Copy + Default,
 {
-    pub fn new(&mut self, alpha: usize) -> Self {
-        Self { alpha, ..Default::default() }
-    }
-
     pub fn solve(&mut self, graph: &mut Graph<Flow>, source: usize, sink: usize, upper: Option<Flow>) -> Result<Flow, Status> {
         <Self as MaximumFlowSolver<Flow>>::solve(self, graph, source, sink, upper)
     }

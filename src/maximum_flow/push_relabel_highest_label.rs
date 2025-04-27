@@ -62,19 +62,6 @@ impl<Flow> PushRelabelHighestLabel<Flow>
 where
     Flow: NumAssign + Ord + Copy + Default,
 {
-    pub fn new(alpha: usize) -> Self {
-        Self {
-            csr: CSR::default(),
-            current_edge: Vec::new(),
-            alpha,
-            relabel_count: 0,
-            buckets: Vec::new(),
-            in_bucket: Vec::new(),
-            bucket_idx: 0,
-            distance_count: Vec::new(),
-        }
-    }
-
     pub fn solve(&mut self, graph: &mut Graph<Flow>, source: usize, sink: usize, upper: Option<Flow>) -> Result<Flow, Status> {
         <Self as MaximumFlowSolver<Flow>>::solve(self, graph, source, sink, upper)
     }
