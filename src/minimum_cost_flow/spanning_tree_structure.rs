@@ -1,5 +1,4 @@
 use crate::minimum_cost_flow::graph::Graph;
-use crate::minimum_cost_flow::spanning_tree_structure::EdgeState::Lower;
 use num_traits::NumAssign;
 use std::cmp::Reverse;
 use std::collections::BinaryHeap;
@@ -58,7 +57,7 @@ where
         self.upper = vec![Flow::zero(); graph.num_edges()].into_boxed_slice();
         self.cost = vec![Flow::zero(); graph.num_edges()].into_boxed_slice();
         self.flow = vec![Flow::zero(); graph.num_edges()].into_boxed_slice();
-        self.state = vec![Lower; graph.num_edges()].into_boxed_slice();
+        self.state = vec![EdgeState::Lower; graph.num_edges()].into_boxed_slice();
 
         for (i, edge) in graph.edges.iter().enumerate() {
             assert!(edge.upper >= Flow::zero() && edge.cost >= Flow::zero());
@@ -67,7 +66,7 @@ where
             self.flow[i] = edge.flow;
             self.upper[i] = edge.upper;
             self.cost[i] = edge.cost;
-            self.state[i] = Lower;
+            self.state[i] = EdgeState::Lower;
         }
 
         self.root = usize::MAX;
@@ -113,7 +112,7 @@ where
         }
     }
 
-    // change the root of subtree from now_root to new_root
+    // change the root of the subtree from now_root to new_root
     // O(|tree|)
     pub(crate) fn re_rooting(&mut self, _now_root: usize, new_root: usize, entering_edge_id: usize) {
         let mut ancestors = Vec::new();
@@ -282,7 +281,7 @@ where
     }
 
     pub fn satisfy_optimality_conditions(&self) -> bool {
-        (0..self.num_edges).into_iter().all(|edge_id| match self.state[edge_id] {
+        (0..self.num_edges).all(|edge_id| match self.state[edge_id] {
             EdgeState::Tree => self.reduced_cost(edge_id) == Flow::zero(),
             EdgeState::Lower => self.upper[edge_id] == Flow::zero() || self.reduced_cost(edge_id) >= Flow::zero(),
             EdgeState::Upper => self.upper[edge_id] == Flow::zero() || self.reduced_cost(edge_id) <= Flow::zero(),

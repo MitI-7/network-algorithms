@@ -1,9 +1,8 @@
-use crate::minimum_cost_flow::cost_scaling_push_relabel::CostScalingPushRelabel;
 use crate::minimum_cost_flow::csr::CSR;
 use crate::minimum_cost_flow::graph::Graph;
 use crate::minimum_cost_flow::status::Status;
 use crate::minimum_cost_flow::MinimumCostFlowSolver;
-use num_traits::{FromPrimitive, NumAssign};
+use num_traits::NumAssign;
 use std::ops::Neg;
 
 #[derive(Default)]
@@ -69,7 +68,7 @@ where
         for _ in 0..self.csr.num_nodes {
             let mut updated = false;
             for u in 0..self.csr.num_nodes {
-                for edge_index in self.csr.start[u]..self.csr.start[u + 1] {
+                for edge_index in self.csr.neighbors(u) {
                     let to = self.csr.to[edge_index];
                     let cost = self.csr.cost[edge_index];
                     if self.csr.residual_capacity(edge_index) > Flow::zero() && dist[u] + cost < dist[to] {
@@ -88,7 +87,7 @@ where
         let mut v = start;
         let mut visited = vec![false; self.csr.num_nodes];
         loop {
-            let (u, _idx) = prev[v];
+            let (u, _) = prev[v];
             if visited[u] {
                 return Some(v);
             }
