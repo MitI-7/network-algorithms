@@ -24,7 +24,7 @@ where
         let inf_cost = graph.edges.iter().map(|e| e.cost).fold(Flow::one(), |acc, cost| acc + cost); // all edge costs are non-negative
         let (root, artificial_nodes, artificial_edges) = graph.construct_extend_network_feasible_solution();
         self.st.build(graph);
-        (self.st.root, self.st.nodes[root].parent, self.st.nodes[root].parent_edge_id) = (root, usize::MAX, usize::MAX);
+        (self.st.root, self.st.parent[root], self.st.parent_edge_id[root]) = (root, usize::MAX, usize::MAX);
 
         self.make_initial_spanning_tree_structure(graph, &artificial_edges, inf_cost);
         debug_assert!(self.st.validate_num_successors(self.st.root));
@@ -39,7 +39,7 @@ where
         };
 
         // copy
-        graph.excesses = self.st.excesses.clone();
+        graph.excesses = self.st.excesses.clone().to_vec();
         for edge_id in 0..graph.num_edges() {
             graph.edges[edge_id].flow = self.st.flow[edge_id];
         }
@@ -112,12 +112,12 @@ where
             let u = if edge.from == self.st.root { edge.to } else { edge.from };
 
             if edge.from == u {
-                (self.st.nodes[u].potential, self.st.state[edge_id]) = (inf_cost, EdgeState::Tree);
+                (self.st.potential[u], self.st.state[edge_id]) = (inf_cost, EdgeState::Tree);
             } else {
-                (self.st.nodes[u].potential, self.st.state[edge_id]) = (-inf_cost, EdgeState::Tree);
+                (self.st.potential[u], self.st.state[edge_id]) = (-inf_cost, EdgeState::Tree);
             }
 
-            (self.st.nodes[u].parent, self.st.nodes[u].parent_edge_id) = (self.st.root, edge_id);
+            (self.st.parent[u], self.st.parent_edge_id[u]) = (self.st.root, edge_id);
             self.st.next_node_dft[prev_node] = u;
             self.st.prev_node_dft[u] = prev_node;
             self.st.last_descendent_dft[u] = u;
@@ -149,7 +149,7 @@ where
                 let (u_num, v_num) = (self.st.num_successors[u], self.st.num_successors[v]);
 
                 if u_num <= v_num {
-                    let edge_id = self.st.nodes[u].parent_edge_id;
+                    let edge_id = self.st.parent_edge_id[u];
                     let delta = if u == self.st.to[edge_id] {
                         self.st.residual_capacity(edge_id)
                     } else {
@@ -160,11 +160,11 @@ where
                     if delta < mini_delta {
                         (leaving_edge_id, mini_delta, t2_now_root, t2_new_root) = (edge_id, delta, u, from);
                     }
-                    u = self.st.nodes[u].parent;
+                    u = self.st.parent[u];
                 }
 
                 if v_num <= u_num {
-                    let edge_id = self.st.nodes[v].parent_edge_id;
+                    let edge_id = self.st.parent_edge_id[v];
                     let delta = if v == self.st.from[edge_id] {
                         self.st.residual_capacity(edge_id)
                     } else {
@@ -175,7 +175,7 @@ where
                     if delta <= mini_delta {
                         (leaving_edge_id, mini_delta, t2_now_root, t2_new_root) = (edge_id, delta, v, to);
                     }
-                    v = self.st.nodes[v].parent;
+                    v = self.st.parent[v];
                 }
             }
             u
@@ -208,6 +208,6 @@ where
         self.st.re_rooting(t2_now_root, t2_new_root, entering_edge_id);
         self.st.attach_tree(t1_new_root, new_attach_node, t2_new_root, entering_edge_id);
         self.st.root = t1_new_root;
-        assert_eq!(self.st.nodes[self.st.root].parent, usize::MAX);
+        assert_eq!(self.st.parent[self.st.root], usize::MAX);
     }
 }

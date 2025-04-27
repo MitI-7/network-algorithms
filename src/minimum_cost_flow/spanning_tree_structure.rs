@@ -5,13 +5,6 @@ use std::cmp::Reverse;
 use std::collections::BinaryHeap;
 use std::ops::Neg;
 
-#[derive(Default, Clone)]
-pub struct Node<Flow> {
-    pub parent: usize,
-    pub parent_edge_id: usize,
-    pub potential: Flow,
-}
-
 #[derive(Clone, Default, PartialEq, Debug)]
 pub enum EdgeState {
     #[default]
@@ -20,49 +13,18 @@ pub enum EdgeState {
     Tree,
 }
 
-// #[derive(Default)]
-// pub struct InternalEdge<Flow> {
-//     pub from: usize,
-//     pub to: usize,
-//     pub upper: Flow,
-//     pub cost: Flow,
-//     pub flow: Flow,
-//     pub state: EdgeState,
-// }
-//
-// impl<Flow> InternalEdge<Flow>
-// where
-//     Flow: NumAssign + Neg<Output = Flow> + Ord + Copy,
-// {
-//     pub fn is_feasible(&self) -> bool {
-//         Flow::zero() <= self.flow && self.flow <= self.upper
-//     }
-//
-//     pub fn is_lower(&self) -> bool {
-//         self.flow == Flow::zero()
-//     }
-//
-//     pub fn is_upper(&self) -> bool {
-//         self.flow == self.upper
-//     }
-//
-//     pub fn residual_capacity(&self) -> Flow {
-//         self.upper - self.flow
-//     }
-//
-//     pub fn opposite_side(&self, u: usize) -> usize {
-//         debug_assert!(u == self.from || u == self.to);
-//         u ^ self.to ^ self.from
-//     }
-// }
-
 #[derive(Default)]
 pub struct SpanningTreeStructure<Flow> {
     pub(crate) num_nodes: usize,
     pub(crate) num_edges: usize,
-    pub(crate) excesses: Vec<Flow>,
+    pub(crate) excesses: Box<[Flow]>,
 
-    pub(crate) nodes: Box<[Node<Flow>]>,
+    // node
+    pub parent: Box<[usize]>,
+    pub parent_edge_id: Box<[usize]>,
+    pub potential: Box<[Flow]>,
+
+    // edge
     pub from: Box<[usize]>,
     pub to: Box<[usize]>,
     pub upper: Box<[Flow]>,
@@ -70,6 +32,7 @@ pub struct SpanningTreeStructure<Flow> {
     pub flow: Box<[Flow]>,
     pub state: Box<[EdgeState]>,
 
+    // tree structure
     pub(crate) root: usize,
     pub(crate) next_node_dft: Box<[usize]>,       // next nodes in depth-first thread
     pub(crate) prev_node_dft: Box<[usize]>,       // previous nodes in depth-first thread
@@ -84,7 +47,11 @@ where
 {
     pub(crate) fn build(&mut self, graph: &mut Graph<Flow>) {
         (self.num_nodes, self.num_edges) = (graph.num_nodes(), graph.num_edges());
-        self.excesses = graph.excesses.clone();
+        self.excesses = graph.excesses.clone().into_boxed_slice();
+
+        self.parent = vec![usize::MAX; graph.num_nodes()].into_boxed_slice();
+        self.parent_edge_id = vec![usize::MAX; graph.num_nodes()].into_boxed_slice();
+        self.potential = vec![Flow::zero(); graph.num_nodes()].into_boxed_slice();
 
         self.from = vec![0; graph.num_edges()].into_boxed_slice();
         self.to = vec![0; graph.num_edges()].into_boxed_slice();
@@ -104,7 +71,6 @@ where
         }
 
         self.root = usize::MAX;
-        self.nodes = vec![Node { parent: usize::MAX, parent_edge_id: usize::MAX, potential: Flow::zero() }; self.num_nodes].into_boxed_slice();
         self.next_node_dft = vec![usize::MAX; self.num_nodes].into_boxed_slice();
         self.prev_node_dft = vec![usize::MAX; self.num_nodes].into_boxed_slice();
         self.last_descendent_dft = vec![usize::MAX; self.num_nodes].into_boxed_slice();
@@ -113,13 +79,13 @@ where
 
     #[inline]
     pub(crate) fn reduced_cost(&self, edge_id: usize) -> Flow {
-        self.cost[edge_id] - self.nodes[self.from[edge_id]].potential + self.nodes[self.to[edge_id]].potential
+        self.cost[edge_id] - self.potential[self.from[edge_id]] + self.potential[self.to[edge_id]]
     }
 
     pub(crate) fn update_flow_in_path(&mut self, source: usize, sink: usize, delta: Flow) {
         let mut now = sink;
         while now != source {
-            let (parent, edge_id) = (self.nodes[now].parent, self.nodes[now].parent_edge_id);
+            let (parent, edge_id) = (self.parent[now], self.parent_edge_id[now]);
             self.flow[edge_id] += if self.from[edge_id] == parent { delta } else { -delta };
             now = parent;
         }
@@ -136,22 +102,14 @@ where
 
         let mut now = self.from[entering_edge_id];
         while now != apex {
-            self.flow[self.nodes[now].parent_edge_id] += if now == self.from[self.nodes[now].parent_edge_id] {
-                -delta
-            } else {
-                delta
-            };
-            now = self.nodes[now].parent;
+            self.flow[self.parent_edge_id[now]] += if now == self.from[self.parent_edge_id[now]] { -delta } else { delta };
+            now = self.parent[now];
         }
 
         let mut now = self.to[entering_edge_id];
         while now != apex {
-            self.flow[self.nodes[now].parent_edge_id] += if now == self.from[self.nodes[now].parent_edge_id] {
-                delta
-            } else {
-                -delta
-            };
-            now = self.nodes[now].parent;
+            self.flow[self.parent_edge_id[now]] += if now == self.from[self.parent_edge_id[now]] { delta } else { -delta };
+            now = self.parent[now];
         }
     }
 
@@ -162,7 +120,7 @@ where
         let mut now = new_root;
         while now != usize::MAX {
             ancestors.push(now);
-            now = self.nodes[now].parent;
+            now = self.parent[now];
         }
         ancestors.reverse();
 
@@ -171,10 +129,10 @@ where
             let size_p = self.num_successors[p];
             let last_q = self.last_descendent_dft[q];
 
-            self.nodes[p].parent = q;
-            self.nodes[q].parent = usize::MAX;
-            self.nodes[p].parent_edge_id = self.nodes[q].parent_edge_id;
-            self.nodes[q].parent_edge_id = usize::MAX;
+            self.parent[p] = q;
+            self.parent[q] = usize::MAX;
+            self.parent_edge_id[p] = self.parent_edge_id[q];
+            self.parent_edge_id[q] = usize::MAX;
             self.num_successors[p] = size_p - self.num_successors[q];
             self.num_successors[q] = size_p;
 
@@ -207,7 +165,7 @@ where
 
         let mut now = new_root;
         while now != usize::MAX {
-            self.nodes[now].potential += delta;
+            self.potential[now] += delta;
             if now == self.last_descendent_dft[new_root] {
                 break;
             }
@@ -224,8 +182,8 @@ where
         };
 
         // detach sub tree
-        self.nodes[sub_tree_root].parent = usize::MAX;
-        self.nodes[sub_tree_root].parent_edge_id = usize::MAX;
+        self.parent[sub_tree_root] = usize::MAX;
+        self.parent_edge_id[sub_tree_root] = usize::MAX;
 
         let prev_t = self.prev_node_dft[sub_tree_root];
         let last_t = self.last_descendent_dft[sub_tree_root];
@@ -242,7 +200,7 @@ where
             if self.last_descendent_dft[now] == last_t {
                 self.last_descendent_dft[now] = prev_t;
             }
-            now = self.nodes[now].parent;
+            now = self.parent[now];
         }
     }
 
@@ -255,8 +213,8 @@ where
         let (p, q) = (attach_node, sub_tree_root); // p -> q
 
         // attach tree
-        self.nodes[q].parent = p;
-        self.nodes[q].parent_edge_id = entering_edge_id;
+        self.parent[q] = p;
+        self.parent_edge_id[q] = entering_edge_id;
 
         let last_p = self.last_descendent_dft[attach_node];
         let next_last_p = self.next_node_dft[last_p];
@@ -273,7 +231,7 @@ where
             if self.last_descendent_dft[now] == last_p {
                 self.last_descendent_dft[now] = last_q
             }
-            now = self.nodes[now].parent;
+            now = self.parent[now];
         }
     }
 
@@ -347,8 +305,8 @@ where
             if num_successors[u] != self.num_successors[u] {
                 return false;
             }
-            if self.nodes[u].parent != usize::MAX {
-                num_successors[self.nodes[u].parent] += num_successors[u];
+            if self.parent[u] != usize::MAX {
+                num_successors[self.parent[u]] += num_successors[u];
             }
         }
 

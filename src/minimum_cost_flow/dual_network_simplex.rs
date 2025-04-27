@@ -7,7 +7,6 @@ use num_traits::NumAssign;
 use std::collections::VecDeque;
 use std::ops::Neg;
 
-// #[derive(Default)]
 pub struct DualNetworkSimplex<Flow, Pivot = BlockSearchPivotRule<Flow>> {
     st: SpanningTreeStructure<Flow>,
     sink: usize,
@@ -54,7 +53,7 @@ where
         };
 
         // copy
-        graph.excesses = self.st.excesses.clone();
+        graph.excesses = self.st.excesses.to_vec();
         for edge_id in 0..graph.num_edges() {
             graph.edges[edge_id].flow = self.st.flow[edge_id];
         }
@@ -95,7 +94,7 @@ where
 
     fn run(&mut self) {
         while let Some(leaving_edge_id) = self.pivot.find_entering_edge(&self.st, Self::calculate_violation) {
-            let t2_now_root = if self.st.nodes[self.st.from[leaving_edge_id]].parent == self.st.to[leaving_edge_id] {
+            let t2_now_root = if self.st.parent[self.st.from[leaving_edge_id]] == self.st.to[leaving_edge_id] {
                 self.st.from[leaving_edge_id]
             } else {
                 self.st.to[leaving_edge_id]
@@ -143,10 +142,10 @@ where
         let mut children = vec![Vec::new(); self.st.num_nodes];
         for edge_id in prev_edge_id.iter().filter_map(|&edge_id| edge_id) {
             self.st.state[edge_id] = EdgeState::Tree;
-            (self.st.nodes[self.st.to[edge_id]].parent, self.st.nodes[self.st.to[edge_id]].parent_edge_id) = (self.st.from[edge_id], edge_id);
+            (self.st.parent[self.st.to[edge_id]], self.st.parent_edge_id[self.st.to[edge_id]]) = (self.st.from[edge_id], edge_id);
             children[self.st.from[edge_id]].push(self.st.to[edge_id]);
         }
-        (self.st.nodes[self.st.root].parent, self.st.nodes[self.st.root].parent_edge_id) = (usize::MAX, usize::MAX);
+        (self.st.parent[self.st.root], self.st.parent_edge_id[self.st.root]) = (usize::MAX, usize::MAX);
         self.st.last_descendent_dft = (0..self.st.num_nodes).collect();
 
         let mut prev_node = usize::MAX;
@@ -157,7 +156,7 @@ where
                 self.st.num_successors[u] += 1;
                 if parent != usize::MAX {
                     self.st.last_descendent_dft[parent] = self.st.last_descendent_dft[u];
-                    self.st.num_successors[self.st.nodes[u].parent] += self.st.num_successors[u];
+                    self.st.num_successors[self.st.parent[u]] += self.st.num_successors[u];
                 }
                 continue;
             }
@@ -176,8 +175,8 @@ where
         self.st.next_node_dft[prev_node] = self.st.root;
 
         // determine potentials
-        for (u, node) in self.st.nodes.iter_mut().enumerate() {
-            node.potential = -distances[u];
+        for u in 0..self.st.num_nodes {
+            self.st.potential[u] = -distances[u];
         }
 
         // send flow from source to sink
@@ -269,8 +268,8 @@ where
         self.st.re_rooting(t2_now_root, t2_new_root, entering_edge_id);
         self.st.attach_tree(t1_new_root, new_attach_node, t2_new_root, entering_edge_id);
         self.st.root = t1_new_root;
-        self.st.nodes[self.st.root].parent = usize::MAX;
-        assert_eq!(self.st.nodes[self.st.root].parent_edge_id, usize::MAX);
+        self.st.parent[self.st.root] = usize::MAX;
+        assert_eq!(self.st.parent_edge_id[self.st.root], usize::MAX);
     }
 
     fn find_apex(&self, entering_edge_id: usize) -> usize {
@@ -278,10 +277,10 @@ where
         while u != v {
             let (u_num, v_num) = (self.st.num_successors[u], self.st.num_successors[v]);
             if u_num <= v_num {
-                u = self.st.nodes[u].parent;
+                u = self.st.parent[u];
             }
             if v_num <= u_num {
-                v = self.st.nodes[v].parent;
+                v = self.st.parent[v];
             }
         }
         u

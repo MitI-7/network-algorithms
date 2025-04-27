@@ -1,5 +1,4 @@
 use crate::minimum_cost_flow::graph::Graph;
-use crate::minimum_cost_flow::network_simplex_pivot_rules::PivotRule;
 use crate::minimum_cost_flow::spanning_tree_structure::{EdgeState, SpanningTreeStructure};
 use crate::minimum_cost_flow::status::Status;
 use crate::minimum_cost_flow::MinimumCostFlowSolver;
@@ -51,7 +50,7 @@ where
             Status::Infeasible
         };
         // copy
-        graph.excesses = self.st.excesses.clone();
+        graph.excesses = self.st.excesses.clone().to_vec();
         for edge_id in 0..graph.num_edges() {
             graph.edges[edge_id].flow = self.st.flow[edge_id];
         }
@@ -75,7 +74,7 @@ where
 
     pub(crate) fn run(&mut self) {
         while let Some((leaving_edge_id, delta)) = self.select_leaving_edge() {
-            let t2_now_root = if self.st.nodes[self.st.from[leaving_edge_id]].parent == self.st.to[leaving_edge_id] {
+            let t2_now_root = if self.st.parent[self.st.from[leaving_edge_id]] == self.st.to[leaving_edge_id] {
                 self.st.from[leaving_edge_id]
             } else {
                 self.st.to[leaving_edge_id]
@@ -111,10 +110,10 @@ where
         for edge_id in prev_edge_id.iter().filter_map(|&edge_id| edge_id) {
             self.st.state[edge_id] = EdgeState::Tree;
             let (from, to) = (self.st.from[edge_id], self.st.to[edge_id]);
-            (self.st.nodes[to].parent, self.st.nodes[to].parent_edge_id) = (from, edge_id);
+            (self.st.parent[to], self.st.parent_edge_id[to]) = (from, edge_id);
             children[from].push(to);
         }
-        (self.st.nodes[self.st.root].parent, self.st.nodes[self.st.root].parent_edge_id) = (usize::MAX, usize::MAX);
+        (self.st.parent[self.st.root], self.st.parent_edge_id[self.st.root]) = (usize::MAX, usize::MAX);
         self.st.last_descendent_dft = (0..self.st.num_nodes).collect();
 
         let mut prev_node = usize::MAX;
@@ -125,7 +124,7 @@ where
                 self.st.num_successors[u] += 1;
                 if parent != usize::MAX {
                     self.st.last_descendent_dft[parent] = self.st.last_descendent_dft[u];
-                    self.st.num_successors[self.st.nodes[u].parent] += self.st.num_successors[u];
+                    self.st.num_successors[self.st.parent[u]] += self.st.num_successors[u];
                 }
                 continue;
             }
@@ -144,8 +143,8 @@ where
         self.st.next_node_dft[prev_node] = self.st.root;
 
         // determine potentials
-        for (u, node) in self.st.nodes.iter_mut().enumerate() {
-            node.potential = -distances[u];
+        for u in 0..self.st.num_nodes {
+            self.st.potential[u] = -distances[u];
         }
 
         true
@@ -156,7 +155,7 @@ where
         let mut mini_delta = Flow::zero();
         let mut now = self.sink;
         while now != self.st.root {
-            let (parent, edge_id) = (self.st.nodes[now].parent, self.st.nodes[now].parent_edge_id);
+            let (parent, edge_id) = (self.st.parent[now], self.st.parent_edge_id[now]);
             assert_eq!(self.st.state[edge_id], EdgeState::Tree);
 
             let delta = if self.st.from[edge_id] == parent {
