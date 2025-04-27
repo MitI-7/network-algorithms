@@ -3,6 +3,7 @@ use crate::maximum_flow::graph;
 use crate::minimum_cost_flow::csr::CSR;
 use crate::minimum_cost_flow::graph::Graph;
 use crate::minimum_cost_flow::status::Status;
+use crate::minimum_cost_flow::MinimumCostFlowSolver;
 use num_traits::{FromPrimitive, NumAssign};
 use std::collections::VecDeque;
 use std::ops::Neg;
@@ -14,27 +15,11 @@ pub struct CostScalingPushRelabel<Flow> {
     alpha: Flow,
 }
 
-impl<Flow> Default for CostScalingPushRelabel<Flow>
+impl<Flow> MinimumCostFlowSolver<Flow> for CostScalingPushRelabel<Flow>
 where
     Flow: NumAssign + Neg<Output = Flow> + Ord + Copy + FromPrimitive + Default,
 {
-    fn default() -> Self {
-        Self { csr: CSR::default(), active_nodes: VecDeque::new(), current_edge: Vec::new(), alpha: Flow::from_isize(16).unwrap() }
-    }
-}
-
-#[allow(dead_code)]
-impl<Flow> CostScalingPushRelabel<Flow>
-where
-    Flow: NumAssign + Neg<Output = Flow> + Ord + Copy + FromPrimitive + Default,
-{
-    // scaling_factor: it was usually between 8 and 24. default scaling factor is 16
-    pub fn new(scaling_factor: Flow) -> Self {
-        assert!(scaling_factor > Flow::one());
-        Self { csr: CSR::default(), active_nodes: VecDeque::new(), current_edge: Vec::new(), alpha: scaling_factor }
-    }
-
-    pub fn solve(&mut self, graph: &mut Graph<Flow>) -> Result<Flow, Status> {
+    fn solve(&mut self, graph: &mut Graph<Flow>) -> Result<Flow, Status> {
         if graph.is_unbalance() {
             return Err(Status::Unbalanced);
         }
@@ -74,6 +59,31 @@ where
         self.csr.set_flow(graph);
 
         Ok(graph.minimum_cost())
+    }
+}
+
+impl<Flow> Default for CostScalingPushRelabel<Flow>
+where
+    Flow: NumAssign + Neg<Output = Flow> + Ord + Copy + FromPrimitive + Default,
+{
+    fn default() -> Self {
+        Self { csr: CSR::default(), active_nodes: VecDeque::new(), current_edge: Vec::new(), alpha: Flow::from_isize(16).unwrap() }
+    }
+}
+
+#[allow(dead_code)]
+impl<Flow> CostScalingPushRelabel<Flow>
+where
+    Flow: NumAssign + Neg<Output = Flow> + Ord + Copy + FromPrimitive + Default,
+{
+    // scaling_factor: it was usually between 8 and 24. default scaling factor is 16
+    pub fn new(scaling_factor: Flow) -> Self {
+        assert!(scaling_factor > Flow::one());
+        Self { csr: CSR::default(), active_nodes: VecDeque::new(), current_edge: Vec::new(), alpha: scaling_factor }
+    }
+
+    pub fn solve(&mut self, graph: &mut Graph<Flow>) -> Result<Flow, Status> {
+        <Self as MinimumCostFlowSolver<Flow>>::solve(self, graph)
     }
 
     // make epsilon-optimal flow

@@ -1,6 +1,7 @@
 use crate::minimum_cost_flow::csr::CSR;
 use crate::minimum_cost_flow::graph::Graph;
 use crate::minimum_cost_flow::status::Status;
+use crate::minimum_cost_flow::MinimumCostFlowSolver;
 use num_traits::NumAssign;
 use std::collections::{BinaryHeap, VecDeque};
 use std::ops::Neg;
@@ -15,11 +16,11 @@ pub struct PrimalDual<Flow> {
     current_edge: Vec<usize>,
 }
 
-impl<Flow> PrimalDual<Flow>
+impl<Flow> MinimumCostFlowSolver<Flow> for PrimalDual<Flow>
 where
     Flow: NumAssign + Neg<Output = Flow> + Ord + Copy,
 {
-    pub fn solve(&mut self, graph: &mut Graph<Flow>) -> Result<Flow, Status> {
+    fn solve(&mut self, graph: &mut Graph<Flow>) -> Result<Flow, Status> {
         if graph.is_unbalance() {
             return Err(Status::Unbalanced);
         }
@@ -46,6 +47,15 @@ where
         }
 
         Ok(graph.minimum_cost())
+    }
+}
+
+impl<Flow> PrimalDual<Flow>
+where
+    Flow: NumAssign + Neg<Output = Flow> + Ord + Copy,
+{
+    pub fn solve(&mut self, graph: &mut Graph<Flow>) -> Result<Flow, Status> {
+        <Self as MinimumCostFlowSolver<Flow>>::solve(self, graph)
     }
 
     // update potentials

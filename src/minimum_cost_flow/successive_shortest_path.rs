@@ -1,7 +1,8 @@
 use crate::minimum_cost_flow::csr::CSR;
 use crate::minimum_cost_flow::graph::Graph;
 use crate::minimum_cost_flow::status::Status;
-use num_traits::NumAssign;
+use crate::minimum_cost_flow::MinimumCostFlowSolver;
+use num_traits::{FromPrimitive, NumAssign};
 use std::cmp::Reverse;
 use std::collections::BinaryHeap;
 use std::ops::Neg;
@@ -11,11 +12,11 @@ pub struct SuccessiveShortestPath<Flow> {
     csr: CSR<Flow>,
 }
 
-impl<Flow> SuccessiveShortestPath<Flow>
+impl<Flow> MinimumCostFlowSolver<Flow> for SuccessiveShortestPath<Flow>
 where
     Flow: NumAssign + Neg<Output = Flow> + Ord + Copy,
 {
-    pub fn solve(&mut self, graph: &mut Graph<Flow>) -> Result<Flow, Status> {
+    fn solve(&mut self, graph: &mut Graph<Flow>) -> Result<Flow, Status> {
         if graph.is_unbalance() {
             return Err(Status::Unbalanced);
         }
@@ -46,6 +47,15 @@ where
         } else {
             Err(Status::Infeasible)
         }
+    }
+}
+
+impl<Flow> SuccessiveShortestPath<Flow>
+where
+    Flow: NumAssign + Neg<Output = Flow> + Ord + Copy,
+{
+    pub fn solve(&mut self, graph: &mut Graph<Flow>) -> Result<Flow, Status> {
+        <Self as MinimumCostFlowSolver<Flow>>::solve(self, graph)
     }
 
     pub fn calculate_distance(&mut self, s: usize) -> Option<(usize, Vec<bool>, Vec<Option<Flow>>, Vec<Option<usize>>)> {

@@ -1,5 +1,3 @@
-use crate::maximum_flow::status::Status;
-
 pub mod capacity_scaling;
 pub mod csr;
 pub mod dinic;
@@ -12,5 +10,5 @@ pub mod shortest_augmenting_path;
 pub mod status;
 
 trait MaximumFlowSolver<Flow> {
-    fn solve(&mut self, graph: &mut graph::Graph<Flow>, s: usize, t: usize, upper: Option<Flow>) -> Result<Flow, Status>;
+    fn solve(&mut self, graph: &mut graph::Graph<Flow>, s: usize, t: usize, upper: Option<Flow>) -> Result<Flow, status::Status>;
 }

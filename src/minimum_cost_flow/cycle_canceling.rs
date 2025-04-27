@@ -1,19 +1,20 @@
+use crate::minimum_cost_flow::cost_scaling_push_relabel::CostScalingPushRelabel;
 use crate::minimum_cost_flow::csr::CSR;
 use crate::minimum_cost_flow::graph::Graph;
 use crate::minimum_cost_flow::status::Status;
-use num_traits::NumAssign;
+use crate::minimum_cost_flow::MinimumCostFlowSolver;
+use num_traits::{FromPrimitive, NumAssign};
 use std::ops::Neg;
 
 #[derive(Default)]
 pub struct CycleCanceling<Flow> {
     csr: CSR<Flow>,
 }
-
-impl<Flow> CycleCanceling<Flow>
+impl<Flow> MinimumCostFlowSolver<Flow> for CycleCanceling<Flow>
 where
     Flow: NumAssign + Neg<Output = Flow> + Ord + Copy,
 {
-    pub fn solve(&mut self, graph: &mut Graph<Flow>) -> Result<Flow, Status> {
+    fn solve(&mut self, graph: &mut Graph<Flow>) -> Result<Flow, Status> {
         let (_source, artificial_nodes, artificial_edges) = graph.construct_extend_network_feasible_solution();
         self.csr.build(graph);
 
@@ -51,6 +52,15 @@ where
         } else {
             Err(status)
         }
+    }
+}
+
+impl<Flow> CycleCanceling<Flow>
+where
+    Flow: NumAssign + Neg<Output = Flow> + Ord + Copy,
+{
+    pub fn solve(&mut self, graph: &mut Graph<Flow>) -> Result<Flow, Status> {
+        <Self as MinimumCostFlowSolver<Flow>>::solve(self, graph)
     }
 
     fn find_negative_cycle(&self, prev: &mut [(usize, usize)]) -> Option<usize> {

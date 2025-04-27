@@ -1,3 +1,5 @@
+use crate::maximum_flow::status::Status;
+
 pub mod cost_scaling_push_relabel;
 pub mod csr;
 pub mod cycle_canceling;
@@ -11,3 +13,7 @@ pub mod primal_network_simplex;
 pub mod spanning_tree_structure;
 pub mod status;
 pub mod successive_shortest_path;
+
+trait MinimumCostFlowSolver<Flow> {
+    fn solve(&mut self, graph: &mut graph::Graph<Flow>) -> Result<Flow, status::Status>;
+}
