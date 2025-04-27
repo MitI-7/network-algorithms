@@ -1,4 +1,4 @@
-pub mod capacity_scaling;
+pub mod capacity_scailing;
 pub mod csr;
 pub mod dinic;
 pub mod edmonds_karp;
@@ -13,7 +13,7 @@ trait MaximumFlowSolver<Flow> {
     fn solve(&mut self, graph: &mut graph::Graph<Flow>, s: usize, t: usize, upper: Option<Flow>) -> Result<Flow, status::Status>;
 }
 
-pub use self::capacity_scaling::capacity_sacling;
+pub use self::capacity_scailing::capacity_scailing;
 pub use self::dinic::dinic;
 pub use self::edmonds_karp::edmonds_karp;
 pub use self::ford_fulkerson::ford_fulkerson;

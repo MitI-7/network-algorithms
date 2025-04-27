@@ -1,4 +1,4 @@
-use network_algorithms::maximum_flow::capacity_scaling::CapacityScaling;
+use network_algorithms::maximum_flow::capacity_scailing::CapacityScaling;
 use network_algorithms::maximum_flow::dinic::Dinic;
 use network_algorithms::maximum_flow::edmonds_karp::EdmondsKarp;
 use network_algorithms::maximum_flow::ford_fulkerson::FordFulkerson;
