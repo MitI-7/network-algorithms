@@ -2,7 +2,7 @@ use crate::minimum_cost_flow::csr::CSR;
 use crate::minimum_cost_flow::graph::Graph;
 use crate::minimum_cost_flow::status::Status;
 use crate::minimum_cost_flow::MinimumCostFlowSolver;
-use num_traits::{FromPrimitive, NumAssign};
+use num_traits::NumAssign;
 use std::cmp::Reverse;
 use std::collections::BinaryHeap;
 use std::ops::Neg;

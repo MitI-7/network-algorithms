@@ -1,5 +1,6 @@
 use network_algorithms::minimum_cost_flow::graph::Graph;
 use network_algorithms::minimum_cost_flow::network_simplex_pivot_rules::PivotRule;
+
 use network_algorithms::minimum_cost_flow::primal_network_simplex::PrimalNetworkSimplex;
 
 fn main() {
