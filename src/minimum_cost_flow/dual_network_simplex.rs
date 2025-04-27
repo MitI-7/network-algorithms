@@ -1,22 +1,25 @@
 use crate::minimum_cost_flow::graph::Graph;
-use crate::minimum_cost_flow::network_simplex_pivot_rules::PivotRule;
+use crate::minimum_cost_flow::network_simplex_pivot_rules::{BlockSearchPivotRule, PivotRule};
 use crate::minimum_cost_flow::spanning_tree_structure::{EdgeState, InternalEdge, SpanningTreeStructure};
 use crate::minimum_cost_flow::status::Status;
+use crate::minimum_cost_flow::MinimumCostFlowSolver;
 use num_traits::NumAssign;
 use std::collections::VecDeque;
 use std::ops::Neg;
 
-#[derive(Default)]
-pub struct DualNetworkSimplex<Flow> {
+// #[derive(Default)]
+pub struct DualNetworkSimplex<Flow, Pivot = BlockSearchPivotRule<Flow>> {
     st: SpanningTreeStructure<Flow>,
     sink: usize,
+    pivot: Pivot,
 }
 
-impl<Flow> DualNetworkSimplex<Flow>
+impl<Flow, Pivot> MinimumCostFlowSolver<Flow> for DualNetworkSimplex<Flow, Pivot>
 where
-    Flow: NumAssign + Neg<Output = Flow> + Ord + Copy,
+    Flow: NumAssign + Neg<Output = Flow> + Ord + Copy + Default,
+    Pivot: PivotRule<Flow>,
 {
-    pub fn solve<Pivot: PivotRule<Flow>>(&mut self, pivot: &mut Pivot, graph: &mut Graph<Flow>) -> Result<Flow, Status> {
+    fn solve(&mut self, graph: &mut Graph<Flow>) -> Result<Flow, Status> {
         if graph.is_unbalance() {
             return Err(Status::Unbalanced);
         }
@@ -42,7 +45,7 @@ where
         }
         debug_assert!(self.st.satisfy_optimality_conditions());
 
-        self.run(pivot);
+        self.run();
 
         let status = if self.st.satisfy_constraints() {
             Status::Optimal
@@ -63,9 +66,35 @@ where
             Err(status)
         }
     }
+}
 
-    fn run<Pivot: PivotRule<Flow>>(&mut self, pivot: &mut Pivot) {
-        while let Some(leaving_edge_id) = pivot.find_entering_edge(&self.st, Self::calculate_violation) {
+impl<Flow> DualNetworkSimplex<Flow, BlockSearchPivotRule<Flow>>
+where
+    Flow: NumAssign + Neg<Output = Flow> + Ord + Copy + Default,
+{
+    pub fn new(num_edges: usize) -> Self {
+        Self { st: SpanningTreeStructure::default(), sink: 0, pivot: BlockSearchPivotRule::new(num_edges) }
+    }
+}
+
+impl<Flow, Pivot> DualNetworkSimplex<Flow, Pivot>
+where
+    Flow: NumAssign + Neg<Output = Flow> + Ord + Copy + Default,
+    Pivot: PivotRule<Flow>,
+{
+    pub fn set_pivot<Q>(self, new_pivot: Q) -> DualNetworkSimplex<Flow, Q>
+    where
+        Q: PivotRule<Flow>,
+    {
+        DualNetworkSimplex { st: self.st, sink: self.sink, pivot: new_pivot }
+    }
+
+    pub fn solve(&mut self, graph: &mut Graph<Flow>) -> Result<Flow, Status> {
+        <Self as MinimumCostFlowSolver<Flow>>::solve(self, graph)
+    }
+
+    fn run(&mut self) {
+        while let Some(leaving_edge_id) = self.pivot.find_entering_edge(&self.st, Self::calculate_violation) {
             let leaving_edge = &self.st.edges[leaving_edge_id];
             let t2_now_root = if self.st.nodes[leaving_edge.from].parent == leaving_edge.to {
                 leaving_edge.from

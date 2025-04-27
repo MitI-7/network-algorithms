@@ -1,6 +1,9 @@
+use crate::minimum_cost_flow::dual_network_simplex::DualNetworkSimplex;
 use crate::minimum_cost_flow::graph::Graph;
+use crate::minimum_cost_flow::network_simplex_pivot_rules::PivotRule;
 use crate::minimum_cost_flow::spanning_tree_structure::{EdgeState, SpanningTreeStructure};
 use crate::minimum_cost_flow::status::Status;
+use crate::minimum_cost_flow::MinimumCostFlowSolver;
 use num_traits::NumAssign;
 use std::collections::VecDeque;
 use std::ops::Neg;
@@ -11,11 +14,11 @@ pub struct ParametricNetworkSimplex<Flow> {
     sink: usize,
 }
 
-impl<Flow> ParametricNetworkSimplex<Flow>
+impl<Flow> MinimumCostFlowSolver<Flow> for ParametricNetworkSimplex<Flow>
 where
     Flow: NumAssign + Neg<Output = Flow> + Ord + Copy + Default,
 {
-    pub fn solve(&mut self, graph: &mut Graph<Flow>) -> Result<Flow, Status> {
+    fn solve(&mut self, graph: &mut Graph<Flow>) -> Result<Flow, Status> {
         if graph.is_unbalance() {
             return Err(Status::Unbalanced);
         }
@@ -60,6 +63,15 @@ where
         } else {
             Err(status)
         }
+    }
+}
+
+impl<Flow> ParametricNetworkSimplex<Flow>
+where
+    Flow: NumAssign + Neg<Output = Flow> + Ord + Copy + Default,
+{
+    pub fn solve(&mut self, graph: &mut Graph<Flow>) -> Result<Flow, Status> {
+        <Self as MinimumCostFlowSolver<Flow>>::solve(self, graph)
     }
 
     pub(crate) fn run(&mut self) {

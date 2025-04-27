@@ -1,5 +1,3 @@
-use crate::maximum_flow::status::Status;
-
 pub mod cost_scaling_push_relabel;
 pub mod csr;
 pub mod cycle_canceling;

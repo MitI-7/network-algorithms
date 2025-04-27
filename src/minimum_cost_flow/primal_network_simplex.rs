@@ -1,20 +1,22 @@
 use crate::minimum_cost_flow::graph::Graph;
-use crate::minimum_cost_flow::network_simplex_pivot_rules::PivotRule;
+use crate::minimum_cost_flow::network_simplex_pivot_rules::{BlockSearchPivotRule, PivotRule};
 use crate::minimum_cost_flow::spanning_tree_structure::{EdgeState, InternalEdge, SpanningTreeStructure};
 use crate::minimum_cost_flow::status::Status;
+use crate::minimum_cost_flow::MinimumCostFlowSolver;
 use num_traits::NumAssign;
 use std::ops::Neg;
 
-#[derive(Default)]
-pub struct PrimalNetworkSimplex<Flow> {
+pub struct PrimalNetworkSimplex<Flow, Pivot = BlockSearchPivotRule<Flow>> {
     st: SpanningTreeStructure<Flow>,
+    pivot: Pivot,
 }
 
-impl<Flow> PrimalNetworkSimplex<Flow>
+impl<Flow, Pivot> MinimumCostFlowSolver<Flow> for PrimalNetworkSimplex<Flow, Pivot>
 where
-    Flow: NumAssign + Neg<Output = Flow> + Ord + Copy,
+    Flow: NumAssign + Neg<Output = Flow> + Ord + Copy + Default,
+    Pivot: PivotRule<Flow>,
 {
-    pub fn solve<Pivot: PivotRule<Flow>>(&mut self, pivot: &mut Pivot, graph: &mut Graph<Flow>) -> Result<Flow, Status> {
+    fn solve(&mut self, graph: &mut Graph<Flow>) -> Result<Flow, Status> {
         if graph.is_unbalance() {
             return Err(Status::Unbalanced);
         }
@@ -28,7 +30,7 @@ where
         debug_assert!(self.st.validate_num_successors(self.st.root));
         debug_assert!(self.st.satisfy_constraints());
 
-        self.run(pivot, &artificial_edges);
+        self.run(&artificial_edges);
 
         let status = if self.st.satisfy_constraints() {
             Status::Optimal
@@ -49,9 +51,35 @@ where
             Err(status)
         }
     }
+}
 
-    pub(crate) fn run<Pivot: PivotRule<Flow>>(&mut self, pivot: &mut Pivot, artificial_edges: &[usize]) {
-        while let Some(entering_edge_id) = pivot.find_entering_edge(&self.st, Self::calculate_violation) {
+impl<Flow> PrimalNetworkSimplex<Flow, BlockSearchPivotRule<Flow>>
+where
+    Flow: NumAssign + Neg<Output = Flow> + Ord + Copy + Default,
+{
+    pub fn new(num_edges: usize) -> Self {
+        Self { st: SpanningTreeStructure::default(), pivot: BlockSearchPivotRule::new(num_edges) }
+    }
+}
+
+impl<Flow, Pivot> PrimalNetworkSimplex<Flow, Pivot>
+where
+    Flow: NumAssign + Neg<Output = Flow> + Ord + Copy + Default,
+    Pivot: PivotRule<Flow>,
+{
+    pub fn set_pivot<Q>(self, new_pivot: Q) -> PrimalNetworkSimplex<Flow, Q>
+    where
+        Q: PivotRule<Flow>,
+    {
+        PrimalNetworkSimplex { st: self.st, pivot: new_pivot }
+    }
+
+    pub fn solve(&mut self, graph: &mut Graph<Flow>) -> Result<Flow, Status> {
+        <Self as MinimumCostFlowSolver<Flow>>::solve(self, graph)
+    }
+
+    pub(crate) fn run(&mut self, artificial_edges: &[usize]) {
+        while let Some(entering_edge_id) = self.pivot.find_entering_edge(&self.st, Self::calculate_violation) {
             let (leaving_edge_id, apex, delta, t2_now_root, t2_new_root) = self.select_leaving_edge(entering_edge_id);
             self.st.update_flow_in_cycle(entering_edge_id, delta, apex);
             self.pivot(leaving_edge_id, entering_edge_id, t2_now_root, t2_new_root);
