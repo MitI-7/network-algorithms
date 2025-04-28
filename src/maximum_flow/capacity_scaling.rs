@@ -124,10 +124,3 @@ where
         Some(res)
     }
 }
-
-pub fn capacity_scailing<Flow>(graph: &mut Graph<Flow>, source: usize, sink: usize, upper: Option<Flow>) -> Result<Flow, Status>
-where
-    Flow: NumAssign + Ord + Copy + Default,
-{
-    CapacityScaling::<Flow>::default().solve(graph, source, sink, upper)
-}

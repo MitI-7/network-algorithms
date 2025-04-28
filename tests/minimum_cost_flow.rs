@@ -1,13 +1,7 @@
-use network_algorithms::minimum_cost_flow::cost_scaling_push_relabel::CostScalingPushRelabel;
-use network_algorithms::minimum_cost_flow::cycle_canceling::CycleCanceling;
-use network_algorithms::minimum_cost_flow::dual_network_simplex::DualNetworkSimplex;
-use network_algorithms::minimum_cost_flow::graph::Graph;
-use network_algorithms::minimum_cost_flow::network_simplex_pivot_rules::{BlockSearchPivotRule, PivotRule};
-use network_algorithms::minimum_cost_flow::out_of_kilter::OutOfKilter;
-use network_algorithms::minimum_cost_flow::parametric_network_simplex::ParametricNetworkSimplex;
-use network_algorithms::minimum_cost_flow::primal_dual::PrimalDual;
-use network_algorithms::minimum_cost_flow::primal_network_simplex::PrimalNetworkSimplex;
-use network_algorithms::minimum_cost_flow::successive_shortest_path::SuccessiveShortestPath;
+use network_algorithms::minimum_cost_flow::{
+    CostScalingPushRelabel, CycleCanceling, DualNetworkSimplex, Graph, OutOfKilter, ParametricNetworkSimplex, PrimalDual, PrimalNetworkSimplex,
+    SuccessiveShortestPath,
+};
 use rstest::rstest;
 use std::fs::read_to_string;
 use std::path::PathBuf;
@@ -91,9 +85,6 @@ fn minimum_cost_flow(#[files("tests/minimum_cost_flow/*/*.txt")] input_file_path
             ParametricNetworkSimplex::default().solve(&mut graph)
         }
         Solver::PrimalNetworkSimplex => PrimalNetworkSimplex::new(graph.num_edges()).solve(&mut graph),
-        _ => {
-            unreachable!()
-        }
     };
 
     match result {

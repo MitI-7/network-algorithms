@@ -1,12 +1,6 @@
-use network_algorithms::maximum_flow::capacity_scaling::CapacityScaling;
-use network_algorithms::maximum_flow::dinic::Dinic;
-use network_algorithms::maximum_flow::edmonds_karp::EdmondsKarp;
-use network_algorithms::maximum_flow::ford_fulkerson::FordFulkerson;
-use network_algorithms::maximum_flow::graph::Graph;
-use network_algorithms::maximum_flow::push_relabel_fifo::PushRelabelFIFO;
-use network_algorithms::maximum_flow::push_relabel_highest_label::PushRelabelHighestLabel;
-use network_algorithms::maximum_flow::shortest_augmenting_path::ShortestAugmentingPath;
-use network_algorithms::maximum_flow::status::Status;
+use network_algorithms::maximum_flow::{
+    CapacityScaling, Dinic, EdmondsKarp, FordFulkerson, Graph, PushRelabelFIFO, PushRelabelHighestLabel, ShortestAugmentingPath,
+};
 use rstest::rstest;
 use std::fs::read_to_string;
 use std::path::PathBuf;
@@ -67,7 +61,6 @@ fn maximum_flow(#[files("tests/maximum_flow/*/*.txt")] input_file_path: PathBuf,
         }
         Solver::PushRelabelHighestLabel => PushRelabelHighestLabel::default().solve(&mut graph, source, sink, None),
         Solver::ShortestAugmentingPath => ShortestAugmentingPath::default().solve(&mut graph, source, sink, None),
-        _ => unreachable!(),
     };
 
     assert_eq!(actual.unwrap(), expected);

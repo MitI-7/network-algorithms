@@ -69,10 +69,3 @@ where
         None
     }
 }
-
-pub fn ford_fulkerson<Flow>(graph: &mut Graph<Flow>, source: usize, sink: usize, upper: Option<Flow>) -> Result<Flow, Status>
-where
-    Flow: NumAssign + Ord + Copy + Default,
-{
-    FordFulkerson::<Flow>::default().solve(graph, source, sink, upper)
-}

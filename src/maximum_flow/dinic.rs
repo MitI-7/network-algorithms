@@ -85,10 +85,3 @@ where
         Some(res)
     }
 }
-
-pub fn dinic<Flow>(graph: &mut Graph<Flow>, source: usize, sink: usize, upper: Option<Flow>) -> Result<Flow, Status>
-where
-    Flow: NumAssign + Ord + Copy + Default,
-{
-    Dinic::<Flow>::default().solve(graph, source, sink, upper)
-}

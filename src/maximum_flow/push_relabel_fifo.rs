@@ -237,10 +237,3 @@ where
         Flow::zero()
     }
 }
-
-pub fn push_relabel_fifo<Flow>(graph: &mut Graph<Flow>, source: usize, sink: usize, upper: Option<Flow>) -> Result<Flow, Status>
-where
-    Flow: NumAssign + Ord + Copy + Default,
-{
-    PushRelabelFIFO::<Flow>::default().solve(graph, source, sink, upper)
-}

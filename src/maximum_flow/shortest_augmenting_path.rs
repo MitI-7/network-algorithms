@@ -75,10 +75,3 @@ where
         None
     }
 }
-
-pub fn shortest_augmenting_path<Flow>(graph: &mut Graph<Flow>, source: usize, sink: usize, upper: Option<Flow>) -> Result<Flow, Status>
-where
-    Flow: NumAssign + Ord + Copy + Default,
-{
-    ShortestAugmentingPath::<Flow>::default().solve(graph, source, sink, upper)
-}
