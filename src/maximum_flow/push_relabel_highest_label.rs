@@ -2,7 +2,7 @@ use crate::maximum_flow::csr::CSR;
 use crate::maximum_flow::graph::Graph;
 use crate::maximum_flow::status::Status;
 use crate::maximum_flow::MaximumFlowSolver;
-use num_traits::NumAssign;
+use num_traits::{NumAssign, ToPrimitive};
 
 #[derive(Default)]
 pub struct PushRelabelHighestLabel<Flow> {
@@ -50,15 +50,17 @@ where
             self.in_bucket[u] = false;
             self.discharge(u);
 
-            // if self.alpha != 0 && self.relabel_count > self.alpha * self.csr.num_nodes {
-            //     self.relabel_count = 0;
-            //     self.csr.update_distances_to_sink(source, sink);
-            // }
+            if self.relabel_count > self.threshold {
+                self.relabel_count = 0;
+                self.csr.update_distances_to_sink(source, sink);
+            }
         }
 
-        self.push_flow_excess_back_to_source(source, sink);
+        if !self.value_only {
+            self.push_flow_excess_back_to_source(source, sink);
+            self.csr.set_flow(graph);
+        }
 
-        self.csr.set_flow(graph);
         // remove dummy source & dummy edge
         graph.pop_node();
         graph.pop_edge();
@@ -113,6 +115,10 @@ where
         }
 
         self.in_bucket[sink] = true;
+
+        self.threshold = ((self.csr.num_nodes + self.csr.num_edges) as f64 / self.global_relabel_freq)
+            .to_usize()
+            .unwrap_or(usize::MAX);
     }
 
     fn enqueue(&mut self, u: usize) {
