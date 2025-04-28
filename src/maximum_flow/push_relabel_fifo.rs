@@ -2,17 +2,17 @@ use crate::maximum_flow::csr::CSR;
 use crate::maximum_flow::graph::Graph;
 use crate::maximum_flow::status::Status;
 use crate::maximum_flow::MaximumFlowSolver;
-use num_traits::{NumAssign, ToPrimitive};
+use num_traits::NumAssign;
 use std::collections::VecDeque;
 
 #[derive(Default)]
 pub struct PushRelabelFIFO<Flow> {
     csr: CSR<Flow>,
 
-    global_relabel_freq: f64,
+    global_relabel_freq: Option<f64>,
     value_only: bool,
     threshold: usize,
-    relabel_count: usize,
+    work: usize,
     active_nodes: VecDeque<usize>,
     current_edge: Vec<usize>,
     distance_count: Vec<usize>,
@@ -41,9 +41,13 @@ where
             }
             self.discharge(u);
 
-            if self.relabel_count > self.threshold {
-                self.relabel_count = 0;
+            if self.work > self.threshold {
+                self.work = 0;
                 self.csr.update_distances_to_sink(source, sink);
+                self.distance_count.fill(0);
+                for u in 0..self.csr.num_nodes {
+                    self.distance_count[self.csr.distances_to_sink[u]] += 1;
+                }
             }
         }
 
@@ -70,7 +74,7 @@ where
     }
 
     pub fn set_global_relabel_freq(mut self, global_relabel_freq: f64) -> Self {
-        self.global_relabel_freq = global_relabel_freq;
+        self.global_relabel_freq = Some(global_relabel_freq);
         self
     }
 
@@ -103,9 +107,12 @@ where
             }
         }
 
-        self.threshold = ((self.csr.num_nodes + self.csr.num_edges) as f64 / self.global_relabel_freq)
-            .to_usize()
-            .unwrap_or(usize::MAX);
+        let freq = self.global_relabel_freq.unwrap_or(1.0);
+        self.threshold = if freq <= 0.0 {
+            usize::MAX
+        } else {
+            (((self.csr.num_nodes + self.csr.num_edges) as f64) / freq).ceil() as usize
+        };
     }
 
     fn discharge(&mut self, u: usize) {
@@ -147,7 +154,7 @@ where
     }
 
     fn relabel(&mut self, u: usize) {
-        self.relabel_count += 1;
+        self.work += self.csr.start[u + 1] - self.csr.start[u]; // add outdegree of u
         self.distance_count[self.csr.distances_to_sink[u]] -= 1;
 
         let new_distance = self
