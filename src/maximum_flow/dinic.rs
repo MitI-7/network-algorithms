@@ -22,9 +22,9 @@ where
         self.csr.build(graph);
         self.current_edge.resize(graph.num_nodes(), 0);
 
-        let upper = upper.unwrap_or_else(|| self.csr.neighbors(source).fold(Flow::zero(), |sum, i| sum + self.csr.upper[i]));
+        let mut residual = upper.unwrap_or_else(|| self.csr.neighbors(source).fold(Flow::zero(), |sum, i| sum + self.csr.upper[i]));
         let mut flow = Flow::zero();
-        while flow < upper {
+        while residual > Flow::zero() {
             self.csr.update_distances_to_sink(source, sink);
 
             // no s-t path
@@ -33,8 +33,11 @@ where
             }
 
             self.current_edge.iter_mut().enumerate().for_each(|(u, e)| *e = self.csr.start[u]);
-            match self.dfs(source, sink, upper) {
-                Some(delta) => flow += delta,
+            match self.dfs(source, sink, residual) {
+                Some(delta) => {
+                    flow += delta;
+                    residual -= delta;
+                }
                 None => break,
             }
         }

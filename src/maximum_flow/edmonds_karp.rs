@@ -22,9 +22,9 @@ where
         self.csr.build(graph);
         let mut prev = vec![(usize::MAX, usize::MAX); self.csr.num_nodes];
         let mut visited = vec![false; self.csr.num_nodes];
-        let upper = upper.unwrap_or_else(|| self.csr.neighbors(source).fold(Flow::zero(), |sum, i| sum + self.csr.upper[i]));
-        let mut f = Flow::zero();
-        loop {
+        let mut residual = upper.unwrap_or_else(|| self.csr.neighbors(source).fold(Flow::zero(), |acc, i| acc + self.csr.upper[i]));
+        let mut flow = Flow::zero();
+        while residual > Flow::zero() {
             prev.fill((usize::MAX, usize::MAX));
             visited.fill(false);
 
@@ -36,7 +36,7 @@ where
                     break;
                 }
 
-                for edge_id in self.csr.start[u]..self.csr.start[u + 1] {
+                for edge_id in self.csr.neighbors(u) {
                     let to = self.csr.to[edge_id];
                     if visited[to] || self.csr.residual_capacity(edge_id) == Flow::zero() {
                         continue;
@@ -52,14 +52,13 @@ where
             }
 
             // calculate delta
-            let mut delta = self.csr.residual_capacity(prev[sink].1);
+            let mut delta = self.csr.residual_capacity(prev[sink].1).min(residual);
             let mut v = sink;
             while v != source {
                 let (u, edge_id) = prev[v];
                 delta = delta.min(self.csr.residual_capacity(edge_id));
                 v = u;
             }
-
             assert!(delta > Flow::zero());
 
             // update flow
@@ -69,11 +68,12 @@ where
                 self.csr.push_flow(u, edge_id, delta, true);
                 v = u;
             }
-            f += delta;
+            flow += delta;
+            residual -= delta;
         }
 
         self.csr.set_flow(graph);
-        Ok(f)
+        Ok(flow)
     }
 }
 

@@ -21,12 +21,15 @@ where
         self.csr.build(graph);
         let mut visited = vec![false; self.csr.num_nodes];
 
-        let upper = upper.unwrap_or_else(|| self.csr.neighbors(source).fold(Flow::zero(), |sum, i| sum + self.csr.upper[i]));
+        let mut residual = upper.unwrap_or_else(|| self.csr.neighbors(source).fold(Flow::zero(), |acc, i| acc + self.csr.upper[i]));
         let mut flow = Flow::zero();
-        loop {
+        while residual > Flow::zero() {
             visited.fill(false);
-            match self.dfs(source, sink, upper, &mut visited) {
-                Some(delta) => flow += delta,
+            match self.dfs(source, sink, residual, &mut visited) {
+                Some(delta) => {
+                    flow += delta;
+                    residual -= delta;
+                }
                 None => break,
             }
         }

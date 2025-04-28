@@ -24,11 +24,12 @@ where
         self.current_edge.resize(self.csr.num_nodes, 0);
 
         let mut flow = Flow::zero();
-        let upper = upper.unwrap_or_else(|| self.csr.neighbors(source).fold(Flow::zero(), |sum, i| sum + self.csr.upper[i]));
+        let mut residual = upper.unwrap_or_else(|| self.csr.neighbors(source).fold(Flow::zero(), |sum, i| sum + self.csr.upper[i]));
         while self.csr.distances_to_sink[source] < self.csr.num_nodes {
             self.current_edge.iter_mut().enumerate().for_each(|(u, e)| *e = self.csr.start[u]);
-            if let Some(delta) = self.dfs(source, sink, upper) {
+            if let Some(delta) = self.dfs(source, sink, residual) {
                 flow += delta;
+                residual -= delta;
             }
         }
 

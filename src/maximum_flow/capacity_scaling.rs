@@ -32,7 +32,7 @@ where
         }
         delta /= two;
 
-        let upper = upper.unwrap_or_else(|| self.csr.neighbors(source).fold(Flow::zero(), |sum, i| sum + self.csr.upper[i]));
+        let mut residual = upper.unwrap_or_else(|| self.csr.neighbors(source).fold(Flow::zero(), |sum, i| sum + self.csr.upper[i]));
         let mut flow = Flow::zero();
         while delta > Flow::zero() {
             // solve maximum flow in delta-residual network
@@ -45,8 +45,11 @@ where
                 }
 
                 self.current_edge.iter_mut().enumerate().for_each(|(u, e)| *e = self.csr.start[u]);
-                match self.dfs(source, sink, upper, delta) {
-                    Some(delta) => flow += delta,
+                match self.dfs(source, sink, residual, delta) {
+                    Some(delta) => {
+                        flow += delta;
+                        residual -= delta;
+                    }
                     None => break,
                 }
             }
