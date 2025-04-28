@@ -5,17 +5,34 @@ use crate::maximum_flow::MaximumFlowSolver;
 use num_traits::NumAssign;
 use std::collections::VecDeque;
 
-#[derive(Default)]
 pub struct PushRelabelFIFO<Flow> {
     csr: CSR<Flow>,
 
-    global_relabel_freq: Option<f64>,
+    global_relabel_freq: f64,
     value_only: bool,
     threshold: usize,
     work: usize,
     active_nodes: VecDeque<usize>,
     current_edge: Vec<usize>,
     distance_count: Vec<usize>,
+}
+
+impl<Flow> Default for PushRelabelFIFO<Flow>
+where
+    Flow: Default,
+{
+    fn default() -> Self {
+        Self {
+            csr: CSR::default(),
+            global_relabel_freq: 1.0,
+            value_only: false,
+            threshold: 0,
+            work: 0,
+            active_nodes: VecDeque::new(),
+            current_edge: Vec::new(),
+            distance_count: Vec::new(),
+        }
+    }
 }
 
 impl<Flow> MaximumFlowSolver<Flow> for PushRelabelFIFO<Flow>
@@ -74,7 +91,7 @@ where
     }
 
     pub fn set_global_relabel_freq(mut self, global_relabel_freq: f64) -> Self {
-        self.global_relabel_freq = Some(global_relabel_freq);
+        self.global_relabel_freq = global_relabel_freq;
         self
     }
 
@@ -107,11 +124,10 @@ where
             }
         }
 
-        let freq = self.global_relabel_freq.unwrap_or(1.0);
-        self.threshold = if freq <= 0.0 {
+        self.threshold = if self.global_relabel_freq <= 0.0 {
             usize::MAX
         } else {
-            (((self.csr.num_nodes + self.csr.num_edges) as f64) / freq).ceil() as usize
+            (((self.csr.num_nodes + self.csr.num_edges) as f64) / self.global_relabel_freq).ceil() as usize
         };
     }
 

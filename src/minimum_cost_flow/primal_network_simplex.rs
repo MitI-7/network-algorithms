@@ -32,23 +32,17 @@ where
 
         self.run(&artificial_edges);
 
-        let status = if self.st.satisfy_constraints() {
-            Status::Optimal
-        } else {
-            Status::Infeasible
-        };
-
         // copy
-        graph.excesses = self.st.excesses.clone().to_vec();
+        graph.excesses = self.st.excesses.to_vec();
         for edge_id in 0..graph.num_edges() {
             graph.edges[edge_id].flow = self.st.flow[edge_id];
         }
         graph.remove_artificial_sub_graph(&artificial_nodes, &artificial_edges);
 
-        if status == Status::Optimal {
+        if self.st.satisfy_constraints() {
             Ok(graph.minimum_cost())
         } else {
-            Err(status)
+            Err(Status::Infeasible)
         }
     }
 }
@@ -67,10 +61,7 @@ where
     Flow: NumAssign + Neg<Output = Flow> + Ord + Copy + Default,
     Pivot: PivotRule<Flow>,
 {
-    pub fn set_pivot<Q>(self, new_pivot: Q) -> PrimalNetworkSimplex<Flow, Q>
-    where
-        Q: PivotRule<Flow>,
-    {
+    pub fn set_pivot<P: PivotRule<Flow>>(self, new_pivot: P) -> PrimalNetworkSimplex<Flow, P> {
         PrimalNetworkSimplex { st: self.st, pivot: new_pivot }
     }
 

@@ -4,12 +4,11 @@ use crate::maximum_flow::status::Status;
 use crate::maximum_flow::MaximumFlowSolver;
 use num_traits::NumAssign;
 
-#[derive(Default)]
 pub struct PushRelabelHighestLabel<Flow> {
     csr: CSR<Flow>,
     current_edge: Vec<usize>,
 
-    global_relabel_freq: Option<f64>,
+    global_relabel_freq: f64,
     value_only: bool,
     threshold: usize,
     work: usize,
@@ -19,6 +18,29 @@ pub struct PushRelabelHighestLabel<Flow> {
     bucket_idx: usize,
 
     distance_count: Vec<usize>,
+}
+
+impl<Flow> Default for PushRelabelHighestLabel<Flow>
+where
+    Flow: Default,
+{
+    fn default() -> Self {
+        Self {
+            csr: CSR::default(),
+            current_edge: Vec::new(),
+
+            global_relabel_freq: 1.0,
+            value_only: false,
+            threshold: 0,
+            work: 0,
+
+            buckets: Vec::new(),
+            in_bucket: Vec::new(),
+            bucket_idx: 0,
+
+            distance_count: Vec::new(),
+        }
+    }
 }
 
 impl<Flow> MaximumFlowSolver<Flow> for PushRelabelHighestLabel<Flow>
@@ -83,7 +105,7 @@ where
     }
 
     pub fn set_global_relabel_freq(mut self, global_relabel_freq: f64) -> Self {
-        self.global_relabel_freq = Some(global_relabel_freq);
+        self.global_relabel_freq = global_relabel_freq;
         self
     }
 
@@ -120,11 +142,10 @@ where
 
         self.in_bucket[sink] = true;
 
-        let freq = self.global_relabel_freq.unwrap_or(1.0);
-        self.threshold = if freq <= 0.0 {
+        self.threshold = if self.global_relabel_freq <= 0.0 {
             usize::MAX
         } else {
-            (((self.csr.num_nodes + self.csr.num_edges) as f64) / freq).ceil() as usize
+            (((self.csr.num_nodes + self.csr.num_edges) as f64) / self.global_relabel_freq).ceil() as usize
         };
     }
 
