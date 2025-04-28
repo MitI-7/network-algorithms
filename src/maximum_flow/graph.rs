@@ -14,7 +14,6 @@ pub struct Graph<Flow> {
     num_nodes: usize,
     num_edges: usize,
     pub(crate) edges: Vec<Edge<Flow>>,
-    pub(crate) excesses: Vec<Flow>,
 }
 
 impl<Flow> Graph<Flow>
@@ -32,15 +31,17 @@ where
     }
 
     pub fn add_node(&mut self) -> usize {
-        self.excesses.push(Flow::zero());
         self.num_nodes += 1;
         self.num_nodes - 1
     }
 
     pub fn add_nodes(&mut self, num_nodes: usize) -> Vec<usize> {
-        self.excesses.extend(vec![Flow::zero(); num_nodes]);
         self.num_nodes += num_nodes;
         ((self.num_nodes - num_nodes)..self.num_nodes).collect()
+    }
+
+    pub fn pop_node(&mut self) {
+        self.num_nodes -= 1;
     }
 
     // return edge index
@@ -61,5 +62,10 @@ where
         }
         let edge = &self.edges[edge_id];
         Some(Edge { from: edge.from, to: edge.to, flow: edge.flow, upper: edge.upper })
+    }
+
+    pub fn pop_edge(&mut self) {
+        self.edges.pop();
+        self.num_edges -= 1;
     }
 }

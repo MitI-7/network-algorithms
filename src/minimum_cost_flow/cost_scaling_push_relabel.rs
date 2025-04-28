@@ -1,4 +1,4 @@
-use crate::maximum_flow::capacity_scailing::CapacityScaling;
+use crate::maximum_flow::capacity_scaling::CapacityScaling;
 use crate::maximum_flow::graph;
 use crate::minimum_cost_flow::csr::CSR;
 use crate::minimum_cost_flow::graph::Graph;

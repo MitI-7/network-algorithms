@@ -8,7 +8,10 @@ use num_traits::NumAssign;
 pub struct PushRelabelHighestLabel<Flow> {
     csr: CSR<Flow>,
     current_edge: Vec<usize>,
-    alpha: usize,
+
+    global_relabel_freq: f64,
+    value_only: bool,
+    threshold: usize,
     relabel_count: usize,
 
     buckets: Vec<Vec<usize>>, // buckets[i] = active nodes with distance i
@@ -27,10 +30,13 @@ where
             return Err(Status::BadInput);
         }
 
+        let delta: Flow = graph.edges.iter().filter(|e| e.from == source).fold(Flow::zero(), |acc, e| acc + e.upper);
+        let dummy_source = graph.add_node(); // dummy source
+        graph.add_directed_edge(dummy_source, source, upper.unwrap_or(delta)); // dummy edge
         self.csr.build(graph);
+        let source = dummy_source;
 
         self.pre_process(source, sink);
-        self.alpha = 1;
         loop {
             if self.buckets[self.bucket_idx].is_empty() {
                 if self.bucket_idx == 0 {
@@ -46,13 +52,16 @@ where
 
             // if self.alpha != 0 && self.relabel_count > self.alpha * self.csr.num_nodes {
             //     self.relabel_count = 0;
-            //     self.csr.update_distances(source, sink);
+            //     self.csr.update_distances_to_sink(source, sink);
             // }
         }
 
         self.push_flow_excess_back_to_source(source, sink);
 
         self.csr.set_flow(graph);
+        // remove dummy source & dummy edge
+        graph.pop_node();
+        graph.pop_edge();
 
         Ok(self.csr.excesses[sink])
     }
@@ -62,6 +71,16 @@ impl<Flow> PushRelabelHighestLabel<Flow>
 where
     Flow: NumAssign + Ord + Copy + Default,
 {
+    pub fn set_value_only(mut self, value_only: bool) -> Self {
+        self.value_only = value_only;
+        self
+    }
+
+    pub fn set_global_relabel_freq(mut self, global_relabel_freq: f64) -> Self {
+        self.global_relabel_freq = global_relabel_freq;
+        self
+    }
+
     pub fn solve(&mut self, graph: &mut Graph<Flow>, source: usize, sink: usize, upper: Option<Flow>) -> Result<Flow, Status> {
         <Self as MaximumFlowSolver<Flow>>::solve(self, graph, source, sink, upper)
     }
@@ -81,10 +100,10 @@ where
             self.current_edge[u] = self.csr.start[u];
         }
 
-        for i in self.csr.start[source]..self.csr.start[source + 1] {
-            let delta = self.csr.residual_capacity(i);
-            self.csr.push_flow(source, i, delta, true);
-            self.csr.excesses[self.csr.to[i]] += delta;
+        for edge_id in self.csr.neighbors(source) {
+            let delta = self.csr.residual_capacity(edge_id);
+            self.csr.push_flow(source, edge_id, delta, true);
+            self.csr.excesses[self.csr.to[edge_id]] += delta;
         }
 
         for u in 0..self.csr.num_nodes {

@@ -2,14 +2,16 @@ use crate::maximum_flow::csr::CSR;
 use crate::maximum_flow::graph::Graph;
 use crate::maximum_flow::status::Status;
 use crate::maximum_flow::MaximumFlowSolver;
-use num_traits::NumAssign;
+use num_traits::{NumAssign, ToPrimitive};
 use std::collections::VecDeque;
 
 #[derive(Default)]
 pub struct PushRelabelFIFO<Flow> {
     csr: CSR<Flow>,
 
-    alpha: usize,
+    global_relabel_freq: f64,
+    value_only: bool,
+    threshold: usize,
     relabel_count: usize,
     active_nodes: VecDeque<usize>,
     current_edge: Vec<usize>,
@@ -25,7 +27,11 @@ where
             return Err(Status::BadInput);
         }
 
+        let delta: Flow = graph.edges.iter().filter(|e| e.from == source).fold(Flow::zero(), |acc, e| acc + e.upper);
+        let dummy_source = graph.add_node(); // dummy source
+        graph.add_directed_edge(dummy_source, source, upper.unwrap_or(delta)); // dummy edge
         self.csr.build(graph);
+        let source = dummy_source;
 
         self.pre_process(source, sink);
         while let Some(u) = self.active_nodes.pop_front() {
@@ -35,15 +41,20 @@ where
             }
             self.discharge(u);
 
-            if self.alpha != 0 && self.relabel_count > self.alpha * self.csr.num_nodes {
+            if self.relabel_count > self.threshold {
                 self.relabel_count = 0;
                 self.csr.update_distances_to_sink(source, sink);
             }
         }
 
-        self.push_flow_excess_back_to_source(source, sink);
+        if !self.value_only {
+            self.push_flow_excess_back_to_source(source, sink);
+            self.csr.set_flow(graph);
+        }
 
-        self.csr.set_flow(graph);
+        // remove dummy source & dummy edge
+        graph.pop_node();
+        graph.pop_edge();
 
         Ok(self.csr.excesses[sink])
     }
@@ -53,6 +64,16 @@ impl<Flow> PushRelabelFIFO<Flow>
 where
     Flow: NumAssign + Ord + Copy + Default,
 {
+    pub fn set_value_only(mut self, value_only: bool) -> Self {
+        self.value_only = value_only;
+        self
+    }
+
+    pub fn set_global_relabel_freq(mut self, global_relabel_freq: f64) -> Self {
+        self.global_relabel_freq = global_relabel_freq;
+        self
+    }
+
     pub fn solve(&mut self, graph: &mut Graph<Flow>, source: usize, sink: usize, upper: Option<Flow>) -> Result<Flow, Status> {
         <Self as MaximumFlowSolver<Flow>>::solve(self, graph, source, sink, upper)
     }
@@ -70,10 +91,10 @@ where
             self.current_edge[u] = self.csr.start[u];
         }
 
-        for i in self.csr.start[source]..self.csr.start[source + 1] {
-            let delta = self.csr.residual_capacity(i);
-            self.csr.push_flow(source, i, delta, true);
-            self.csr.excesses[self.csr.to[i]] += delta;
+        for edge_id in self.csr.neighbors(source) {
+            let delta = self.csr.residual_capacity(edge_id);
+            self.csr.push_flow(source, edge_id, delta, true);
+            self.csr.excesses[self.csr.to[edge_id]] += delta;
         }
 
         for u in 0..self.csr.num_nodes {
@@ -81,6 +102,10 @@ where
                 self.active_nodes.push_back(u);
             }
         }
+
+        self.threshold = ((self.csr.num_nodes + self.csr.num_edges) as f64 / self.global_relabel_freq)
+            .to_usize()
+            .unwrap_or(usize::MAX);
     }
 
     fn discharge(&mut self, u: usize) {
@@ -98,11 +123,11 @@ where
         self.current_edge[u] = self.csr.start[u];
 
         // relabel
-        // if self.distance_count[self.csr.distances[u]] == 1 {
-        //     self.gap_relabeling(self.csr.distances[u]);
-        // } else {
-        self.relabel(u);
-        // }
+        if self.distance_count[self.csr.distances_to_sink[u]] == 1 {
+            self.gap_relabeling(self.csr.distances_to_sink[u]);
+        } else {
+            self.relabel(u);
+        }
 
         if self.csr.excesses[u] > Flow::zero() {
             self.active_nodes.push_back(u);
@@ -123,7 +148,7 @@ where
 
     fn relabel(&mut self, u: usize) {
         self.relabel_count += 1;
-        // self.distance_count[self.csr.distances[u]] -= 1;
+        self.distance_count[self.csr.distances_to_sink[u]] -= 1;
 
         let new_distance = self
             .csr
