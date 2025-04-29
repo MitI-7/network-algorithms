@@ -7,6 +7,7 @@ use num_traits::NumAssign;
 use std::collections::VecDeque;
 use std::ops::Neg;
 
+#[derive(Default)]
 pub struct DualNetworkSimplex<Flow, Pivot = BlockSearchPivotRule<Flow>> {
     st: SpanningTreeStructure<Flow>,
     sink: usize,
@@ -44,6 +45,7 @@ where
         }
         debug_assert!(self.st.satisfy_optimality_conditions());
 
+        self.pivot.initialize(self.st.num_edges);
         self.run();
 
         let status = if self.st.satisfy_constraints() {
@@ -64,15 +66,6 @@ where
         } else {
             Err(status)
         }
-    }
-}
-
-impl<Flow> DualNetworkSimplex<Flow, BlockSearchPivotRule<Flow>>
-where
-    Flow: NumAssign + Neg<Output = Flow> + Ord + Copy + Default,
-{
-    pub fn new(num_edges: usize) -> Self {
-        Self { st: SpanningTreeStructure::default(), sink: 0, pivot: BlockSearchPivotRule::new(num_edges) }
     }
 }
 

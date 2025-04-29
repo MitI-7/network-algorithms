@@ -3,14 +3,11 @@ use num_traits::NumAssign;
 use std::ops::Neg;
 
 pub trait PivotRule<Flow> {
-    fn new(num_edges: usize) -> Self;
-    fn find_entering_edge<F: Fn(usize, &SpanningTreeStructure<Flow>) -> Flow>(
-        &mut self,
-        st: &SpanningTreeStructure<Flow>,
-        calculate_violation: F,
-    ) -> Option<usize>;
+    fn initialize(&mut self, num_edges: usize);
+    fn find_entering_edge<F: Fn(usize, &SpanningTreeStructure<Flow>) -> Flow>(&mut self, st: &SpanningTreeStructure<Flow>, calculate_violation: F) -> Option<usize>;
 }
 
+#[derive(Default)]
 pub struct BestEligibleArcPivotRule<Flow> {
     _maker: std::marker::PhantomData<fn() -> Flow>,
 }
@@ -19,15 +16,9 @@ impl<Flow> PivotRule<Flow> for BestEligibleArcPivotRule<Flow>
 where
     Flow: NumAssign + Neg<Output = Flow> + Ord + Copy,
 {
-    fn new(_num_edges: usize) -> Self {
-        Self { _maker: std::marker::PhantomData }
-    }
+    fn initialize(&mut self, _num_edges: usize) {}
 
-    fn find_entering_edge<F: Fn(usize, &SpanningTreeStructure<Flow>) -> Flow>(
-        &mut self,
-        st: &SpanningTreeStructure<Flow>,
-        calculate_violation: F,
-    ) -> Option<usize> {
+    fn find_entering_edge<F: Fn(usize, &SpanningTreeStructure<Flow>) -> Flow>(&mut self, st: &SpanningTreeStructure<Flow>, calculate_violation: F) -> Option<usize> {
         let mut maxi_violation = Flow::zero();
         let mut entering_edge_id = None;
 
@@ -43,6 +34,7 @@ where
     }
 }
 
+#[derive(Default)]
 pub struct FirstEligibleArcPivotRule<Flow> {
     current_edge_id: usize,
     _maker: std::marker::PhantomData<fn() -> Flow>,
@@ -52,15 +44,9 @@ impl<Flow> PivotRule<Flow> for FirstEligibleArcPivotRule<Flow>
 where
     Flow: NumAssign + Neg<Output = Flow> + Ord + Copy,
 {
-    fn new(_num_edges: usize) -> Self {
-        Self { current_edge_id: 0, _maker: std::marker::PhantomData }
-    }
+    fn initialize(&mut self, _num_edges: usize) {}
 
-    fn find_entering_edge<F: Fn(usize, &SpanningTreeStructure<Flow>) -> Flow>(
-        &mut self,
-        st: &SpanningTreeStructure<Flow>,
-        calculate_violation: F,
-    ) -> Option<usize> {
+    fn find_entering_edge<F: Fn(usize, &SpanningTreeStructure<Flow>) -> Flow>(&mut self, st: &SpanningTreeStructure<Flow>, calculate_violation: F) -> Option<usize> {
         for _ in 0..st.num_edges {
             let violation = calculate_violation(self.current_edge_id, st);
 
@@ -78,9 +64,11 @@ where
     }
 }
 
+#[derive(Default)]
 pub struct BlockSearchPivotRule<Flow> {
     current_edge_id: usize,
     block_size: usize,
+    initialized: bool,
     _maker: std::marker::PhantomData<fn() -> Flow>,
 }
 
@@ -88,12 +76,14 @@ impl<Flow> BlockSearchPivotRule<Flow>
 where
     Flow: NumAssign + Neg<Output = Flow> + Ord + Copy,
 {
+    // block_size_factor: between 0.5 and 2.0
     pub fn new_with_parameter(num_edges: usize, min_block_size: usize, block_size_factor: f64) -> Self {
         assert!(min_block_size > 0);
         assert!(block_size_factor >= 0.0);
         Self {
             current_edge_id: 0,
             block_size: min_block_size.max((block_size_factor * (num_edges as f64).sqrt()) as usize),
+            initialized: true,
             _maker: std::marker::PhantomData,
         }
     }
@@ -103,17 +93,20 @@ impl<Flow> PivotRule<Flow> for BlockSearchPivotRule<Flow>
 where
     Flow: NumAssign + Neg<Output = Flow> + Ord + Copy,
 {
-    fn new(num_edges: usize) -> Self {
+    fn initialize(&mut self, num_edges: usize) {
+        if self.initialized {
+            return;
+        }
         let min_block_size = 10;
-        let block_size_factor = 1.0; // between 0.5 and 2.0
-        Self::new_with_parameter(num_edges, min_block_size, block_size_factor)
+        let block_size_factor = 1.0;
+
+        self.current_edge_id = 0;
+        self.block_size = min_block_size.max((block_size_factor * (num_edges as f64).sqrt()) as usize);
+        self.initialized = true;
+        self._maker = std::marker::PhantomData;
     }
 
-    fn find_entering_edge<F: Fn(usize, &SpanningTreeStructure<Flow>) -> Flow>(
-        &mut self,
-        st: &SpanningTreeStructure<Flow>,
-        calculate_violation: F,
-    ) -> Option<usize> {
+    fn find_entering_edge<F: Fn(usize, &SpanningTreeStructure<Flow>) -> Flow>(&mut self, st: &SpanningTreeStructure<Flow>, calculate_violation: F) -> Option<usize> {
         let mut maxi_violation = Flow::zero();
         let mut entering_edge_id = None;
         let mut count = self.block_size;
@@ -144,6 +137,7 @@ where
     }
 }
 
+#[derive(Default)]
 pub struct CandidateListPivotRule<Flow> {
     current_edge_id: usize,
     candidates: Box<[usize]>,
@@ -151,6 +145,7 @@ pub struct CandidateListPivotRule<Flow> {
     minor_count_limit: usize,
     minor_count: usize,
     current_size: usize,
+    initialized: bool,
     _maker: std::marker::PhantomData<fn() -> Flow>,
 }
 
@@ -180,6 +175,7 @@ where
             current_size: 0,
             minor_count_limit: minor_limit,
             minor_count: 0,
+            initialized: true,
             _maker: std::marker::PhantomData,
         }
     }
@@ -189,19 +185,29 @@ impl<Flow> PivotRule<Flow> for CandidateListPivotRule<Flow>
 where
     Flow: NumAssign + Neg<Output = Flow> + Ord + Copy,
 {
-    fn new(num_edges: usize) -> Self {
+    fn initialize(&mut self, num_edges: usize) {
+        if self.initialized {
+            return;
+        }
         let min_candidate_list_size = 10;
         let candidate_list_size_factor = 0.25;
         let min_minor_limit = 3;
         let minor_limit_factor = 0.1;
-        Self::new_with_parameter(num_edges, min_candidate_list_size, candidate_list_size_factor, min_minor_limit, minor_limit_factor)
+
+        let candidate_list_size = min_candidate_list_size.max((candidate_list_size_factor * (num_edges as f64).sqrt()) as usize);
+        let minor_limit = min_minor_limit.max((minor_limit_factor * candidate_list_size as f64) as usize);
+
+        self.current_edge_id = 0;
+        self.candidates = vec![usize::MAX; candidate_list_size].into_boxed_slice();
+        self.candidate_list_size = candidate_list_size;
+        self.current_size = 0;
+        self.minor_count_limit = minor_limit;
+        self.minor_count = 0;
+        self.initialized = true;
+        self._maker = std::marker::PhantomData;
     }
 
-    fn find_entering_edge<F: Fn(usize, &SpanningTreeStructure<Flow>) -> Flow>(
-        &mut self,
-        st: &SpanningTreeStructure<Flow>,
-        calculate_violation: F,
-    ) -> Option<usize> {
+    fn find_entering_edge<F: Fn(usize, &SpanningTreeStructure<Flow>) -> Flow>(&mut self, st: &SpanningTreeStructure<Flow>, calculate_violation: F) -> Option<usize> {
         let mut maxi_violation = Flow::zero();
         let mut entering_edge_id = None;
 
@@ -266,25 +272,21 @@ where
     }
 }
 
+#[derive(Default)]
 pub struct AlteringCandidateListPivotRule<Flow> {
     current_edge_id: usize,
     block_size: usize,
     head_length: usize,
     candidates: Box<[(usize, Flow)]>,
     current_size: usize,
+    initialized: bool,
 }
 
 impl<Flow> AlteringCandidateListPivotRule<Flow>
 where
     Flow: NumAssign + Neg<Output = Flow> + Ord + Copy,
 {
-    pub fn new_with_parameter(
-        num_edges: usize,
-        min_block_size: usize,
-        block_size_factor: f64,
-        min_head_length: usize,
-        head_length_factor: f64,
-    ) -> Self {
+    pub fn new_with_parameter(num_edges: usize, min_block_size: usize, block_size_factor: f64, min_head_length: usize, head_length_factor: f64) -> Self {
         assert!(min_block_size > 0);
         assert!(block_size_factor > 0.0);
         assert!(min_head_length > 0);
@@ -299,6 +301,7 @@ where
             head_length,
             candidates: vec![(usize::MAX, Flow::zero()); head_length + block_size].into_boxed_slice(),
             current_size: 0,
+            initialized: true,
         }
     }
 }
@@ -307,19 +310,27 @@ impl<Flow> PivotRule<Flow> for AlteringCandidateListPivotRule<Flow>
 where
     Flow: NumAssign + Neg<Output = Flow> + Ord + Copy,
 {
-    fn new(num_edges: usize) -> Self {
+    fn initialize(&mut self, num_edges: usize) {
+        if self.initialized {
+            return;
+        }
         let min_block_size = 10;
         let block_size_factor = 1.0;
         let min_head_length = 3;
         let head_length_factor = 0.01;
-        Self::new_with_parameter(num_edges, min_block_size, block_size_factor, min_head_length, head_length_factor)
+
+        let block_size = min_block_size.max((block_size_factor * (num_edges as f64).sqrt()) as usize);
+        let head_length = min_head_length.max((head_length_factor * block_size as f64) as usize);
+
+        self.current_edge_id = 0;
+        self.block_size = block_size;
+        self.head_length = head_length;
+        self.candidates = vec![(usize::MAX, Flow::zero()); head_length + block_size].into_boxed_slice();
+        self.current_size = 0;
+        self.initialized = true;
     }
 
-    fn find_entering_edge<F: Fn(usize, &SpanningTreeStructure<Flow>) -> Flow>(
-        &mut self,
-        st: &SpanningTreeStructure<Flow>,
-        calculate_violation: F,
-    ) -> Option<usize> {
+    fn find_entering_edge<F: Fn(usize, &SpanningTreeStructure<Flow>) -> Flow>(&mut self, st: &SpanningTreeStructure<Flow>, calculate_violation: F) -> Option<usize> {
         // update candidate cost
         let mut i = 0;
         while i < self.current_size {

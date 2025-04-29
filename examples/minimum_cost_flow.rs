@@ -1,4 +1,4 @@
-use network_algorithms::minimum_cost_flow::network_simplex_pivot_rules::{BlockSearchPivotRule, PivotRule};
+use network_algorithms::minimum_cost_flow::network_simplex_pivot_rules::BestEligibleArcPivotRule;
 use network_algorithms::minimum_cost_flow::{Graph, PrimalNetworkSimplex};
 
 fn primal_network_simplex() {
@@ -16,8 +16,8 @@ fn primal_network_simplex() {
     graph.add_supply(0, 2);
     graph.add_supply(3, -2);
 
-    let pivot = BlockSearchPivotRule::new(graph.num_edges());
-    match PrimalNetworkSimplex::new(graph.num_edges()).set_pivot(pivot).solve(&mut graph) {
+    let pivot = BestEligibleArcPivotRule::default();
+    match PrimalNetworkSimplex::<i32>::default().set_pivot(pivot).solve(&mut graph) {
         Ok(value) => {
             println!("minimum cost:{}", value);
             for edge_id in edge_ids {

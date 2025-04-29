@@ -87,8 +87,6 @@ where
         c.bench_function(format!("primal_network_simplex_{}", name), |b| {
             b.iter(|| {
                 graph.reset();
-                // let mut solver = PrimalNetworkSimplex::new(graph.num_edges());
-                // let mut solver = CostScalingPushRelabel::<i64>::default();
                 let actual = solver.solve(&mut graph).unwrap();
                 assert_eq!(actual, expected);
             })
@@ -96,15 +94,15 @@ where
     }
 }
 
-// fn benchmark_cost_primal_network_simplex(c: &mut Criterion) {
-//     let mut solver = PrimalNetworkSimplex::CostScalingPushRelabel::<i64>::default();
-//     benchmark_multiple_graphs(c, &mut solver);
-// }
+fn bench_primal_network_simplex(c: &mut Criterion) {
+    let mut solver = PrimalNetworkSimplex::<i64>::default();
+    benchmark_multiple_graphs(c, &mut solver);
+}
 
-fn benchmark_cost_scaling_push_relabel(c: &mut Criterion) {
+fn bench_cost_scaling_push_relabel(c: &mut Criterion) {
     let mut solver = CostScalingPushRelabel::<i64>::default();
     benchmark_multiple_graphs(c, &mut solver);
 }
 
-criterion_group!(benches, benchmark_cost_scaling_push_relabel);
+criterion_group!(benches, bench_primal_network_simplex);
 criterion_main!(benches);

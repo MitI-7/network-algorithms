@@ -6,6 +6,7 @@ use crate::minimum_cost_flow::MinimumCostFlowSolver;
 use num_traits::NumAssign;
 use std::ops::Neg;
 
+#[derive(Default)]
 pub struct PrimalNetworkSimplex<Flow, Pivot = BlockSearchPivotRule<Flow>> {
     st: SpanningTreeStructure<Flow>,
     pivot: Pivot,
@@ -30,6 +31,7 @@ where
         debug_assert!(self.st.validate_num_successors(self.st.root));
         debug_assert!(self.st.satisfy_constraints());
 
+        self.pivot.initialize(self.st.num_edges);
         self.run(&artificial_edges);
 
         // copy
@@ -44,15 +46,6 @@ where
         } else {
             Err(Status::Infeasible)
         }
-    }
-}
-
-impl<Flow> PrimalNetworkSimplex<Flow, BlockSearchPivotRule<Flow>>
-where
-    Flow: NumAssign + Neg<Output = Flow> + Ord + Copy + Default,
-{
-    pub fn new(num_edges: usize) -> Self {
-        Self { st: SpanningTreeStructure::default(), pivot: BlockSearchPivotRule::new(num_edges) }
     }
 }
 

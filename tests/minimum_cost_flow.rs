@@ -76,7 +76,7 @@ fn minimum_cost_flow(#[files("tests/minimum_cost_flow/*/*.txt")] input_file_path
             SuccessiveShortestPath::default().solve(&mut graph)
         }
 
-        Solver::DualNetworkSimplex => DualNetworkSimplex::new(graph.num_edges()).solve(&mut graph),
+        Solver::DualNetworkSimplex => DualNetworkSimplex::<i128>::default().solve(&mut graph),
         Solver::ParametricNetworkSimplex => {
             // to slow...
             if input_file_path.to_str().unwrap().contains("anti_ssp_00.txt") {
@@ -84,7 +84,7 @@ fn minimum_cost_flow(#[files("tests/minimum_cost_flow/*/*.txt")] input_file_path
             }
             ParametricNetworkSimplex::default().solve(&mut graph)
         }
-        Solver::PrimalNetworkSimplex => PrimalNetworkSimplex::new(graph.num_edges()).solve(&mut graph),
+        Solver::PrimalNetworkSimplex => PrimalNetworkSimplex::<i128>::default().solve(&mut graph),
     };
 
     match result {
