@@ -9,12 +9,17 @@ num-traits = "0.2.19"
 rstest = "0.25.0"
 
 [dev-dependencies]
-criterion = { version = "0.5", features = ["html_reports"] }
+criterion = "0.5.1"
 
 [profile.release]
 opt-level = 3
 lto = true
 codegen-units = 1
 
-[workspace]
-members = ["benches/dimacs"]
+[[bench]]
+name = "minimum_cost_flow_bench"
+harness = false
+
+[[bench]]
+name = "maximum_flow_bench"
+harness = false

@@ -1,4 +1,4 @@
-use num_traits::NumAssign;
+use num_traits::Zero;
 use std::fmt::Debug;
 
 #[derive(PartialEq, Clone, Debug)]
@@ -18,7 +18,7 @@ pub struct Graph<Flow> {
 
 impl<Flow> Graph<Flow>
 where
-    Flow: NumAssign + Ord + Copy,
+    Flow: Ord + Copy + Zero,
 {
     #[inline]
     pub fn num_nodes(&self) -> usize {
@@ -67,5 +67,9 @@ where
     pub fn pop_edge(&mut self) {
         self.edges.pop();
         self.num_edges -= 1;
+    }
+
+    pub fn reset(&mut self) {
+        self.edges.iter_mut().for_each(|edge| edge.flow = Zero::zero());
     }
 }

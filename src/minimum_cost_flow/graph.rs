@@ -100,6 +100,20 @@ where
         }
     }
 
+    pub fn reset(&mut self) {
+        for u in 0..self.num_nodes {
+            self.excesses[u] = self.b[u];
+        }
+        self.edges.iter_mut().enumerate().for_each(|(edge_id, edge)| {
+            edge.flow = Flow::zero();
+            if self.is_reversed[edge_id] {
+                let u = self.lowers[edge_id] + edge.upper;
+                self.excesses[edge.from] += u;
+                self.excesses[edge.to] -= u;
+            }
+        });
+    }
+
     pub fn minimum_cost(&self) -> Flow {
         (0..self.num_edges).fold(Flow::zero(), |cost, edge_id| {
             let edge = self.get_edge(edge_id).unwrap();

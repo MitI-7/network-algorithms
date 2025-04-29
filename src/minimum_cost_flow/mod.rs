@@ -12,7 +12,7 @@ pub mod spanning_tree_structure;
 pub mod status;
 pub mod successive_shortest_path;
 
-trait MinimumCostFlowSolver<Flow> {
+pub trait MinimumCostFlowSolver<Flow> {
     fn solve(&mut self, graph: &mut graph::Graph<Flow>) -> Result<Flow, status::Status>;
 }
 
