@@ -67,7 +67,7 @@ where
     Ok((graph, source, sink))
 }
 
-fn benchmark<Flow>(c: &mut BenchmarkGroup<WallTime>, solver: &mut dyn MaximumFlowSolver<Flow>)
+fn benchmark<Flow>(g: &mut BenchmarkGroup<WallTime>, solver: &mut dyn MaximumFlowSolver<Flow>)
 where
     Flow: NumAssign + Neg<Output = Flow> + Ord + Copy + FromStr + Zero + Default + FromPrimitive + std::fmt::Debug,
     <Flow as FromStr>::Err: std::error::Error + 'static,
@@ -81,7 +81,7 @@ where
 
     for (name, path, expected) in files {
         let (mut graph, source, sink) = read_dimacs::<Flow>(black_box(path)).unwrap();
-        c.bench_function(format!("name:{}, #nodes:{}, #edges:{}", name, graph.num_nodes(), graph.num_edges()), |b| {
+        g.bench_function(format!("name:{}, #nodes:{}, #edges:{}", name, graph.num_nodes(), graph.num_edges()), |b| {
             b.iter(|| {
                 graph.reset();
                 let actual = solver.solve(&mut graph, source, sink, None).unwrap();
