@@ -30,29 +30,17 @@ where
 
         if !self.make_initial_spanning_tree_structure() {
             // there is no s-t path
-            let status = if self.st.satisfy_constraints() {
-                Status::Optimal
-            } else {
-                Status::Infeasible
-            };
+            let status = if self.st.satisfy_constraints() { Status::Optimal } else { Status::Infeasible };
             graph.remove_artificial_sub_graph(&artificial_nodes, &artificial_edges);
 
-            return if status == Status::Optimal {
-                Ok(graph.minimum_cost())
-            } else {
-                Err(status)
-            };
+            return if status == Status::Optimal { Ok(graph.minimum_cost()) } else { Err(status) };
         }
         debug_assert!(self.st.satisfy_optimality_conditions());
 
         self.pivot.initialize(self.st.num_edges);
         self.run();
 
-        let status = if self.st.satisfy_constraints() {
-            Status::Optimal
-        } else {
-            Status::Infeasible
-        };
+        let status = if self.st.satisfy_constraints() { Status::Optimal } else { Status::Infeasible };
 
         // copy
         graph.excesses = self.st.excesses.to_vec();
@@ -60,6 +48,7 @@ where
             graph.edges[edge_id].flow = self.st.flow[edge_id];
         }
         graph.remove_artificial_sub_graph(&artificial_nodes, &artificial_edges);
+        self.pivot.clear();
 
         if status == Status::Optimal {
             Ok(graph.minimum_cost())

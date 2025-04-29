@@ -5,6 +5,7 @@ use std::ops::Neg;
 pub trait PivotRule<Flow> {
     fn initialize(&mut self, num_edges: usize);
     fn find_entering_edge<F: Fn(usize, &SpanningTreeStructure<Flow>) -> Flow>(&mut self, st: &SpanningTreeStructure<Flow>, calculate_violation: F) -> Option<usize>;
+    fn clear(&mut self);
 }
 
 #[derive(Default)]
@@ -32,6 +33,8 @@ where
 
         entering_edge_id
     }
+
+    fn clear(&mut self) {}
 }
 
 #[derive(Default)]
@@ -61,6 +64,9 @@ where
         }
 
         None
+    }
+    fn clear(&mut self) {
+        self.current_edge_id = 0;
     }
 }
 
@@ -134,6 +140,12 @@ where
         }
 
         entering_edge_id
+    }
+
+    fn clear(&mut self) {
+        self.current_edge_id = 0;
+        self.block_size = 0;
+        self.initialized = false;
     }
 }
 
@@ -270,6 +282,15 @@ where
         self.minor_count = 1;
         entering_edge_id
     }
+
+    fn clear(&mut self) {
+        self.current_edge_id = 0;
+        self.candidate_list_size = 0;
+        self.minor_count_limit = 0;
+        self.minor_count = 0;
+        self.current_size = 0;
+        self.initialized = false;
+    }
 }
 
 #[derive(Default)]
@@ -394,5 +415,13 @@ where
         self.current_size = new_length - 1;
 
         entering_edge_id
+    }
+
+    fn clear(&mut self) {
+        self.current_edge_id = 0;
+        self.block_size = 0;
+        self.head_length = 0;
+        self.current_size = 0;
+        self.initialized = false;
     }
 }

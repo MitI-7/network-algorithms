@@ -41,6 +41,7 @@ where
         }
         graph.remove_artificial_sub_graph(&artificial_nodes, &artificial_edges);
 
+        self.pivot.clear();
         if self.st.satisfy_constraints() {
             Ok(graph.minimum_cost())
         } else {
@@ -124,8 +125,7 @@ where
             EdgeState::Upper => (self.st.to[entering_edge_id], self.st.from[entering_edge_id]),
         };
 
-        let (mut leaving_edge_id, mut mini_delta, mut t2_now_root, mut t2_new_root) =
-            (entering_edge_id, self.st.upper[entering_edge_id], usize::MAX, usize::MAX);
+        let (mut leaving_edge_id, mut mini_delta, mut t2_now_root, mut t2_new_root) = (entering_edge_id, self.st.upper[entering_edge_id], usize::MAX, usize::MAX);
 
         let apex = {
             let (mut u, mut v) = (from, to);
