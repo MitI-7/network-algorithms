@@ -13,7 +13,7 @@ pub mod status;
 pub mod successive_shortest_path;
 
 pub trait MinimumCostFlowSolver<Flow> {
-    fn solve(&mut self, graph: &mut graph::Graph<Flow>) -> Result<Flow, status::Status>;
+    fn solve(&mut self, graph: &mut Graph<Flow>) -> Result<Flow, Status>;
 }
 
 pub use self::cost_scaling_push_relabel::CostScalingPushRelabel;
