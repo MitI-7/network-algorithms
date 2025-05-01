@@ -5,7 +5,7 @@ use std::collections::VecDeque;
 pub struct HopcroftKarp {
     num_left_nodes: usize,
     num_right_nodes: usize,
-    left_match: Box<[usize]>,
+    left_match: Box<[Option<usize>]>,
 
     start: Box<[usize]>,
     to: Box<[usize]>,
@@ -18,10 +18,8 @@ impl HopcroftKarp {
         let mut dist = vec![0_usize; self.num_left_nodes].into_boxed_slice();
         loop {
             dist.fill(0);
-            for &u in self.left_match.iter() {
-                if u != usize::MAX {
-                    dist[u] = usize::MAX;
-                }
+            for &u in self.left_match.iter().flatten() {
+                dist[u] = usize::MAX;
             }
 
             // bfs
@@ -30,16 +28,17 @@ impl HopcroftKarp {
             while let Some(u1) = unmatched_nodes.pop_front() {
                 for i in self.neighbors(u1) {
                     let v = self.to[i];
-                    let u2 = self.left_match[v];
-                    if u2 == usize::MAX {
-                        found = true;
-                        continue;
-                    }
-
-                    // u1 -> v -> u2
-                    if dist[u2] == usize::MAX {
-                        dist[u2] = dist[u1] + 1;
-                        unmatched_nodes.push_back(u2);
+                    match self.left_match[v] {
+                        Some(u2) => {
+                            // u1 -> v -> u2
+                            if dist[u2] == usize::MAX {
+                                dist[u2] = dist[u1] + 1;
+                                unmatched_nodes.push_back(u2);
+                            }
+                        }
+                        None => {
+                            found = true;
+                        }
                     }
                 }
             }
@@ -55,11 +54,7 @@ impl HopcroftKarp {
             }
         }
 
-        self.left_match
-            .iter()
-            .enumerate()
-            .filter_map(|(v, &u)| if u == usize::MAX { None } else { Some((u, v)) })
-            .collect::<Vec<_>>()
+        self.left_match.iter().enumerate().filter_map(|(v, &u)| u.map(|u| (u, v))).collect::<Vec<_>>()
     }
 
     fn preprocess(&mut self, graph: &BipartiteGraph) {
@@ -68,7 +63,7 @@ impl HopcroftKarp {
 
         self.start = vec![0; self.num_left_nodes + 1].into_boxed_slice();
         self.to = (0..graph.edges.len()).map(|_| 0).collect();
-        self.left_match = vec![usize::MAX; self.num_right_nodes].into_boxed_slice();
+        self.left_match = vec![None; self.num_right_nodes].into_boxed_slice();
 
         // make csr format
         let mut degree_u = vec![0; self.num_left_nodes];
@@ -88,7 +83,7 @@ impl HopcroftKarp {
             count[e.u] += 1;
         }
 
-        // make initial matching
+        // make initial matching(greedy)
         let mut deg_u: Vec<_> = (0..self.num_left_nodes).map(|u| (degree_u[u], u)).collect();
         deg_u.sort_unstable();
 
@@ -96,12 +91,12 @@ impl HopcroftKarp {
             let mut best_v = usize::MAX;
             for i in self.neighbors(u) {
                 let v = self.to[i];
-                if self.left_match[v] == usize::MAX && (best_v == usize::MAX || degree_v[v] < degree_v[best_v]) {
+                if self.left_match[v].is_none() && (best_v == usize::MAX || degree_v[v] < degree_v[best_v]) {
                     best_v = v;
                 }
             }
             if best_v != usize::MAX {
-                self.left_match[best_v] = u;
+                self.left_match[best_v] = Some(u);
             }
         }
     }
@@ -112,9 +107,9 @@ impl HopcroftKarp {
         for i in self.neighbors(u) {
             let v = self.to[i];
             let u2 = self.left_match[v];
-            if u2 == usize::MAX || (dist[u2] == now_dist + 1 && self.dfs(u2, dist)) {
+            if u2.is_none() || (dist[u2.unwrap()] == now_dist + 1 && self.dfs(u2.unwrap(), dist)) {
                 // found augmenting path
-                self.left_match[v] = u;
+                self.left_match[v] = Some(u);
                 return true;
             }
         }
@@ -122,7 +117,7 @@ impl HopcroftKarp {
         false
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn neighbors(&self, u: usize) -> std::ops::Range<usize> {
         self.start[u]..self.start[u + 1]
     }
