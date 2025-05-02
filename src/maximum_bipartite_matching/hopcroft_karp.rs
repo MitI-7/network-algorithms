@@ -23,26 +23,7 @@ impl HopcroftKarp {
             }
 
             // bfs
-            let mut found = false;
-            let mut unmatched_nodes = (0..self.num_left_nodes).filter(|&u| dist[u] == 0).collect::<VecDeque<_>>();
-            while let Some(u1) = unmatched_nodes.pop_front() {
-                for i in self.neighbors(u1) {
-                    let v = self.to[i];
-                    match self.left_match[v] {
-                        Some(u2) => {
-                            // u1 -> v -> u2
-                            if dist[u2] == usize::MAX {
-                                dist[u2] = dist[u1] + 1;
-                                unmatched_nodes.push_back(u2);
-                            }
-                        }
-                        None => {
-                            found = true;
-                        }
-                    }
-                }
-            }
-            if !found {
+            if !self.bfs(&mut dist) {
                 break;
             }
 
@@ -99,6 +80,29 @@ impl HopcroftKarp {
                 self.left_match[best_v] = Some(u);
             }
         }
+    }
+
+    fn bfs(&mut self, dist: &mut [usize]) -> bool {
+        let mut found = false;
+        let mut unmatched_nodes = (0..self.num_left_nodes).filter(|&u| dist[u] == 0).collect::<VecDeque<_>>();
+        while let Some(u1) = unmatched_nodes.pop_front() {
+            for i in self.neighbors(u1) {
+                let v = self.to[i];
+                match self.left_match[v] {
+                    Some(u2) => {
+                        // u1 -> v -> u2
+                        if dist[u2] == usize::MAX {
+                            dist[u2] = dist[u1] + 1;
+                            unmatched_nodes.push_back(u2);
+                        }
+                    }
+                    None => {
+                        found = true;
+                    }
+                }
+            }
+        }
+        found
     }
 
     fn dfs(&mut self, u: usize, dist: &mut [usize]) -> bool {
