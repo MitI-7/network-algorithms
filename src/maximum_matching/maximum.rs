@@ -12,12 +12,12 @@ enum NodeType {
 pub struct Blossom {
     mate: Box<[Option<usize>]>,
     parent: Box<[usize]>,
-    base: Box<[usize]>,
+    label: Box<[usize]>,
     node_type: Box<[NodeType]>,
     even_nodes: VecDeque<usize>,
     in_queue: Box<[bool]>,
-    book: Box<[usize]>,
-    book_mark: usize,
+    time_stamp: Box<[usize]>,
+    time: usize,
 
     // csr
     start: Box<[usize]>,
@@ -25,15 +25,36 @@ pub struct Blossom {
 }
 
 impl Blossom {
-    pub fn solve(&mut self, graph: &Graph) -> usize {
+    pub fn solve(&mut self, graph: &Graph) -> Vec<usize> {
+        self.preprocess(graph);
+
+        for root in 0..graph.num_nodes() {
+            if self.mate[root].is_some() {
+                continue;
+            }
+            if let Some(u) = self.find_augmenting_path(root) {
+                self.augmentation(root, u);
+            }
+        }
+
+        let mut matching = Vec::new();
+        for (i, e) in graph.edges.iter().enumerate() {
+            if self.mate[e.u] == Some(e.v) {
+                matching.push(i);
+            }
+        }
+        matching
+    }
+
+    fn preprocess(&mut self, graph: &Graph) {
         let num_nodes = graph.num_nodes();
 
         self.mate = vec![None; num_nodes].into_boxed_slice();
-        self.parent = vec![0; num_nodes].into_boxed_slice();
-        self.base = (0..num_nodes).collect();
+        self.parent = vec![usize::MAX; num_nodes].into_boxed_slice();
+        self.label = (0..num_nodes).collect();
         self.node_type = vec![NodeType::Unvisited; num_nodes].into_boxed_slice();
         self.in_queue = vec![false; num_nodes].into_boxed_slice();
-        self.book = vec![0; num_nodes].into_boxed_slice();
+        self.time_stamp = vec![0; num_nodes].into_boxed_slice();
 
         self.start = vec![0; num_nodes + 1].into_boxed_slice();
         self.to = (0..graph.num_edges() * 2).map(|_| 0).collect();
@@ -57,26 +78,17 @@ impl Blossom {
             self.to[self.start[e.v] + count[e.v]] = e.u;
             count[e.v] += 1;
         }
-
-        let mut num_matches = 0;
-        for u in 0..num_nodes {
-            if self.mate[u].is_none() && self.find_augmenting_path(u) {
-                num_matches += 1;
-            }
-        }
-
-        num_matches
     }
 
-    fn find_augmenting_path(&mut self, s: usize) -> bool {
-        self.base.iter_mut().enumerate().for_each(|(i, x)| *x = i);
+    fn find_augmenting_path(&mut self, root: usize) -> Option<usize> {
+        self.label.iter_mut().enumerate().for_each(|(i, x)| *x = i);
         self.node_type.fill(NodeType::Unvisited);
         self.in_queue.fill(false);
         self.even_nodes.clear();
 
-        self.even_nodes.push_back(s);
-        self.node_type[s] = NodeType::Even;
-        self.in_queue[s] = true;
+        self.even_nodes.push_back(root);
+        self.node_type[root] = NodeType::Even;
+        self.in_queue[root] = true;
         while let Some(u) = self.even_nodes.pop_front() {
             assert_eq!(self.node_type[u], NodeType::Even);
 
@@ -98,17 +110,16 @@ impl Blossom {
                             }
                             None => {
                                 // find an augmenting path
-                                self.augment(v);
-                                return true;
+                                return Some(v);
                             }
                         }
                     }
                     NodeType::Even => {
                         // find blossom
-                        if self.base[u] != self.base[v] {
-                            let lca = self.get_lca(u, v);
-                            self.contract(u, v, lca);
-                            self.contract(v, u, lca);
+                        if self.label[u] != self.label[v] {
+                            let base = self.get_base(u, v);
+                            self.contract(u, v, base);
+                            self.contract(v, u, base);
                         }
                     }
                     NodeType::Odd => continue,
@@ -116,50 +127,56 @@ impl Blossom {
             }
         }
 
-        false
+        None
     }
 
-    fn augment(&mut self, mut u: usize) {
-        while let Some(p) = Some(self.parent[u]) {
-            let prev = self.mate[p];
-            self.mate[p] = Some(u);
-            self.mate[u] = Some(p);
-            if let Some(x) = prev {
-                u = x;
-            } else {
+    fn augmentation(&mut self, root: usize, end: usize) {
+        let mut now = end;
+        while now != root {
+            let p = self.parent[now];
+            let next = self.mate[p];
+            (self.mate[p], self.mate[now]) = (Some(now), Some(p));
+
+            if p == root {
                 break;
             }
+            now = next.unwrap();
         }
     }
 
-    fn get_lca(&mut self, mut u: usize, mut v: usize) -> usize {
-        self.book_mark += 1;
+    fn get_base(&mut self, mut u: usize, mut v: usize) -> usize {
+        self.time += 1;
         loop {
             if u != usize::MAX {
-                // find lca
-                if self.book[u] == self.book_mark {
+                // find base
+                if self.time_stamp[u] == self.time {
                     return u;
                 }
-                self.book[u] = self.book_mark;
+                assert_ne!(self.time_stamp[u], self.time);
+                self.time_stamp[u] = self.time;
 
-                u = if let Some(m) = self.mate[u] { self.base[self.parent[m]] } else { usize::MAX }
+                u = if let Some(x) = self.mate[u] { self.label[self.parent[x]] } else { usize::MAX }
             }
             std::mem::swap(&mut u, &mut v);
         }
     }
 
-    fn contract(&mut self, mut u: usize, mut v: usize, lca: usize) {
-        while self.base[u] != lca {
-            self.parent[u] = v;
-            v = self.mate[u].unwrap();
-            if self.node_type[v] == NodeType::Odd {
-                self.node_type[v] = NodeType::Even;
-                self.even_nodes.push_back(v);
-                self.in_queue[v] = true;
+    fn contract(&mut self, entry: usize, mut bridge_even: usize, base: usize) {
+        let mut now = entry;
+        while self.label[now] != base {
+            self.parent[now] = bridge_even;
+
+            bridge_even = self.mate[now].unwrap();
+            if self.node_type[bridge_even] == NodeType::Odd {
+                self.node_type[bridge_even] = NodeType::Even;
+                assert!(!self.in_queue[bridge_even]);
+                self.even_nodes.push_back(bridge_even);
+                self.in_queue[bridge_even] = true;
             }
-            self.base[u] = lca;
-            self.base[v] = lca;
-            u = self.parent[v];
+            self.label[now] = base;
+            self.label[bridge_even] = base;
+
+            now = self.parent[bridge_even];
         }
     }
 

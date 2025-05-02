@@ -24,6 +24,10 @@ fn main() {
         g.add_undirected_edge(u, v);
     }
 
-    let count = Blossom::default().solve(&g);
-    println!("{count}");
+    let matching = Blossom::default().solve(&g);
+    println!("{}", matching.len());
+    for edge_id in matching {
+        let edge = g.get_edge(edge_id).unwrap();
+        println!("{} {}", edge.u, edge.v);
+    }
 }

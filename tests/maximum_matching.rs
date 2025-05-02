@@ -19,6 +19,14 @@ fn maximum_matching(#[files("tests/maximum_matching/*/*.txt")] input_file_path: 
         }
     });
 
-    let actual = Blossom::default().solve(&graph);
-    assert_eq!(actual, expected);
+    let matching = Blossom::default().solve(&graph);
+    assert_eq!(matching.len(), expected);
+
+    let mut used = vec![false; graph.num_nodes()].into_boxed_slice();
+    for edge_id in matching {
+        let e = graph.get_edge(edge_id).unwrap();
+        assert!(!used[e.u] && !used[e.v]);
+        used[e.u] = true;
+        used[e.v] = true;
+    }
 }
