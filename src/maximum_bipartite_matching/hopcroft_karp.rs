@@ -5,20 +5,42 @@ use std::collections::VecDeque;
 pub struct HopcroftKarp {
     num_left_nodes: usize,
     num_right_nodes: usize,
-    left_match: Box<[Option<usize>]>,
+    mate: Box<[Option<usize>]>, // mate[right_node] = Some(left_node)
 
     start: Box<[usize]>,
     to: Box<[usize]>,
+
+    start_with_initial_matching: bool,
+    initial_matching: Vec<usize>,
 }
 
 impl HopcroftKarp {
+    pub fn new_with_matching(matching: &[usize]) -> Self {
+        Self { initial_matching: matching.to_vec(), ..Self::default() }
+    }
+
+    pub fn new_with_greedy() -> Self {
+        Self { start_with_initial_matching: true, ..Self::default() }
+    }
+
     pub fn solve(&mut self, graph: &BipartiteGraph) -> Vec<(usize, usize)> {
         self.preprocess(graph);
+
+        if self.start_with_initial_matching {
+            self.initial_solution(&graph.degree_left, &graph.degree_right);
+        }
+
+        if !self.initial_matching.is_empty() {
+            for &edge_id in self.initial_matching.iter() {
+                let edge = &graph.edges[edge_id];
+                self.mate[edge.v] = Some(edge.u);
+            }
+        }
 
         let mut dist = vec![0_usize; self.num_left_nodes].into_boxed_slice();
         loop {
             dist.fill(0);
-            for &u in self.left_match.iter().flatten() {
+            for &u in self.mate.iter().flatten() {
                 dist[u] = usize::MAX;
             }
 
@@ -35,7 +57,7 @@ impl HopcroftKarp {
             }
         }
 
-        self.left_match.iter().enumerate().filter_map(|(v, &u)| u.map(|u| (u, v))).collect::<Vec<_>>()
+        self.mate.iter().enumerate().filter_map(|(v, &u)| u.map(|u| (u, v))).collect::<Vec<_>>()
     }
 
     fn preprocess(&mut self, graph: &BipartiteGraph) {
@@ -44,18 +66,11 @@ impl HopcroftKarp {
 
         self.start = vec![0; self.num_left_nodes + 1].into_boxed_slice();
         self.to = (0..graph.edges.len()).map(|_| 0).collect();
-        self.left_match = vec![None; self.num_right_nodes].into_boxed_slice();
+        self.mate = vec![None; self.num_right_nodes].into_boxed_slice();
 
         // make csr format
-        let mut degree_u = vec![0; self.num_left_nodes];
-        let mut degree_v = vec![0; self.num_right_nodes];
-        for e in graph.edges.iter() {
-            degree_u[e.u] += 1;
-            degree_v[e.v] += 1;
-        }
-
         for i in 1..=self.num_left_nodes {
-            self.start[i] += self.start[i - 1] + degree_u[i - 1];
+            self.start[i] += self.start[i - 1] + graph.degree_left[i - 1];
         }
 
         let mut count = vec![0; self.num_left_nodes].into_boxed_slice();
@@ -63,21 +78,24 @@ impl HopcroftKarp {
             self.to[self.start[e.u] + count[e.u]] = e.v;
             count[e.u] += 1;
         }
+    }
 
-        // make initial matching(greedy)
+    // make initial matching(greedy)
+    fn initial_solution(&mut self, degree_u: &[usize], degree_v: &[usize]) {
         let mut deg_u: Vec<_> = (0..self.num_left_nodes).map(|u| (degree_u[u], u)).collect();
         deg_u.sort_unstable();
 
         for (_, u) in deg_u {
-            let mut best_v = usize::MAX;
+            let mut best_v = None;
             for i in self.neighbors(u) {
                 let v = self.to[i];
-                if self.left_match[v].is_none() && (best_v == usize::MAX || degree_v[v] < degree_v[best_v]) {
-                    best_v = v;
+                if self.mate[v].is_none() && (best_v.is_none() || degree_v[v] < degree_v[best_v.unwrap()]) {
+                    best_v = Some(v);
                 }
             }
-            if best_v != usize::MAX {
-                self.left_match[best_v] = Some(u);
+
+            if let Some(best_v) = best_v {
+                self.mate[best_v] = Some(u);
             }
         }
     }
@@ -88,7 +106,7 @@ impl HopcroftKarp {
         while let Some(u1) = unmatched_nodes.pop_front() {
             for i in self.neighbors(u1) {
                 let v = self.to[i];
-                match self.left_match[v] {
+                match self.mate[v] {
                     Some(u2) => {
                         // u1 -> v -> u2
                         if dist[u2] == usize::MAX {
@@ -110,10 +128,10 @@ impl HopcroftKarp {
 
         for i in self.neighbors(u) {
             let v = self.to[i];
-            let u2 = self.left_match[v];
+            let u2 = self.mate[v];
             if u2.is_none() || (dist[u2.unwrap()] == now_dist + 1 && self.dfs(u2.unwrap(), dist)) {
-                // found augmenting path
-                self.left_match[v] = Some(u);
+                // found an augmenting path
+                self.mate[v] = Some(u);
                 return true;
             }
         }

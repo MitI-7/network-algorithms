@@ -150,6 +150,7 @@ impl Blossom {
             if u != usize::MAX {
                 // find base
                 if self.time_stamp[u] == self.time {
+                    assert_eq!(self.labels[u], NodeType::Even);
                     return u;
                 }
                 assert_ne!(self.time_stamp[u], self.time);
