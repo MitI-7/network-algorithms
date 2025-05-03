@@ -23,6 +23,14 @@ fn bipartite_matching(#[files("tests/maximum_bipartite_matching/*/*.txt")] input
         }
     });
 
-    let ans = HopcroftKarp::default().solve(&graph);
-    assert_eq!(ans.len(), expected);
+    let matching = HopcroftKarp::default().solve(&graph);
+    assert_eq!(matching.len(), expected);
+
+    let (mut used_u, mut used_v) = (vec![false; num_left_nodes].into_boxed_slice(), vec![false; num_right_nodes].into_boxed_slice());
+    for edge_id in matching {
+        let edge = graph.get_edge(edge_id).unwrap();
+        assert!(!used_u[edge.u] && !used_v[edge.v]);
+        used_u[edge.u] = true;
+        used_v[edge.v] = true;
+    }
 }

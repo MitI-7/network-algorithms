@@ -23,7 +23,7 @@ impl HopcroftKarp {
         Self { start_with_initial_matching: true, ..Self::default() }
     }
 
-    pub fn solve(&mut self, graph: &BipartiteGraph) -> Vec<(usize, usize)> {
+    pub fn solve(&mut self, graph: &BipartiteGraph) -> Vec<usize> {
         self.preprocess(graph);
 
         if self.start_with_initial_matching {
@@ -57,7 +57,22 @@ impl HopcroftKarp {
             }
         }
 
-        self.mate.iter().enumerate().filter_map(|(v, &u)| u.map(|u| (u, v))).collect::<Vec<_>>()
+        let mut matching = Vec::new();
+        let (mut used_u, mut used_v) = (vec![false; self.num_left_nodes].into_boxed_slice(), vec![false; self.num_right_nodes].into_boxed_slice());
+        for (edge_id, edge) in graph.edges.iter().enumerate() {
+            // for multiple edge
+            if used_u[edge.u] || used_v[edge.v] {
+                continue;
+            }
+
+            if self.mate[edge.v] == Some(edge.u) {
+                matching.push(edge_id);
+                used_u[edge.u] = true;
+                used_v[edge.v] = true;
+            }
+        }
+
+        matching
     }
 
     fn preprocess(&mut self, graph: &BipartiteGraph) {
@@ -74,9 +89,9 @@ impl HopcroftKarp {
         }
 
         let mut count = vec![0; self.num_left_nodes].into_boxed_slice();
-        for e in graph.edges.iter() {
-            self.to[self.start[e.u] + count[e.u]] = e.v;
-            count[e.u] += 1;
+        for edge in graph.edges.iter() {
+            self.to[self.start[edge.u] + count[edge.u]] = edge.v;
+            count[edge.u] += 1;
         }
     }
 
