@@ -1,5 +1,14 @@
-use crate::data_structures::simple_queue::SimpleQueue;
+use crate::data_structures::{BitVector, SimpleQueue};
 use crate::maximum_bipartite_matching::bipartite_graph::BipartiteGraph;
+
+#[derive(Default)]
+pub enum WarmStart {
+    #[default]
+    None,
+    Greedy,
+    KarpSipser,
+    UserDefined(Vec<usize>),
+}
 
 #[derive(Default)]
 pub struct HopcroftKarp {
@@ -8,34 +17,41 @@ pub struct HopcroftKarp {
     mate: Box<[Option<usize>]>, // mate[right_node] = Some(left_node)
     distances: Box<[usize]>,
 
+    // csr format(left -> right)
     start: Box<[usize]>,
     to: Box<[usize]>,
 
-    start_with_initial_matching: bool,
-    initial_matching: Vec<usize>,
+    warm_start: WarmStart,
     queue: SimpleQueue<usize>,
 }
 
 impl HopcroftKarp {
-    pub fn new_with_matching(matching: &[usize]) -> Self {
-        Self { initial_matching: matching.to_vec(), ..Self::default() }
+    pub fn set_warm_start_user(mut self, matching: &[usize]) -> Self {
+        self.warm_start = WarmStart::UserDefined(matching.to_vec());
+        self
     }
 
-    pub fn new_with_greedy() -> Self {
-        Self { start_with_initial_matching: true, ..Self::default() }
+    pub fn set_warm_start(mut self, warm_start: WarmStart) -> Self {
+        self.warm_start = warm_start;
+        self
     }
 
     pub fn solve(&mut self, graph: &BipartiteGraph) -> Vec<usize> {
         self.preprocess(graph);
 
-        if self.start_with_initial_matching {
-            self.initial_solution(&graph.degree_left, &graph.degree_right);
-        }
-
-        if !self.initial_matching.is_empty() {
-            for &edge_id in self.initial_matching.iter() {
-                let edge = &graph.edges[edge_id];
-                self.mate[edge.v] = Some(edge.u);
+        match &self.warm_start {
+            WarmStart::None => {}
+            WarmStart::Greedy => {
+                self.initial_solution_greedy(&graph.degree_left, &graph.degree_right);
+            }
+            WarmStart::KarpSipser => {
+                self.initial_solution_karp_sipser(graph);
+            }
+            WarmStart::UserDefined(initial_matching) => {
+                for &edge_id in initial_matching.iter() {
+                    let edge = &graph.edges[edge_id];
+                    self.mate[edge.v] = Some(edge.u);
+                }
             }
         }
 
@@ -92,7 +108,7 @@ impl HopcroftKarp {
     }
 
     // make initial matching(greedy)
-    fn initial_solution(&mut self, degree_u: &[usize], degree_v: &[usize]) {
+    fn initial_solution_greedy(&mut self, degree_u: &[usize], degree_v: &[usize]) {
         let mut deg_u: Vec<_> = (0..self.num_left_nodes).map(|u| (degree_u[u], u)).collect();
         deg_u.sort_unstable();
 
@@ -101,6 +117,105 @@ impl HopcroftKarp {
             for i in self.neighbors(u) {
                 let v = self.to[i];
                 if self.mate[v].is_none() && (best_v.is_none() || degree_v[v] < degree_v[best_v.unwrap()]) {
+                    best_v = Some(v);
+                }
+            }
+
+            if let Some(best_v) = best_v {
+                self.mate[best_v] = Some(u);
+            }
+        }
+    }
+
+    // O(m)
+    fn initial_solution_karp_sipser(&mut self, graph: &BipartiteGraph) {
+        // make csr format(right -> left)
+        let mut start_r = vec![0; self.num_right_nodes + 1].into_boxed_slice();
+        let mut to_r: Box<[usize]> = (0..graph.edges.len()).map(|_| 0).collect();
+
+        for v in 1..=self.num_right_nodes {
+            start_r[v] += start_r[v - 1] + graph.degree_right[v - 1];
+        }
+
+        let mut count = vec![0; self.num_right_nodes].into_boxed_slice();
+        for edge in graph.edges.iter() {
+            to_r[start_r[edge.v] + count[edge.v]] = edge.u;
+            count[edge.v] += 1;
+        }
+
+        let mut degree_left = graph.degree_left.clone();
+        let mut degree_right = graph.degree_right.clone();
+        let mut used_left = BitVector::new(self.num_left_nodes);
+        let mut used_right = BitVector::new(self.num_right_nodes);
+
+        let mut que = SimpleQueue::with_capacity(self.num_left_nodes + self.num_right_nodes);
+        let iter_left = degree_left.iter().enumerate().filter_map(|(u, &d)| (d == 1).then_some(u));
+        let iter_right = degree_right.iter().enumerate().filter_map(|(v, &d)| (d == 1).then_some(self.num_left_nodes + v));
+        que.extend(iter_left.chain(iter_right));
+
+        // phase-1
+        while let Some(node_id) = que.pop() {
+            if node_id < self.num_left_nodes {
+                let u = node_id;
+                if used_left.get(u) || degree_left[u] != 1 {
+                    continue;
+                }
+
+                let v = match self.neighbors(u).find(|&i| !used_right.get(self.to[i])) {
+                    Some(i) => self.to[i],
+                    None => continue,
+                };
+
+                self.mate[v] = Some(u);
+                used_left.set(u, true);
+                used_right.set(v, true);
+
+                for i in start_r[v]..start_r[v + 1] {
+                    let u2 = to_r[i];
+                    if !used_left.get(u2) {
+                        degree_left[u2] -= 1;
+                        if degree_left[u2] == 1 {
+                            que.push(u2);
+                        }
+                    }
+                }
+            } else {
+                let v = node_id - self.num_left_nodes;
+                if used_right.get(v) || degree_right[v] != 1 {
+                    continue;
+                }
+
+                let u = match (start_r[v]..start_r[v + 1]).find(|&i| !used_left.get(to_r[i])) {
+                    Some(i) => to_r[i],
+                    None => continue,
+                };
+
+                self.mate[v] = Some(u);
+                used_left.set(u, true);
+                used_right.set(v, true);
+
+                for i in self.neighbors(u) {
+                    let v2 = self.to[i];
+                    if !used_right.get(v2) {
+                        degree_right[v2] -= 1;
+                        if degree_right[v2] == 1 {
+                            que.push(self.num_left_nodes + v2);
+                        }
+                    }
+                }
+            }
+        }
+
+        // phase-2 greedy
+        let mut nodes: Vec<_> = (0..self.num_left_nodes).filter(|&u| !used_left.get(u)).collect();
+        nodes.sort_unstable_by_key(|&u| degree_left[u]);
+
+        for u in nodes {
+            assert!(!used_left.get(u));
+            let mut best_v = None;
+            for i in self.neighbors(u) {
+                let v = self.to[i];
+                if self.mate[v].is_none() && (best_v.is_none() || degree_right[v] < degree_right[best_v.unwrap()]) {
                     best_v = Some(v);
                 }
             }

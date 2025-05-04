@@ -50,3 +50,9 @@ impl<T> SimpleQueue<T> {
         self.head = 0;
     }
 }
+
+impl<T> Extend<T> for SimpleQueue<T> {
+    fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
+        self.data.extend(iter);
+    }
+}

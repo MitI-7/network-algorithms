@@ -1,5 +1,4 @@
-use network_algorithms::maximum_bipartite_matching::bipartite_graph::BipartiteGraph;
-use network_algorithms::maximum_bipartite_matching::hopcroft_karp::HopcroftKarp;
+use network_algorithms::maximum_bipartite_matching::{BipartiteGraph, HopcroftKarp, WarmStart};
 use rstest::rstest;
 use std::fs::read_to_string;
 use std::path::PathBuf;
@@ -23,7 +22,7 @@ fn bipartite_matching(#[files("tests/maximum_bipartite_matching/*/*.txt")] input
         }
     });
 
-    let matching = HopcroftKarp::default().solve(&graph);
+    let matching = HopcroftKarp::default().set_warm_start(WarmStart::KarpSipser).solve(&graph);
     assert_eq!(matching.len(), expected);
 
     let (mut used_u, mut used_v) = (vec![false; num_left_nodes].into_boxed_slice(), vec![false; num_right_nodes].into_boxed_slice());
