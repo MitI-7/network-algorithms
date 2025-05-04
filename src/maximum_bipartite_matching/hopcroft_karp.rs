@@ -6,6 +6,7 @@ pub struct HopcroftKarp {
     num_left_nodes: usize,
     num_right_nodes: usize,
     mate: Box<[Option<usize>]>, // mate[right_node] = Some(left_node)
+    distances: Box<[usize]>,
 
     start: Box<[usize]>,
     to: Box<[usize]>,
@@ -37,22 +38,16 @@ impl HopcroftKarp {
             }
         }
 
-        let mut dist = vec![0_usize; self.num_left_nodes].into_boxed_slice();
         loop {
-            dist.fill(0);
-            for &u in self.mate.iter().flatten() {
-                dist[u] = usize::MAX;
-            }
-
             // bfs
-            if !self.bfs(&mut dist) {
+            if !self.update_distances() {
                 break;
             }
 
             // dfs
             for u in 0..self.num_left_nodes {
-                if dist[u] == 0 {
-                    self.dfs(u, &mut dist);
+                if self.distances[u] == 0 {
+                    self.dfs(u);
                 }
             }
         }
@@ -82,6 +77,7 @@ impl HopcroftKarp {
         self.start = vec![0; self.num_left_nodes + 1].into_boxed_slice();
         self.to = (0..graph.edges.len()).map(|_| 0).collect();
         self.mate = vec![None; self.num_right_nodes].into_boxed_slice();
+        self.distances = vec![0_usize; self.num_left_nodes].into_boxed_slice();
 
         // make csr format
         for i in 1..=self.num_left_nodes {
@@ -115,21 +111,28 @@ impl HopcroftKarp {
         }
     }
 
-    fn bfs(&mut self, dist: &mut [usize]) -> bool {
+    fn update_distances(&mut self) -> bool {
+        // initialize
+        self.distances.fill(0);
+        for &u in self.mate.iter().flatten() {
+            self.distances[u] = usize::MAX;
+        }
+
         let mut found = false;
-        let mut unmatched_nodes = (0..self.num_left_nodes).filter(|&u| dist[u] == 0).collect::<VecDeque<_>>();
+        let mut unmatched_nodes = (0..self.num_left_nodes).filter(|&u| self.distances[u] == 0).collect::<VecDeque<_>>();
         while let Some(u1) = unmatched_nodes.pop_front() {
             for i in self.neighbors(u1) {
                 let v = self.to[i];
                 match self.mate[v] {
                     Some(u2) => {
                         // u1 -> v -> u2
-                        if dist[u2] == usize::MAX {
-                            dist[u2] = dist[u1] + 1;
+                        if self.distances[u2] == usize::MAX {
+                            self.distances[u2] = self.distances[u1] + 1;
                             unmatched_nodes.push_back(u2);
                         }
                     }
                     None => {
+                        // find an augmenting path
                         found = true;
                     }
                 }
@@ -138,13 +141,13 @@ impl HopcroftKarp {
         found
     }
 
-    fn dfs(&mut self, u: usize, dist: &mut [usize]) -> bool {
-        let now_dist = std::mem::replace(&mut dist[u], usize::MAX); // use node u
+    fn dfs(&mut self, u: usize) -> bool {
+        let now_dist = std::mem::replace(&mut self.distances[u], usize::MAX); // use node u
 
         for i in self.neighbors(u) {
             let v = self.to[i];
             let u2 = self.mate[v];
-            if u2.is_none() || (dist[u2.unwrap()] == now_dist + 1 && self.dfs(u2.unwrap(), dist)) {
+            if u2.is_none() || (self.distances[u2.unwrap()] == now_dist + 1 && self.dfs(u2.unwrap())) {
                 // found an augmenting path
                 self.mate[v] = Some(u);
                 return true;
