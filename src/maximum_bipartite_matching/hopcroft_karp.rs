@@ -1,5 +1,5 @@
+use crate::data_structures::simple_queue::SimpleQueue;
 use crate::maximum_bipartite_matching::bipartite_graph::BipartiteGraph;
-use std::collections::VecDeque;
 
 #[derive(Default)]
 pub struct HopcroftKarp {
@@ -13,6 +13,7 @@ pub struct HopcroftKarp {
 
     start_with_initial_matching: bool,
     initial_matching: Vec<usize>,
+    queue: SimpleQueue<usize>,
 }
 
 impl HopcroftKarp {
@@ -39,12 +40,10 @@ impl HopcroftKarp {
         }
 
         loop {
-            // bfs
             if !self.update_distances() {
                 break;
             }
 
-            // dfs
             for u in 0..self.num_left_nodes {
                 if self.distances[u] == 0 {
                     self.dfs(u);
@@ -78,10 +77,11 @@ impl HopcroftKarp {
         self.to = (0..graph.edges.len()).map(|_| 0).collect();
         self.mate = vec![None; self.num_right_nodes].into_boxed_slice();
         self.distances = vec![0_usize; self.num_left_nodes].into_boxed_slice();
+        self.queue = SimpleQueue::with_capacity(self.num_left_nodes);
 
         // make csr format
-        for i in 1..=self.num_left_nodes {
-            self.start[i] += self.start[i - 1] + graph.degree_left[i - 1];
+        for u in 1..=self.num_left_nodes {
+            self.start[u] += self.start[u - 1] + graph.degree_left[u - 1];
         }
 
         let mut count = vec![0; self.num_left_nodes].into_boxed_slice();
@@ -118,9 +118,15 @@ impl HopcroftKarp {
             self.distances[u] = usize::MAX;
         }
 
+        self.queue.reset();
+        for (u, &d) in self.distances.iter().enumerate() {
+            if d == 0 {
+                self.queue.push(u);
+            }
+        }
+
         let mut found = false;
-        let mut unmatched_nodes = (0..self.num_left_nodes).filter(|&u| self.distances[u] == 0).collect::<VecDeque<_>>();
-        while let Some(u1) = unmatched_nodes.pop_front() {
+        while let Some(u1) = self.queue.pop() {
             for i in self.neighbors(u1) {
                 let v = self.to[i];
                 match self.mate[v] {
@@ -128,7 +134,7 @@ impl HopcroftKarp {
                         // u1 -> v -> u2
                         if self.distances[u2] == usize::MAX {
                             self.distances[u2] = self.distances[u1] + 1;
-                            unmatched_nodes.push_back(u2);
+                            self.queue.push(u2);
                         }
                     }
                     None => {
@@ -153,7 +159,6 @@ impl HopcroftKarp {
                 return true;
             }
         }
-
         false
     }
 
