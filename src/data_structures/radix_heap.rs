@@ -1,4 +1,3 @@
-use num_traits::{FromPrimitive, NumAssign, PrimInt};
 use std::mem;
 
 pub struct RadixHeap<K, V> {
@@ -14,11 +13,11 @@ struct Bucket<K, V> {
 #[allow(dead_code)]
 impl<K, V> RadixHeap<K, V>
 where
-    K: PrimInt + FromPrimitive + NumAssign,
+    K: RadixKey,
 {
     // c: 同時にヒープに入るキーの差の最大値
     pub fn new(c: K) -> Self {
-        assert!(c >= K::zero());
+        assert!(c >= K::ZERO);
         let bit_width = size_of::<K>() * 8;
         let num_buckets = bit_width - c.leading_zeros() as usize + 3;
         Self {
@@ -42,12 +41,7 @@ where
 
     // O(log C)
     pub fn push(&mut self, key: K, value: V) {
-        let bucket = self
-            .buckets
-            .iter_mut()
-            .rev()
-            .find(|b| b.start <= key)
-            .expect("monotonicity was violated.");
+        let bucket = self.buckets.iter_mut().rev().find(|b| b.start <= key).expect("monotonicity was violated.");
         bucket.data.push((key, value));
         self.len += 1;
     }
@@ -73,7 +67,7 @@ where
         let min_key = data.iter().map(|&(key, _)| key).min().unwrap();
 
         // set bucket start
-        let end = self.buckets.get(first_non_empty_bucket_idx + 1).map_or(K::max_value(), |b| b.start);
+        let end = self.buckets.get(first_non_empty_bucket_idx + 1).map_or(K::MAX, |b| b.start);
         self.buckets[..=first_non_empty_bucket_idx].iter_mut().enumerate().for_each(|(i, b)| {
             b.start = end.min(min_key + Self::size_sum(i));
         });
@@ -92,11 +86,36 @@ where
 
     fn size_sum(i: usize) -> K {
         match i {
-            0 => K::zero(),
-            _ => K::one() << (i - 1),
+            0 => K::ZERO,
+            _ => K::ONE << (i - 1),
         }
     }
 }
+
+pub trait RadixKey: Copy + Ord + core::ops::Add<Output = Self> + core::ops::Shl<usize, Output = Self> {
+    const ZERO: Self;
+    const ONE: Self;
+    const MAX: Self;
+    const BITS: usize;
+
+    fn leading_zeros(self) -> u32;
+}
+
+macro_rules! impl_radix_key {
+    ($($t:ty),*) => {$(
+        impl RadixKey for $t {
+            const ZERO: Self = 0;
+            const ONE:  Self = 1;
+            const MAX:  Self = <$t>::MAX;
+            const BITS: usize = mem::size_of::<Self>() * 8;
+
+            #[inline]
+            fn leading_zeros(self) -> u32 { <$t>::leading_zeros(self) }
+        }
+    )*};
+}
+
+impl_radix_key!(u8, u16, u32, u64, usize, i8, i16, i32, i64, isize);
 
 #[cfg(test)]
 mod tests {
