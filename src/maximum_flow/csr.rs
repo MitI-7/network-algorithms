@@ -1,5 +1,5 @@
 use crate::maximum_flow::graph::Graph;
-use num_traits::NumAssign;
+use crate::maximum_flow::FlowNum;
 use std::collections::VecDeque;
 
 #[derive(Default)]
@@ -21,7 +21,7 @@ pub struct CSR<Flow> {
 
 impl<Flow> CSR<Flow>
 where
-    Flow: NumAssign + Ord + Copy,
+    Flow: FlowNum,
 {
     pub fn build(&mut self, graph: &mut Graph<Flow>) {
         self.num_nodes = graph.num_nodes();

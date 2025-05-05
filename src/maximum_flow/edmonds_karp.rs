@@ -1,8 +1,8 @@
 use crate::maximum_flow::csr::CSR;
 use crate::maximum_flow::graph::Graph;
 use crate::maximum_flow::status::Status;
+use crate::maximum_flow::FlowNum;
 use crate::maximum_flow::MaximumFlowSolver;
-use num_traits::NumAssign;
 use std::collections::VecDeque;
 
 #[derive(Default)]
@@ -12,7 +12,7 @@ pub struct EdmondsKarp<Flow> {
 
 impl<Flow> MaximumFlowSolver<Flow> for EdmondsKarp<Flow>
 where
-    Flow: NumAssign + Ord + Copy,
+    Flow: FlowNum,
 {
     fn solve(&mut self, graph: &mut Graph<Flow>, source: usize, sink: usize, upper: Option<Flow>) -> Result<Flow, Status> {
         if source >= graph.num_nodes() || sink >= graph.num_nodes() || source == sink {
@@ -79,7 +79,7 @@ where
 
 impl<Flow> EdmondsKarp<Flow>
 where
-    Flow: NumAssign + Ord + Copy + std::fmt::Display,
+    Flow: FlowNum,
 {
     pub fn solve(&mut self, graph: &mut Graph<Flow>, source: usize, sink: usize, upper: Option<Flow>) -> Result<Flow, Status> {
         <Self as MaximumFlowSolver<Flow>>::solve(self, graph, source, sink, upper)

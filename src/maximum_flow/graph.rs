@@ -1,4 +1,4 @@
-use num_traits::Zero;
+use crate::traits::Zero;
 use std::fmt::Debug;
 
 #[derive(PartialEq, Clone, Debug)]

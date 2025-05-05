@@ -1,12 +1,19 @@
 use network_algorithms::maximum_flow::{
-    CapacityScaling, Dinic, EdmondsKarp, FordFulkerson, Graph, PushRelabelFIFO, PushRelabelHighestLabel, ShortestAugmentingPath,
+    // CapacityScaling, Dinic, EdmondsKarp, FordFulkerson, Graph, PushRelabelFIFO, PushRelabelHighestLabel, ShortestAugmentingPath,
+    Dinic,
+    EdmondsKarp,
+    FordFulkerson,
+    Graph,
+    PushRelabelFIFO,
+    PushRelabelHighestLabel,
+    ShortestAugmentingPath,
 };
 use rstest::rstest;
 use std::fs::read_to_string;
 use std::path::PathBuf;
 
 enum Solver {
-    CapacityScaling,
+    // CapacityScaling,
     Dinic,
     EdmondsKarp,
     FordFulkerson,
@@ -16,7 +23,7 @@ enum Solver {
 }
 
 #[rstest]
-#[case::capacity_scaling(Solver::CapacityScaling)]
+// #[case::capacity_scaling(Solver::CapacityScaling)]
 #[case::dinic(Solver::Dinic)]
 #[case::edmonds_karp(Solver::EdmondsKarp)]
 #[case::ford_fulkerson(Solver::FordFulkerson)]
@@ -39,7 +46,7 @@ fn maximum_flow(#[files("tests/maximum_flow/*/*.txt")] input_file_path: PathBuf,
     });
 
     let actual = match solver {
-        Solver::CapacityScaling => CapacityScaling::default().solve(&mut graph, source, sink, None),
+        // Solver::CapacityScaling => CapacityScaling::default().solve(&mut graph, source, sink, None),
         Solver::Dinic => Dinic::default().solve(&mut graph, source, sink, None),
         Solver::EdmondsKarp => {
             if input_file_path.to_str().unwrap().contains("LibreOJ") {

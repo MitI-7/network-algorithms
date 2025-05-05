@@ -1,8 +1,8 @@
 use crate::maximum_flow::csr::CSR;
 use crate::maximum_flow::graph::Graph;
 use crate::maximum_flow::status::Status;
+use crate::maximum_flow::FlowNum;
 use crate::maximum_flow::MaximumFlowSolver;
-use num_traits::NumAssign;
 
 pub struct PushRelabelHighestLabel<Flow> {
     csr: CSR<Flow>,
@@ -45,7 +45,7 @@ where
 
 impl<Flow> MaximumFlowSolver<Flow> for PushRelabelHighestLabel<Flow>
 where
-    Flow: NumAssign + Ord + Copy + Default,
+    Flow: FlowNum,
 {
     fn solve(&mut self, graph: &mut Graph<Flow>, source: usize, sink: usize, upper: Option<Flow>) -> Result<Flow, Status> {
         if source >= graph.num_nodes() || sink >= graph.num_nodes() || source == sink {
@@ -97,7 +97,7 @@ where
 
 impl<Flow> PushRelabelHighestLabel<Flow>
 where
-    Flow: NumAssign + Ord + Copy + Default,
+    Flow: FlowNum,
 {
     pub fn set_value_only(mut self, value_only: bool) -> Self {
         self.value_only = value_only;

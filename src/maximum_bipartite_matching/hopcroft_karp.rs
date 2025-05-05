@@ -10,6 +10,14 @@ pub enum WarmStart {
     UserDefined(Vec<usize>),
 }
 
+/// Bipartite Max Cardinality Matching algorithm
+///
+/// Bipartite Max Cardinality Matching algorithm. This class implements
+/// the Hopcroft-Karp algorithm which has \f$ O(e\sqrt{n}) \f$ time
+/// complexity.
+///
+/// \note In several cases the push-relabel based algorithms have
+/// better runtime performance than the augmenting path based ones.
 #[derive(Default)]
 pub struct HopcroftKarp {
     num_left_nodes: usize,

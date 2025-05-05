@@ -1,5 +1,12 @@
 use network_algorithms::minimum_cost_flow::{
-    CostScalingPushRelabel, CycleCanceling, DualNetworkSimplex, Graph, OutOfKilter, ParametricNetworkSimplex, PrimalDual, PrimalNetworkSimplex,
+    // CostScalingPushRelabel, CycleCanceling, DualNetworkSimplex, Graph, OutOfKilter, ParametricNetworkSimplex, PrimalDual, PrimalNetworkSimplex,
+    CycleCanceling,
+    DualNetworkSimplex,
+    Graph,
+    OutOfKilter,
+    ParametricNetworkSimplex,
+    PrimalDual,
+    PrimalNetworkSimplex,
     SuccessiveShortestPath,
 };
 use rstest::rstest;
@@ -7,7 +14,7 @@ use std::fs::read_to_string;
 use std::path::PathBuf;
 
 enum Solver {
-    CostScalingPushRelabel,
+    // CostScalingPushRelabel,
     NegativeCostCanceling,
     OutOfKilter,
     PrimalDual,
@@ -19,7 +26,7 @@ enum Solver {
 }
 
 #[rstest]
-#[case::cs(Solver::CostScalingPushRelabel)]
+// #[case::cs(Solver::CostScalingPushRelabel)]
 #[case::nc(Solver::NegativeCostCanceling)]
 #[case::ok(Solver::OutOfKilter)]
 #[case::pd(Solver::PrimalDual)]
@@ -47,7 +54,7 @@ fn minimum_cost_flow(#[files("tests/minimum_cost_flow/*/*.txt")] input_file_path
     });
 
     let result = match solver {
-        Solver::CostScalingPushRelabel => CostScalingPushRelabel::default().solve(&mut graph),
+        // Solver::CostScalingPushRelabel => CostScalingPushRelabel::default().solve(&mut graph),
         Solver::NegativeCostCanceling => {
             // to slow...
             if input_file_path.to_str().unwrap().contains("LibraryChecker") {

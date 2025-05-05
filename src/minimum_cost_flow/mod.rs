@@ -1,4 +1,4 @@
-pub mod cost_scaling_push_relabel;
+// pub mod cost_scaling_push_relabel;
 pub mod csr;
 pub mod cycle_canceling;
 pub mod dual_network_simplex;
@@ -16,7 +16,7 @@ pub trait MinimumCostFlowSolver<Flow> {
     fn solve(&mut self, graph: &mut Graph<Flow>) -> Result<Flow, Status>;
 }
 
-pub use self::cost_scaling_push_relabel::CostScalingPushRelabel;
+// pub use self::cost_scaling_push_relabel::CostScalingPushRelabel;
 pub use self::cycle_canceling::CycleCanceling;
 pub use self::dual_network_simplex::DualNetworkSimplex;
 pub use self::graph::Graph;

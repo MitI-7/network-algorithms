@@ -1,8 +1,8 @@
 use crate::maximum_flow::csr::CSR;
 use crate::maximum_flow::graph::Graph;
 use crate::maximum_flow::status::Status;
+use crate::maximum_flow::FlowNum;
 use crate::maximum_flow::MaximumFlowSolver;
-use num_traits::NumAssign;
 
 #[derive(Default)]
 pub struct FordFulkerson<Flow> {
@@ -11,7 +11,7 @@ pub struct FordFulkerson<Flow> {
 
 impl<Flow> MaximumFlowSolver<Flow> for FordFulkerson<Flow>
 where
-    Flow: NumAssign + Ord + Copy,
+    Flow: FlowNum,
 {
     fn solve(&mut self, graph: &mut Graph<Flow>, source: usize, sink: usize, upper: Option<Flow>) -> Result<Flow, Status> {
         if source >= graph.num_nodes() || sink >= graph.num_nodes() || source == sink {
@@ -42,7 +42,7 @@ where
 
 impl<Flow> FordFulkerson<Flow>
 where
-    Flow: NumAssign + Ord + Copy,
+    Flow: FlowNum,
 {
     pub fn solve(&mut self, graph: &mut Graph<Flow>, source: usize, sink: usize, upper: Option<Flow>) -> Result<Flow, Status> {
         <Self as MaximumFlowSolver<Flow>>::solve(self, graph, source, sink, upper)
