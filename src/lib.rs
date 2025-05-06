@@ -1,5 +1,6 @@
 pub mod data_structures;
 pub mod generalized_maximum_flow;
+mod graph;
 pub mod io;
 pub mod maximum_bipartite_matching;
 pub mod maximum_flow;
