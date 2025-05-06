@@ -1,5 +1,4 @@
-pub mod graph;
 pub mod blossom;
-
-pub use self::graph::Graph;
+pub mod graph;
 pub use self::blossom::Blossom;
+pub use self::graph::Graph;
