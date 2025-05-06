@@ -1,4 +1,5 @@
-use num_traits::NumAssign;
+use crate::maximum_flow::FlowNum;
+use crate::traits::One;
 use std::fmt::Debug;
 use std::ops::Neg;
 
@@ -25,7 +26,7 @@ pub struct Graph<Flow> {
 
 impl<Flow> Graph<Flow>
 where
-    Flow: NumAssign + Neg<Output = Flow> + Ord + Copy,
+    Flow: FlowNum + Neg<Output = Flow> + std::ops::Mul<Output = Flow> + One,
 {
     #[inline]
     pub fn num_nodes(&self) -> usize {

@@ -1,9 +1,10 @@
+use crate::maximum_flow::FlowNum;
 use crate::minimum_cost_flow::graph::Graph;
 use crate::minimum_cost_flow::network_simplex_pivot_rules::{BlockSearchPivotRule, PivotRule};
 use crate::minimum_cost_flow::spanning_tree_structure::{EdgeState, SpanningTreeStructure};
 use crate::minimum_cost_flow::status::Status;
 use crate::minimum_cost_flow::MinimumCostFlowSolver;
-use num_traits::NumAssign;
+use crate::traits::One;
 use std::collections::VecDeque;
 use std::ops::Neg;
 
@@ -16,7 +17,7 @@ pub struct DualNetworkSimplex<Flow, Pivot = BlockSearchPivotRule<Flow>> {
 
 impl<Flow, Pivot> MinimumCostFlowSolver<Flow> for DualNetworkSimplex<Flow, Pivot>
 where
-    Flow: NumAssign + Neg<Output = Flow> + Ord + Copy + Default,
+    Flow: FlowNum + Neg<Output = Flow> + std::ops::Mul<Output = Flow> + One,
     Pivot: PivotRule<Flow>,
 {
     fn solve(&mut self, graph: &mut Graph<Flow>) -> Result<Flow, Status> {
@@ -60,7 +61,7 @@ where
 
 impl<Flow, Pivot> DualNetworkSimplex<Flow, Pivot>
 where
-    Flow: NumAssign + Neg<Output = Flow> + Ord + Copy + Default,
+    Flow: FlowNum + Neg<Output = Flow> + std::ops::Mul<Output = Flow> + One,
     Pivot: PivotRule<Flow>,
 {
     pub fn set_pivot<Q>(self, new_pivot: Q) -> DualNetworkSimplex<Flow, Q>

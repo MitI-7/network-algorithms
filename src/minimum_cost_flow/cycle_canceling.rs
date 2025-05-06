@@ -1,8 +1,9 @@
+use crate::maximum_flow::FlowNum;
 use crate::minimum_cost_flow::csr::CSR;
 use crate::minimum_cost_flow::graph::Graph;
 use crate::minimum_cost_flow::status::Status;
 use crate::minimum_cost_flow::MinimumCostFlowSolver;
-use num_traits::NumAssign;
+use crate::traits::One;
 use std::ops::Neg;
 
 #[derive(Default)]
@@ -11,7 +12,7 @@ pub struct CycleCanceling<Flow> {
 }
 impl<Flow> MinimumCostFlowSolver<Flow> for CycleCanceling<Flow>
 where
-    Flow: NumAssign + Neg<Output = Flow> + Ord + Copy,
+    Flow: FlowNum + Neg<Output = Flow> + std::ops::Mul<Output = Flow> + One,
 {
     fn solve(&mut self, graph: &mut Graph<Flow>) -> Result<Flow, Status> {
         let (_source, artificial_nodes, artificial_edges) = graph.construct_extend_network_feasible_solution();
@@ -56,7 +57,7 @@ where
 
 impl<Flow> CycleCanceling<Flow>
 where
-    Flow: NumAssign + Neg<Output = Flow> + Ord + Copy,
+    Flow: FlowNum + Neg<Output = Flow> + std::ops::Mul<Output = Flow> + One,
 {
     pub fn solve(&mut self, graph: &mut Graph<Flow>) -> Result<Flow, Status> {
         <Self as MinimumCostFlowSolver<Flow>>::solve(self, graph)

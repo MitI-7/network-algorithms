@@ -1,5 +1,6 @@
+use crate::maximum_flow::FlowNum;
 use crate::minimum_cost_flow::graph::Graph;
-use num_traits::NumAssign;
+use crate::traits::One;
 use std::cmp::Reverse;
 use std::collections::BinaryHeap;
 use std::ops::Neg;
@@ -42,7 +43,7 @@ pub struct SpanningTreeStructure<Flow> {
 #[allow(dead_code)]
 impl<Flow> SpanningTreeStructure<Flow>
 where
-    Flow: NumAssign + Neg<Output = Flow> + Ord + Copy + Clone,
+    Flow: FlowNum + Neg<Output = Flow> + std::ops::Mul<Output = Flow> + One,
 {
     pub(crate) fn build(&mut self, graph: &mut Graph<Flow>) {
         (self.num_nodes, self.num_edges) = (graph.num_nodes(), graph.num_edges());
@@ -174,11 +175,7 @@ where
 
     // remove leaving_edge_id
     pub(crate) fn detach_tree(&mut self, _root: usize, sub_tree_root: usize, leaving_edge_id: usize) {
-        self.state[leaving_edge_id] = if self.is_lower(leaving_edge_id) {
-            EdgeState::Lower
-        } else {
-            EdgeState::Upper
-        };
+        self.state[leaving_edge_id] = if self.is_lower(leaving_edge_id) { EdgeState::Lower } else { EdgeState::Upper };
 
         // detach sub tree
         self.parent[sub_tree_root] = usize::MAX;

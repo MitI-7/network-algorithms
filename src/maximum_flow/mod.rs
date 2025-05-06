@@ -26,7 +26,6 @@ pub use self::shortest_augmenting_path::ShortestAugmentingPath;
 pub use self::status::Status;
 
 // pub trait FlowNum = Zero + Ord + Add<Output = Self> + Sub<Output = Self> + AddAssign + SubAssign + Copy;
-/// “マーカー” だけの本物の trait
 pub trait FlowNum: Zero + Ord + Add<Output = Self> + Sub<Output = Self> + AddAssign + SubAssign + Copy {}
 
 // blanket impl ── 条件を満たす型すべてに一発実装

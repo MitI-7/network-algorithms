@@ -1,8 +1,9 @@
+use crate::maximum_flow::FlowNum;
 use crate::minimum_cost_flow::graph::Graph;
 use crate::minimum_cost_flow::spanning_tree_structure::{EdgeState, SpanningTreeStructure};
 use crate::minimum_cost_flow::status::Status;
 use crate::minimum_cost_flow::MinimumCostFlowSolver;
-use num_traits::NumAssign;
+use crate::traits::One;
 use std::collections::VecDeque;
 use std::ops::Neg;
 
@@ -14,7 +15,7 @@ pub struct ParametricNetworkSimplex<Flow> {
 
 impl<Flow> MinimumCostFlowSolver<Flow> for ParametricNetworkSimplex<Flow>
 where
-    Flow: NumAssign + Neg<Output = Flow> + Ord + Copy + Default,
+    Flow: FlowNum + Neg<Output = Flow> + std::ops::Mul<Output = Flow> + One,
 {
     fn solve(&mut self, graph: &mut Graph<Flow>) -> Result<Flow, Status> {
         if graph.is_unbalance() {
@@ -27,28 +28,16 @@ where
 
         if !self.make_initial_spanning_tree_structure() {
             // there is no s-t path
-            let status = if self.st.satisfy_constraints() {
-                Status::Optimal
-            } else {
-                Status::Infeasible
-            };
+            let status = if self.st.satisfy_constraints() { Status::Optimal } else { Status::Infeasible };
             graph.remove_artificial_sub_graph(&artificial_nodes, &artificial_edges);
 
-            return if status == Status::Optimal {
-                Ok(graph.minimum_cost())
-            } else {
-                Err(status)
-            };
+            return if status == Status::Optimal { Ok(graph.minimum_cost()) } else { Err(status) };
         }
         debug_assert!(self.st.satisfy_optimality_conditions());
 
         self.run();
 
-        let status = if self.st.satisfy_constraints() {
-            Status::Optimal
-        } else {
-            Status::Infeasible
-        };
+        let status = if self.st.satisfy_constraints() { Status::Optimal } else { Status::Infeasible };
         // copy
         graph.excesses = self.st.excesses.clone().to_vec();
         for edge_id in 0..graph.num_edges() {
@@ -66,7 +55,7 @@ where
 
 impl<Flow> ParametricNetworkSimplex<Flow>
 where
-    Flow: NumAssign + Neg<Output = Flow> + Ord + Copy + Default,
+    Flow: FlowNum + Neg<Output = Flow> + std::ops::Mul<Output = Flow> + One,
 {
     pub fn solve(&mut self, graph: &mut Graph<Flow>) -> Result<Flow, Status> {
         <Self as MinimumCostFlowSolver<Flow>>::solve(self, graph)

@@ -1,8 +1,9 @@
+use crate::maximum_flow::FlowNum;
 use crate::minimum_cost_flow::csr::CSR;
 use crate::minimum_cost_flow::graph::Graph;
 use crate::minimum_cost_flow::status::Status;
 use crate::minimum_cost_flow::MinimumCostFlowSolver;
-use num_traits::NumAssign;
+use crate::traits::One;
 use std::collections::{BinaryHeap, VecDeque};
 use std::ops::Neg;
 
@@ -18,7 +19,7 @@ pub struct PrimalDual<Flow> {
 
 impl<Flow> MinimumCostFlowSolver<Flow> for PrimalDual<Flow>
 where
-    Flow: NumAssign + Neg<Output = Flow> + Ord + Copy,
+    Flow: FlowNum + Neg<Output = Flow> + std::ops::Mul<Output = Flow> + One,
 {
     fn solve(&mut self, graph: &mut Graph<Flow>) -> Result<Flow, Status> {
         if graph.is_unbalance() {
@@ -52,7 +53,7 @@ where
 
 impl<Flow> PrimalDual<Flow>
 where
-    Flow: NumAssign + Neg<Output = Flow> + Ord + Copy,
+    Flow: FlowNum + Neg<Output = Flow> + std::ops::Mul<Output = Flow> + One,
 {
     pub fn solve(&mut self, graph: &mut Graph<Flow>) -> Result<Flow, Status> {
         <Self as MinimumCostFlowSolver<Flow>>::solve(self, graph)
