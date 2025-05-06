@@ -33,7 +33,6 @@ where
         self.num_nodes = graph.num_nodes();
         self.num_edges = graph.num_edges();
 
-        // self.excesses = graph.excesses.clone();
         self.excesses = vec![Flow::zero(); self.num_nodes].into_boxed_slice();
         for u in 0..self.num_nodes {
             self.excesses[u] = graph.excesses[u];
@@ -48,6 +47,10 @@ where
         self.rev = vec![usize::MAX; self.num_edges * 2].into_boxed_slice();
         self.potentials = vec![Flow::zero(); self.num_nodes].into_boxed_slice();
 
+        self.make_csr(graph);
+    }
+
+    fn make_csr(&mut self, graph: &Graph<Flow>) {
         let mut degree = vec![0; self.num_nodes];
         for edge in graph.edges.iter() {
             degree[edge.to] += 1;
