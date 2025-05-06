@@ -1,7 +1,5 @@
-use crate::maximum_flow::FlowNum;
-use crate::traits::One;
+use crate::minimum_cost_flow::MinimumCostFlowNum;
 use std::fmt::Debug;
-use std::ops::Neg;
 
 #[derive(PartialEq, Debug, Clone)]
 pub struct Edge<Flow> {
@@ -26,7 +24,7 @@ pub struct Graph<Flow> {
 
 impl<Flow> Graph<Flow>
 where
-    Flow: FlowNum + Neg<Output = Flow> + std::ops::Mul<Output = Flow> + One,
+    Flow: MinimumCostFlowNum,
 {
     #[inline]
     pub fn num_nodes(&self) -> usize {

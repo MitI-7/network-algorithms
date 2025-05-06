@@ -1,9 +1,7 @@
-use crate::maximum_flow::FlowNum;
 use crate::minimum_cost_flow::graph::Graph;
-use crate::traits::One;
+use crate::minimum_cost_flow::MinimumCostFlowNum;
 use std::cmp::Reverse;
 use std::collections::BinaryHeap;
-use std::ops::Neg;
 
 #[derive(Default)]
 pub struct CSR<Flow> {
@@ -24,7 +22,7 @@ pub struct CSR<Flow> {
 
 impl<Flow> CSR<Flow>
 where
-    Flow: FlowNum + Neg<Output = Flow> + std::ops::Mul<Output = Flow> + One,
+    Flow: MinimumCostFlowNum,
 {
     pub fn build(&mut self, graph: &Graph<Flow>) {
         if graph.num_nodes() == 0 {

@@ -1,9 +1,7 @@
-use crate::maximum_flow::FlowNum;
 use crate::minimum_cost_flow::graph::Graph;
-use crate::traits::One;
+use crate::minimum_cost_flow::MinimumCostFlowNum;
 use std::cmp::Reverse;
 use std::collections::BinaryHeap;
-use std::ops::Neg;
 
 #[derive(Clone, Default, PartialEq, Debug)]
 pub enum EdgeState {
@@ -43,7 +41,7 @@ pub struct SpanningTreeStructure<Flow> {
 #[allow(dead_code)]
 impl<Flow> SpanningTreeStructure<Flow>
 where
-    Flow: FlowNum + Neg<Output = Flow> + std::ops::Mul<Output = Flow> + One,
+    Flow: MinimumCostFlowNum,
 {
     pub(crate) fn build(&mut self, graph: &mut Graph<Flow>) {
         (self.num_nodes, self.num_edges) = (graph.num_nodes(), graph.num_edges());

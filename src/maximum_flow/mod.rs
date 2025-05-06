@@ -27,6 +27,4 @@ pub use self::status::Status;
 
 // pub trait FlowNum = Zero + Ord + Add<Output = Self> + Sub<Output = Self> + AddAssign + SubAssign + Copy;
 pub trait FlowNum: Zero + Ord + Add<Output = Self> + Sub<Output = Self> + AddAssign + SubAssign + Copy {}
-
-// blanket impl ── 条件を満たす型すべてに一発実装
 impl<T> FlowNum for T where T: Zero + Ord + Add<Output = T> + Sub<Output = T> + AddAssign + SubAssign + Copy {}

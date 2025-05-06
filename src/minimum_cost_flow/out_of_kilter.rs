@@ -1,12 +1,9 @@
-use crate::maximum_flow::FlowNum;
 use crate::minimum_cost_flow::csr::CSR;
 use crate::minimum_cost_flow::graph::Graph;
 use crate::minimum_cost_flow::status::Status;
-use crate::minimum_cost_flow::MinimumCostFlowSolver;
-use crate::traits::One;
+use crate::minimum_cost_flow::{MinimumCostFlowNum, MinimumCostFlowSolver};
 use std::cmp::Reverse;
 use std::collections::BinaryHeap;
-use std::ops::Neg;
 
 // O(nU * (m + n) log n)
 #[derive(Default)]
@@ -16,7 +13,7 @@ pub struct OutOfKilter<Flow> {
 
 impl<Flow> MinimumCostFlowSolver<Flow> for OutOfKilter<Flow>
 where
-    Flow: FlowNum + Neg<Output = Flow> + std::ops::Mul<Output = Flow> + One,
+    Flow: MinimumCostFlowNum,
 {
     fn solve(&mut self, graph: &mut Graph<Flow>) -> Result<Flow, Status> {
         if graph.is_unbalance() {
@@ -76,7 +73,7 @@ where
 
 impl<Flow> OutOfKilter<Flow>
 where
-    Flow: FlowNum + Neg<Output = Flow> + std::ops::Mul<Output = Flow> + One,
+    Flow: MinimumCostFlowNum,
 {
     pub fn solve(&mut self, graph: &mut Graph<Flow>) -> Result<Flow, Status> {
         <Self as MinimumCostFlowSolver<Flow>>::solve(self, graph)

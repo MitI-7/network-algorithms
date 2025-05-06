@@ -1,11 +1,8 @@
-use crate::maximum_flow::FlowNum;
 use crate::minimum_cost_flow::graph::Graph;
 use crate::minimum_cost_flow::spanning_tree_structure::{EdgeState, SpanningTreeStructure};
 use crate::minimum_cost_flow::status::Status;
-use crate::minimum_cost_flow::MinimumCostFlowSolver;
-use crate::traits::One;
+use crate::minimum_cost_flow::{MinimumCostFlowNum, MinimumCostFlowSolver};
 use std::collections::VecDeque;
-use std::ops::Neg;
 
 #[derive(Default)]
 pub struct ParametricNetworkSimplex<Flow> {
@@ -15,7 +12,7 @@ pub struct ParametricNetworkSimplex<Flow> {
 
 impl<Flow> MinimumCostFlowSolver<Flow> for ParametricNetworkSimplex<Flow>
 where
-    Flow: FlowNum + Neg<Output = Flow> + std::ops::Mul<Output = Flow> + One,
+    Flow: MinimumCostFlowNum,
 {
     fn solve(&mut self, graph: &mut Graph<Flow>) -> Result<Flow, Status> {
         if graph.is_unbalance() {
@@ -55,7 +52,7 @@ where
 
 impl<Flow> ParametricNetworkSimplex<Flow>
 where
-    Flow: FlowNum + Neg<Output = Flow> + std::ops::Mul<Output = Flow> + One,
+    Flow: MinimumCostFlowNum,
 {
     pub fn solve(&mut self, graph: &mut Graph<Flow>) -> Result<Flow, Status> {
         <Self as MinimumCostFlowSolver<Flow>>::solve(self, graph)

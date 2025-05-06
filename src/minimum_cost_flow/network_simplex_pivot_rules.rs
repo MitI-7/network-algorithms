@@ -1,7 +1,5 @@
-use crate::maximum_flow::FlowNum;
 use crate::minimum_cost_flow::spanning_tree_structure::{EdgeState, SpanningTreeStructure};
-use crate::traits::One;
-use std::ops::Neg;
+use crate::minimum_cost_flow::MinimumCostFlowNum;
 
 pub trait PivotRule<Flow> {
     fn initialize(&mut self, num_edges: usize);
@@ -16,7 +14,7 @@ pub struct BestEligibleArcPivotRule<Flow> {
 
 impl<Flow> PivotRule<Flow> for BestEligibleArcPivotRule<Flow>
 where
-    Flow: FlowNum + Neg<Output = Flow> + std::ops::Mul<Output = Flow> + One,
+    Flow: MinimumCostFlowNum,
 {
     fn initialize(&mut self, _num_edges: usize) {}
 
@@ -46,7 +44,7 @@ pub struct FirstEligibleArcPivotRule<Flow> {
 
 impl<Flow> PivotRule<Flow> for FirstEligibleArcPivotRule<Flow>
 where
-    Flow: FlowNum + Neg<Output = Flow> + std::ops::Mul<Output = Flow> + One,
+    Flow: MinimumCostFlowNum,
 {
     fn initialize(&mut self, _num_edges: usize) {}
 
@@ -81,7 +79,7 @@ pub struct BlockSearchPivotRule<Flow> {
 
 impl<Flow> BlockSearchPivotRule<Flow>
 where
-    Flow: FlowNum + Neg<Output = Flow> + std::ops::Mul<Output = Flow> + One,
+    Flow: MinimumCostFlowNum,
 {
     // block_size_factor: between 0.5 and 2.0
     pub fn new_with_parameter(num_edges: usize, min_block_size: usize, block_size_factor: f64) -> Self {
@@ -98,7 +96,7 @@ where
 
 impl<Flow> PivotRule<Flow> for BlockSearchPivotRule<Flow>
 where
-    Flow: FlowNum + Neg<Output = Flow> + std::ops::Mul<Output = Flow> + One,
+    Flow: MinimumCostFlowNum,
 {
     fn initialize(&mut self, num_edges: usize) {
         if self.initialized {
@@ -164,7 +162,7 @@ pub struct CandidateListPivotRule<Flow> {
 
 impl<Flow> CandidateListPivotRule<Flow>
 where
-    Flow: FlowNum + Neg<Output = Flow> + std::ops::Mul<Output = Flow> + One,
+    Flow: MinimumCostFlowNum,
 {
     pub fn new_with_parameter(
         num_edges: usize,
@@ -196,7 +194,7 @@ where
 
 impl<Flow> PivotRule<Flow> for CandidateListPivotRule<Flow>
 where
-    Flow: FlowNum + Neg<Output = Flow> + std::ops::Mul<Output = Flow> + One,
+    Flow: MinimumCostFlowNum,
 {
     fn initialize(&mut self, num_edges: usize) {
         if self.initialized {
@@ -306,7 +304,7 @@ pub struct AlteringCandidateListPivotRule<Flow> {
 
 impl<Flow> AlteringCandidateListPivotRule<Flow>
 where
-    Flow: FlowNum + Neg<Output = Flow> + std::ops::Mul<Output = Flow> + One,
+    Flow: MinimumCostFlowNum,
 {
     pub fn new_with_parameter(num_edges: usize, min_block_size: usize, block_size_factor: f64, min_head_length: usize, head_length_factor: f64) -> Self {
         assert!(min_block_size > 0);
@@ -330,7 +328,7 @@ where
 
 impl<Flow> PivotRule<Flow> for AlteringCandidateListPivotRule<Flow>
 where
-    Flow: FlowNum + Neg<Output = Flow> + std::ops::Mul<Output = Flow> + One,
+    Flow: MinimumCostFlowNum,
 {
     fn initialize(&mut self, num_edges: usize) {
         if self.initialized {

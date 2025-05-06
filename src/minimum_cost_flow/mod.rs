@@ -16,6 +16,8 @@ pub trait MinimumCostFlowSolver<Flow> {
     fn solve(&mut self, graph: &mut Graph<Flow>) -> Result<Flow, Status>;
 }
 
+use crate::traits::{One, Zero};
+use std::ops::{Add, AddAssign, Mul, Neg, Sub, SubAssign};
 // pub use self::cost_scaling_push_relabel::CostScalingPushRelabel;
 pub use self::cycle_canceling::CycleCanceling;
 pub use self::dual_network_simplex::DualNetworkSimplex;
@@ -26,3 +28,14 @@ pub use self::primal_dual::PrimalDual;
 pub use self::primal_network_simplex::PrimalNetworkSimplex;
 pub use self::status::Status;
 pub use self::successive_shortest_path::SuccessiveShortestPath;
+
+// pub trait FlowNum = Zero + Ord + Add<Output = Self> + Sub<Output = Self> + AddAssign + SubAssign + Copy;
+// Flow: FlowNum + Neg<Output = Flow> + std::ops::Mul<Output = Flow> + One,
+pub trait MinimumCostFlowNum:
+    Zero + Ord + Add<Output = Self> + Sub<Output = Self> + Neg<Output = Self> + Mul<Output = Self> + AddAssign + SubAssign + Copy + One
+{
+}
+impl<T> MinimumCostFlowNum for T where
+    T: Zero + Ord + Add<Output = Self> + Sub<Output = Self> + Neg<Output = Self> + Mul<Output = Self> + AddAssign + SubAssign + Copy + One
+{
+}
