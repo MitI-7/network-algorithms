@@ -2,20 +2,20 @@
 
 ## Shortest Path
 - dijkstra
-  - O((n + m) log(n))
+  - $O((n + m) \log(n))$
 - bellman ford
-  - O(nm)
+  - $O(nm)$
 
 ## Maximum Flow
 
 - ford fulkerson
-    - O(nmU)
+    - $O(nmU)$
 - edmonds karp
-    - O(n^2 m)
+    - $O(n^2 m)$
 - dinic
-    - O(n^2 m)
+    - $O(n^2 m)$
 - capacity scaling(dinic)
-    - O(nm log U)
+    - $O(nm log U)$
 - shortest augmenting path
 - push relabel(fifo)
 - push relabel(highest label)
@@ -24,13 +24,13 @@
 
 - cost scaling push relabel
 - cycle canceling
-    - O(nm^2 CU)
+    - $O(nm^2 CU)$
 - out of kilter
-    - O(nU \* (m + n) log n)
+    - $O(nU (m + n) \log(n))$
 - primal dual
-    - O(min{nU, nC} n^2 m)
+    - $O(min\{nU, nC\} n^2 m)$
 - successive shortest path
-    - O(nU \* (m + n) log n)
+    - $O(nU (m + n) \log(n))$
 - primal network simplex
 - dual network simplex
 - parametric network simplex
@@ -42,7 +42,7 @@
 
 ## maximum matching
 - blossom
-  - O(n^3)
+  - $O(n^3)$
 ## maximum bipartite matching
 - hopcroft karp
-  - O(m sqrt(n))
+  - $O(m \sqrt{n})$
