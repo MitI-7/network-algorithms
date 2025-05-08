@@ -1,5 +1,5 @@
 use crate::minimum_cost_flow::csr::CSR;
-use crate::minimum_cost_flow::graph::Graph;
+use crate::graph::minimum_cost_flow_graph::Graph;
 use crate::minimum_cost_flow::status::Status;
 use crate::minimum_cost_flow::{MinimumCostFlowNum, MinimumCostFlowSolver};
 use std::collections::{BinaryHeap, VecDeque};

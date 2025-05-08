@@ -2,7 +2,6 @@
 pub mod csr;
 pub mod cycle_canceling;
 pub mod dual_network_simplex;
-pub mod graph;
 pub mod network_simplex_pivot_rules;
 pub mod out_of_kilter;
 pub mod parametric_network_simplex;
@@ -21,7 +20,7 @@ use std::ops::{Add, AddAssign, Mul, Neg, Sub, SubAssign};
 // pub use self::cost_scaling_push_relabel::CostScalingPushRelabel;
 pub use self::cycle_canceling::CycleCanceling;
 pub use self::dual_network_simplex::DualNetworkSimplex;
-pub use self::graph::Graph;
+pub use crate::graph::minimum_cost_flow_graph::Graph;
 pub use self::out_of_kilter::OutOfKilter;
 pub use self::parametric_network_simplex::ParametricNetworkSimplex;
 pub use self::primal_dual::PrimalDual;

@@ -1,4 +1,4 @@
-use crate::minimum_cost_flow::graph::Graph;
+use crate::graph::minimum_cost_flow_graph::Graph;
 use crate::minimum_cost_flow::spanning_tree_structure::{EdgeState, SpanningTreeStructure};
 use crate::minimum_cost_flow::status::Status;
 use crate::minimum_cost_flow::{MinimumCostFlowNum, MinimumCostFlowSolver};
