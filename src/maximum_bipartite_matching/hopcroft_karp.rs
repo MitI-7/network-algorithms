@@ -1,5 +1,5 @@
 use crate::data_structures::{BitVector, SimpleQueue};
-use crate::maximum_bipartite_matching::bipartite_graph::BipartiteGraph;
+use crate::graph::bipartite_graph::BipartiteGraph;
 
 #[derive(Default)]
 pub enum WarmStart {
