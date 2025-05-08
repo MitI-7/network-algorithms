@@ -1,5 +1,5 @@
 use crate::maximum_flow::csr::CSR;
-use crate::maximum_flow::graph::Graph;
+use crate::graph::maximum_flow_graph::Graph;
 use crate::maximum_flow::status::Status;
 use crate::maximum_flow::FlowNum;
 use crate::maximum_flow::MaximumFlowSolver;

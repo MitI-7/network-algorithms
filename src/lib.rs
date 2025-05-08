@@ -7,3 +7,4 @@ pub mod maximum_flow;
 pub mod maximum_matching;
 pub mod minimum_cost_flow;
 pub mod traits;
+mod graph;
