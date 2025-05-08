@@ -1,4 +1,3 @@
 pub mod blossom;
-pub mod graph;
 pub use self::blossom::Blossom;
-pub use self::graph::Graph;
+pub use crate::graph::maximum_matching_graph::Graph;

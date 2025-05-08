@@ -1,4 +1,4 @@
-use crate::maximum_matching::graph::Graph;
+use crate::graph::maximum_matching_graph::Graph;
 use std::collections::VecDeque;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
