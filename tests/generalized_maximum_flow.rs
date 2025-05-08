@@ -1,4 +1,4 @@
-use network_algorithms::generalized_maximum_flow::graph::Graph;
+use network_algorithms::graph::generalized_maximum_flow_graph::Graph;
 use network_algorithms::generalized_maximum_flow::highest_gain_path::HighestGainPath;
 use network_algorithms::generalized_maximum_flow::primal_dual::PrimalDual;
 use network_algorithms::generalized_maximum_flow::primal_dual_push_relabel::PrimalDualPushRelabel;
