@@ -1,5 +1,11 @@
 # network-algorithms
 
+## Shortest Path
+- dijkstra
+  - O((n + m) log(n))
+- bellman ford
+  - O(nm)
+
 ## Maximum Flow
 
 - ford fulkerson
@@ -30,3 +36,13 @@
 - parametric network simplex
 
 ## Generalized Maximum Flow
+- highest gain path
+- primal dual(dinic)
+- primal dual(push relabel)
+
+## maximum matching
+- blossom
+  - O(n^3)
+## maximum bipartite matching
+- hopcroft karp
+  - O(m sqrt(n))
