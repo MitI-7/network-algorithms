@@ -4,6 +4,7 @@ use crate::minimum_cost_flow::spanning_tree_structure::{EdgeState, SpanningTreeS
 use crate::minimum_cost_flow::status::Status;
 use crate::minimum_cost_flow::{MinimumCostFlowNum, MinimumCostFlowSolver};
 use std::collections::VecDeque;
+use crate::graph::minimum_cost_flow_graph::construct_extend_network_one_supply_one_demand;
 
 #[derive(Default)]
 pub struct DualNetworkSimplex<Flow, Pivot = BlockSearchPivotRule<Flow>> {
@@ -22,7 +23,7 @@ where
             return Err(Status::Unbalanced);
         }
 
-        let (source, sink, artificial_nodes, artificial_edges) = graph.construct_extend_network_one_supply_one_demand();
+        let (source, sink, artificial_nodes, artificial_edges) = construct_extend_network_one_supply_one_demand(graph);
         self.st.build(graph);
         (self.st.root, self.sink) = (source, sink);
 

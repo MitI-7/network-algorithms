@@ -2,6 +2,7 @@ use crate::minimum_cost_flow::csr::CSR;
 use crate::graph::minimum_cost_flow_graph::Graph;
 use crate::minimum_cost_flow::status::Status;
 use crate::minimum_cost_flow::{MinimumCostFlowNum, MinimumCostFlowSolver};
+use crate::graph::minimum_cost_flow_graph::construct_extend_network_feasible_solution;
 
 #[derive(Default)]
 pub struct CycleCanceling<Flow> {
@@ -12,7 +13,7 @@ where
     Flow: MinimumCostFlowNum,
 {
     fn solve(&mut self, graph: &mut Graph<Flow>) -> Result<Flow, Status> {
-        let (_source, artificial_nodes, artificial_edges) = graph.construct_extend_network_feasible_solution();
+        let (_source, artificial_nodes, artificial_edges) = construct_extend_network_feasible_solution(graph);
         self.csr.build(graph);
 
         let mut prev = vec![(usize::MAX, usize::MAX); self.csr.num_nodes];

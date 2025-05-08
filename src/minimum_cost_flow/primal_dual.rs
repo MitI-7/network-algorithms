@@ -3,6 +3,7 @@ use crate::graph::minimum_cost_flow_graph::Graph;
 use crate::minimum_cost_flow::status::Status;
 use crate::minimum_cost_flow::{MinimumCostFlowNum, MinimumCostFlowSolver};
 use std::collections::{BinaryHeap, VecDeque};
+use crate::graph::minimum_cost_flow_graph::construct_extend_network_one_supply_one_demand;
 
 #[derive(Default)]
 pub struct PrimalDual<Flow> {
@@ -24,7 +25,7 @@ where
         }
 
         // transforms the minimum cost flow problem into a problem with a single excess node and a single deficit node.
-        let (source, sink, artificial_nodes, artificial_edges) = graph.construct_extend_network_one_supply_one_demand();
+        let (source, sink, artificial_nodes, artificial_edges) = construct_extend_network_one_supply_one_demand(graph);
         self.csr.build(graph);
 
         self.distances.resize(self.csr.num_nodes, 0);

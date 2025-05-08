@@ -4,6 +4,7 @@ use crate::minimum_cost_flow::status::Status;
 use crate::minimum_cost_flow::{MinimumCostFlowNum, MinimumCostFlowSolver};
 use std::cmp::Reverse;
 use std::collections::BinaryHeap;
+use crate::graph::minimum_cost_flow_graph::construct_extend_network_feasible_solution;
 
 // O(nU * (m + n) log n)
 #[derive(Default)]
@@ -20,7 +21,7 @@ where
             return Err(Status::Unbalanced);
         }
 
-        let (_source, artificial_nodes, artificial_edges) = graph.construct_extend_network_feasible_solution();
+        let (_source, artificial_nodes, artificial_edges) = construct_extend_network_feasible_solution(graph);
         self.csr.build(graph);
 
         let mut out_of_kilter_edges = Vec::new();

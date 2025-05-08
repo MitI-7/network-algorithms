@@ -124,58 +124,6 @@ where
         self.b.iter().fold(Flow::zero(), |sum, &excess| sum + excess) != Flow::zero()
     }
 
-    pub(crate) fn construct_extend_network_one_supply_one_demand(&mut self) -> (usize, usize, Vec<usize>, Vec<usize>) {
-        let mut artificial_edges = Vec::new();
-        let (source, sink) = (self.add_node(), self.add_node());
-        for u in 0..self.num_nodes() {
-            if u == source || u == sink {
-                continue;
-            }
-            if self.excesses[u] > Flow::zero() {
-                artificial_edges.push(self.add_directed_edge(source, u, Flow::zero(), self.excesses[u], Flow::zero()).unwrap());
-                self.excesses[source] = self.excesses[source] + self.excesses[u];
-            }
-            if self.excesses[u] < Flow::zero() {
-                artificial_edges.push(self.add_directed_edge(u, sink, Flow::zero(), -self.excesses[u], Flow::zero()).unwrap());
-                self.excesses[sink] = self.excesses[sink] + self.excesses[u];
-            }
-            self.excesses[u] = Flow::zero();
-        }
-
-        (source, sink, vec![source, sink], artificial_edges)
-    }
-
-    pub(crate) fn construct_extend_network_feasible_solution(&mut self) -> (usize, Vec<usize>, Vec<usize>) {
-        let inf_cost = self.edges.iter().map(|e| e.cost).fold(Flow::one(), |acc, cost| acc + cost); // all edge costs are non-negative
-
-        // add artificial nodes
-        let root = self.add_node();
-
-        // add artificial edges
-        let mut artificial_edges = Vec::new();
-        for u in 0..self.num_nodes {
-            if u == root {
-                continue;
-            }
-
-            let excess = self.excesses[u];
-            if excess >= Flow::zero() {
-                // u -> root
-                let edge_id = self.add_directed_edge(u, root, Flow::zero(), excess, inf_cost).unwrap();
-                self.edges[edge_id].flow = excess;
-                artificial_edges.push(edge_id);
-            } else {
-                // root -> u
-                let edge_id = self.add_directed_edge(root, u, Flow::zero(), -excess, inf_cost).unwrap();
-                self.edges[edge_id].flow = -excess;
-                artificial_edges.push(edge_id);
-            }
-            self.excesses[u] = Flow::zero();
-        }
-
-        (root, vec![root], artificial_edges)
-    }
-
     pub(crate) fn remove_artificial_sub_graph(&mut self, artificial_nodes: &[usize], artificial_edges: &[usize]) {
         self.edges.truncate(self.num_edges - artificial_edges.len());
         self.b.truncate(self.num_nodes - artificial_nodes.len());
@@ -186,4 +134,62 @@ where
         self.num_nodes -= artificial_nodes.len();
         self.num_edges -= artificial_edges.len();
     }
+}
+
+pub(crate) fn construct_extend_network_one_supply_one_demand<Flow>(graph: &mut Graph<Flow>) -> (usize, usize, Vec<usize>, Vec<usize>)
+where
+    Flow: MinimumCostFlowNum,
+{
+    let mut artificial_edges = Vec::new();
+    let (source, sink) = (graph.add_node(), graph.add_node());
+    for u in 0..graph.num_nodes() {
+        if u == source || u == sink {
+            continue;
+        }
+        if graph.excesses[u] > Flow::zero() {
+            artificial_edges.push(graph.add_directed_edge(source, u, Flow::zero(), graph.excesses[u], Flow::zero()).unwrap());
+            graph.excesses[source] = graph.excesses[source] + graph.excesses[u];
+        }
+        if graph.excesses[u] < Flow::zero() {
+            artificial_edges.push(graph.add_directed_edge(u, sink, Flow::zero(), -graph.excesses[u], Flow::zero()).unwrap());
+            graph.excesses[sink] = graph.excesses[sink] + graph.excesses[u];
+        }
+        graph.excesses[u] = Flow::zero();
+    }
+
+    (source, sink, vec![source, sink], artificial_edges)
+}
+
+pub(crate) fn construct_extend_network_feasible_solution<Flow>(graph: &mut Graph<Flow>) -> (usize, Vec<usize>, Vec<usize>)
+where
+    Flow: MinimumCostFlowNum,
+{
+    let inf_cost = graph.edges.iter().map(|e| e.cost).fold(Flow::one(), |acc, cost| acc + cost); // all edge costs are non-negative
+
+    // add artificial nodes
+    let root = graph.add_node();
+
+    // add artificial edges
+    let mut artificial_edges = Vec::new();
+    for u in 0..graph.num_nodes {
+        if u == root {
+            continue;
+        }
+
+        let excess = graph.excesses[u];
+        if excess >= Flow::zero() {
+            // u -> root
+            let edge_id = graph.add_directed_edge(u, root, Flow::zero(), excess, inf_cost).unwrap();
+            graph.edges[edge_id].flow = excess;
+            artificial_edges.push(edge_id);
+        } else {
+            // root -> u
+            let edge_id = graph.add_directed_edge(root, u, Flow::zero(), -excess, inf_cost).unwrap();
+            graph.edges[edge_id].flow = -excess;
+            artificial_edges.push(edge_id);
+        }
+        graph.excesses[u] = Flow::zero();
+    }
+
+    (root, vec![root], artificial_edges)
 }

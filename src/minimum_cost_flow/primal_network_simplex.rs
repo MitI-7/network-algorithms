@@ -3,6 +3,7 @@ use crate::minimum_cost_flow::network_simplex_pivot_rules::{BlockSearchPivotRule
 use crate::minimum_cost_flow::spanning_tree_structure::{EdgeState, SpanningTreeStructure};
 use crate::minimum_cost_flow::status::Status;
 use crate::minimum_cost_flow::{MinimumCostFlowNum, MinimumCostFlowSolver};
+use crate::graph::minimum_cost_flow_graph::construct_extend_network_feasible_solution;
 
 #[derive(Default)]
 pub struct PrimalNetworkSimplex<Flow, Pivot = BlockSearchPivotRule<Flow>> {
@@ -21,7 +22,7 @@ where
         }
 
         let inf_cost = graph.edges.iter().map(|e| e.cost).fold(Flow::one(), |acc, cost| acc + cost); // all edge costs are non-negative
-        let (root, artificial_nodes, artificial_edges) = graph.construct_extend_network_feasible_solution();
+        let (root, artificial_nodes, artificial_edges) = construct_extend_network_feasible_solution(graph);
         self.st.build(graph);
         (self.st.root, self.st.parent[root], self.st.parent_edge_id[root]) = (root, usize::MAX, usize::MAX);
 
