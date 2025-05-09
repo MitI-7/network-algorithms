@@ -1,7 +1,10 @@
-use crate::graph::graph::{Graph, CapCostEdge, Directed, ExcessNode};
+use crate::core::graph::Graph;
+use crate::core::direction::Directed;
+use crate::edge::capacity_cost::CapCostEdge;
+use crate::node::excess::ExcessNode;
 use crate::minimum_cost_flow::MinimumCostFlowNum;
 
-pub fn translater<Flow>(graph: &Graph<Directed, ExcessNode<Flow>, CapCostEdge<Flow>>) -> Graph<Directed, ExcessNode<Flow>, CapCostEdge<Flow>> 
+pub fn translater<Flow>(graph: &Graph<Directed, ExcessNode<Flow>, CapCostEdge<Flow>>) -> Graph<Directed, ExcessNode<Flow>, CapCostEdge<Flow>>
 where Flow: MinimumCostFlowNum {
     let mut new_graph = graph.clone();
     new_graph.add_nodes(graph.num_nodes());

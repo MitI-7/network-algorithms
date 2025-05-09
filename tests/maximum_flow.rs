@@ -1,3 +1,6 @@
+use network_algorithms::core::direction::Directed;
+use network_algorithms::core::graph::Graph;
+use network_algorithms::edge::capacity::CapEdge;
 use network_algorithms::maximum_flow::{
     // CapacityScaling, Dinic, EdmondsKarp, FordFulkerson, Graph, PushRelabelFIFO, PushRelabelHighestLabel, ShortestAugmentingPath,
     Dinic,
@@ -8,7 +11,6 @@ use network_algorithms::maximum_flow::{
     // PushRelabelHighestLabel,
     // ShortestAugmentingPath,
 };
-use network_algorithms::graph::graph::{CapEdge, Graph, Directed};
 use rstest::rstest;
 use std::fs::read_to_string;
 use std::path::PathBuf;
@@ -44,7 +46,7 @@ fn maximum_flow(#[files("tests/maximum_flow/*/*.txt")] input_file_path: PathBuf,
             nodes = graph.add_nodes(num_nodes);
         } else {
             let (from, to, upper) = (line[0].parse::<usize>().unwrap(), line[1].parse::<usize>().unwrap(), line[2].parse::<usize>().unwrap());
-            graph.add_directed_edge(nodes[from], nodes[to], CapEdge{flow: 0, upper});
+            graph.add_directed_edge(nodes[from], nodes[to], CapEdge { flow: 0, upper });
         }
     });
 

@@ -11,7 +11,10 @@ pub mod primal_dual;
 // pub mod spanning_tree_structure;
 pub mod status;
 // pub mod successive_shortest_path;
-use crate::graph::graph::{CapCostEdge, Directed, Graph, ExcessNode};
+use crate::core::graph::Graph;
+use crate::core::direction::Directed;
+use crate::edge::capacity_cost::CapCostEdge;
+use crate::node::excess::ExcessNode;
 
 pub trait MinimumCostFlowSolver<Flow>
 where

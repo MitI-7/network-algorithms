@@ -1,9 +1,13 @@
-use crate::minimum_cost_flow::csr::{CSR, construct_extend_network_one_supply_one_demand};
-use crate::graph::graph::{CapCostEdge, Directed, Graph, ExcessNode, EdgeId};
+use crate::core::direction::Directed;
+use crate::core::graph::Graph;
+use crate::core::ids::EdgeId;
+use crate::edge::capacity_cost::CapCostEdge;
+use crate::minimum_cost_flow::csr::{construct_extend_network_one_supply_one_demand, CSR};
 use crate::minimum_cost_flow::status::Status;
-use crate::minimum_cost_flow::{MinimumCostFlowNum, MinimumCostFlowSolver};
-use std::collections::{BinaryHeap, VecDeque};
 use crate::minimum_cost_flow::translater::translater;
+use crate::minimum_cost_flow::{MinimumCostFlowNum, MinimumCostFlowSolver};
+use crate::node::excess::ExcessNode;
+use std::collections::{BinaryHeap, VecDeque};
 
 #[derive(Default)]
 pub struct PrimalDual<Flow> {
@@ -23,7 +27,7 @@ where
         // if graph.is_unbalance() {
         //     return Err(Status::Unbalanced);
         // }
-        
+
         let mut t = Flow::zero();
         for u in 0..graph.num_nodes() {
             t += graph.nodes[u].b;
@@ -31,7 +35,7 @@ where
         if t != Flow::zero() {
             return Err(Status::Unbalanced);
         }
-        
+
         if graph.num_nodes() == 0 {
             return Ok(Flow::zero());
         }
@@ -68,11 +72,10 @@ where
             return Err(Status::Infeasible);
         }
 
-            Ok((0..graph.num_edges()).fold(Flow::zero(), |cost, edge_id| {
-                let edge = graph.get_edge(EdgeId(edge_id));
-                cost + edge.data.cost * edge.data.flow
-            }))
-
+        Ok((0..graph.num_edges()).fold(Flow::zero(), |cost, edge_id| {
+            let edge = graph.get_edge(EdgeId(edge_id));
+            cost + edge.data.cost * edge.data.flow
+        }))
     }
 }
 
@@ -213,17 +216,16 @@ where
     }
 }
 
-
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::graph::graph::Graph;
+    use crate::core::graph::Graph;
 
     #[test]
     fn test() {
-        let mut g:Graph<Directed, ExcessNode<i32>, CapCostEdge<i32>> = Graph::new();
+        let mut g: Graph<Directed, ExcessNode<i32>, CapCostEdge<i32>> = Graph::new();
         let a = g.add_node();
-        g.add_edge(a, a, CapCostEdge{flow: 0, lower: -5, upper: 0, cost:10});
+        g.add_edge(a, a, CapCostEdge { flow: 0, lower: -5, upper: 0, cost: 10 });
 
         let s = PrimalDual::default().solve(&mut g).unwrap();
         println!("{}", s);
@@ -251,9 +253,5 @@ mod test {
         // 0 0 -10 0 0
         // 0 0 -10 -10 -3
         //
-
-
-
-
     }
 }

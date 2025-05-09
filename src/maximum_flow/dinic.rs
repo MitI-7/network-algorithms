@@ -1,6 +1,7 @@
 use crate::maximum_flow::csr::CSR;
-// use crate::graph::maximum_flow_graph::Graph;
-use crate::graph::graph::{Graph, CapEdge, Directed};
+use crate::core::graph::Graph;
+use crate::core::direction::Directed;
+use crate::edge::capacity::CapEdge;
 use crate::maximum_flow::status::Status;
 use crate::maximum_flow::FlowNum;
 use crate::maximum_flow::MaximumFlowSolver;

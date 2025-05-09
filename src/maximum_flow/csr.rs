@@ -1,4 +1,6 @@
-use crate::graph::graph::{Graph, CapEdge, Directed};
+use crate::core::graph::Graph;
+use crate::core::direction::Directed;
+use crate::edge::capacity::CapEdge;
 use crate::maximum_flow::FlowNum;
 use std::collections::VecDeque;
 

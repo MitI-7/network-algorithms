@@ -1,3 +1,7 @@
+use network_algorithms::core::direction::Directed;
+use network_algorithms::core::graph::Graph;
+use network_algorithms::core::ids::NodeId;
+use network_algorithms::edge::capacity_cost::CapCostEdge;
 use network_algorithms::minimum_cost_flow::{
     // CostScalingPushRelabel, CycleCanceling, DualNetworkSimplex, Graph, OutOfKilter, ParametricNetworkSimplex, PrimalDual, PrimalNetworkSimplex,
     // CycleCanceling,
@@ -8,7 +12,7 @@ use network_algorithms::minimum_cost_flow::{
     // PrimalNetworkSimplex,
     // SuccessiveShortestPath,
 };
-use network_algorithms::graph::graph::{Graph, CapCostEdge, Directed, ExcessNode, NodeId};
+use network_algorithms::node::excess::ExcessNode;
 use rstest::rstest;
 use std::fs::read_to_string;
 use std::path::PathBuf;
@@ -49,7 +53,7 @@ fn minimum_cost_flow(#[files("tests/minimum_cost_flow/*/*.txt")] input_file_path
         } else {
             let (from, to, lower, upper, cost) =
                 (line[0].parse::<usize>().unwrap(), line[1].parse::<usize>().unwrap(), line[2].parse().unwrap(), line[3].parse().unwrap(), line[4].parse().unwrap());
-            graph.add_edge(NodeId(from), NodeId(to), CapCostEdge{flow: 0, lower, upper, cost});
+            graph.add_edge(NodeId(from), NodeId(to), CapCostEdge { flow: 0, lower, upper, cost });
         }
     });
 
@@ -82,7 +86,7 @@ fn minimum_cost_flow(#[files("tests/minimum_cost_flow/*/*.txt")] input_file_path
         //     }
         //     SuccessiveShortestPath::default().solve(&mut graph)
         // }
-        // 
+        //
         // Solver::DualNetworkSimplex => DualNetworkSimplex::<i128>::default().solve(&mut graph),
         // Solver::ParametricNetworkSimplex => {
         //     // to slow...
@@ -92,7 +96,9 @@ fn minimum_cost_flow(#[files("tests/minimum_cost_flow/*/*.txt")] input_file_path
         //     ParametricNetworkSimplex::default().solve(&mut graph)
         // }
         // Solver::PrimalNetworkSimplex => PrimalNetworkSimplex::<i128>::default().solve(&mut graph),
-        _ => {return;}
+        _ => {
+            return;
+        }
     };
 
     match result {

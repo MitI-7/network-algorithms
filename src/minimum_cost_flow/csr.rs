@@ -1,8 +1,11 @@
+use crate::core::direction::Directed;
+use crate::core::graph::Graph;
+use crate::core::ids::NodeId;
+use crate::edge::capacity_cost::CapCostEdge;
 use crate::minimum_cost_flow::MinimumCostFlowNum;
+use crate::node::excess::ExcessNode;
 use std::cmp::Reverse;
 use std::collections::BinaryHeap;
-use crate::graph::graph::{Graph, CapCostEdge, Directed, ExcessNode, NodeId};
-use crate::graph::minimum_cost_flow_graph::Edge;
 
 #[derive(Default)]
 pub struct CSR<Flow> {
@@ -27,20 +30,25 @@ impl<Flow> CSR<Flow>
 where
     Flow: MinimumCostFlowNum,
 {
-    pub fn build(&mut self, graph: &Graph<Directed, ExcessNode<Flow>, CapCostEdge<Flow>>, artificial_nodes: Option<&[NodeId]>, artificial_edges: Option<&[CapCostEdge<Flow>]>) {
+    pub fn build(
+        &mut self,
+        graph: &Graph<Directed, ExcessNode<Flow>, CapCostEdge<Flow>>,
+        artificial_nodes: Option<&[NodeId]>,
+        artificial_edges: Option<&[CapCostEdge<Flow>]>,
+    ) {
         if graph.num_nodes() == 0 {
             return;
         }
 
-        self.num_nodes = graph.num_nodes();// + artificial_nodes.unwrap_or(&[]).len();
-        self.num_edges = graph.num_edges();// + artificial_edges.unwrap_or(&[]).len();
-        
+        self.num_nodes = graph.num_nodes(); // + artificial_nodes.unwrap_or(&[]).len();
+        self.num_edges = graph.num_edges(); // + artificial_edges.unwrap_or(&[]).len();
+
         let mut e = Vec::new();
         for u in 0..self.num_nodes {
             e.push(graph.nodes[u].b);
         }
         self.excesses = e.into_boxed_slice();
-        
+
         self.edge_index_to_inside_edge_index = vec![usize::MAX; self.num_edges].into_boxed_slice();
         self.start = vec![0; self.num_nodes + 1].into_boxed_slice();
         self.to = vec![usize::MAX; self.num_edges * 2].into_boxed_slice();
@@ -53,7 +61,12 @@ where
         self.make_csr(graph, artificial_nodes, artificial_edges);
     }
 
-    fn make_csr(&mut self, graph: &Graph<Directed, ExcessNode<Flow>, CapCostEdge<Flow>>, _artificial_nodes: Option<&[NodeId]>, artificial_edges: Option<&[CapCostEdge<Flow>]>) {
+    fn make_csr(
+        &mut self,
+        graph: &Graph<Directed, ExcessNode<Flow>, CapCostEdge<Flow>>,
+        _artificial_nodes: Option<&[NodeId]>,
+        artificial_edges: Option<&[CapCostEdge<Flow>]>,
+    ) {
         let mut degree = vec![0; self.num_nodes];
 
         // for edge in graph.edges.iter().chain(artificial_edges.unwrap()) {
@@ -109,8 +122,7 @@ where
             let edge = &graph.edges[edge_id];
             graph.edges[edge_id].data.flow = if edge.data.cost >= Flow::zero() {
                 self.flow[i] + edge.data.lower
-            }
-            else {
+            } else {
                 edge.data.upper - self.flow[i]
             };
             assert!(graph.edges[edge_id].data.flow <= graph.edges[edge_id].data.upper);
@@ -193,7 +205,9 @@ where
     }
 }
 
-pub(crate) fn construct_extend_network_one_supply_one_demand<Flow>(graph: &mut Graph<Directed, ExcessNode<Flow>, CapCostEdge<Flow>>) -> (NodeId, NodeId, Vec<CapCostEdge<Flow>>)
+pub(crate) fn construct_extend_network_one_supply_one_demand<Flow>(
+    graph: &mut Graph<Directed, ExcessNode<Flow>, CapCostEdge<Flow>>,
+) -> (NodeId, NodeId, Vec<CapCostEdge<Flow>>)
 where
     Flow: MinimumCostFlowNum,
 {
@@ -207,11 +221,11 @@ where
             continue;
         }
         if graph.nodes[u].b > Flow::zero() {
-            graph.add_edge(source, NodeId(u), CapCostEdge{flow: Flow::zero(), lower: Flow::zero(), upper: graph.nodes[u].b, cost: Flow::zero()});
+            graph.add_edge(source, NodeId(u), CapCostEdge { flow: Flow::zero(), lower: Flow::zero(), upper: graph.nodes[u].b, cost: Flow::zero() });
             total_excess += graph.nodes[u].b;
         }
         if graph.nodes[u].b < Flow::zero() {
-            graph.add_edge(NodeId(u), sink, CapCostEdge{flow:Flow::zero(), lower: Flow::zero(), upper: -graph.nodes[u].b, cost: Flow::zero()});
+            graph.add_edge(NodeId(u), sink, CapCostEdge { flow: Flow::zero(), lower: Flow::zero(), upper: -graph.nodes[u].b, cost: Flow::zero() });
         }
         graph.nodes[u].b = Flow::zero();
     }

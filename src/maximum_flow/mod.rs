@@ -8,7 +8,9 @@ pub mod dinic;
 // pub mod shortest_augmenting_path;
 pub mod status;
 use crate::traits::Zero;
-use crate::graph::graph::{CapEdge, Directed, Graph};
+use crate::core::graph::Graph;
+use crate::core::direction::Directed;
+use crate::edge::capacity::CapEdge;
 use core::ops::{Add, AddAssign, Sub, SubAssign};
 // use crate::graph::maximum_flow_graph;
 
