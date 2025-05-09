@@ -1,9 +1,9 @@
 use network_algorithms::minimum_cost_flow::{
     // CostScalingPushRelabel, CycleCanceling, DualNetworkSimplex, Graph, OutOfKilter, ParametricNetworkSimplex, PrimalDual, PrimalNetworkSimplex,
-    // CycleCanceling,
+    CycleCanceling,
     // DualNetworkSimplex,
     Graph,
-    // OutOfKilter,
+    OutOfKilter,
     // ParametricNetworkSimplex,
     PrimalDual,
     // PrimalNetworkSimplex,
@@ -27,8 +27,8 @@ enum Solver {
 
 #[rstest]
 // #[case::cs(Solver::CostScalingPushRelabel)]
-// #[case::nc(Solver::NegativeCostCanceling)]
-// #[case::ok(Solver::OutOfKilter)]
+#[case::nc(Solver::NegativeCostCanceling)]
+#[case::ok(Solver::OutOfKilter)]
 #[case::pd(Solver::PrimalDual)]
 #[case::ssp(Solver::SuccessiveShortestPath)]
 // #[case::ns_dual(Solver::DualNetworkSimplex)]
@@ -55,20 +55,20 @@ fn minimum_cost_flow(#[files("tests/minimum_cost_flow/*/*.txt")] input_file_path
 
     let result = match solver {
         // Solver::CostScalingPushRelabel => CostScalingPushRelabel::default().solve(&mut graph),
-        // Solver::NegativeCostCanceling => {
-        //     // to slow...
-        //     if input_file_path.to_str().unwrap().contains("LibraryChecker") {
-        //         return;
-        //     }
-        //     CycleCanceling::default().solve(&mut graph)
-        // }
-        // Solver::OutOfKilter => {
-        //     // to slow...
-        //     if input_file_path.to_str().unwrap().contains("anti_ssp_00.txt") {
-        //         return;
-        //     }
-        //     OutOfKilter::default().solve(&mut graph)
-        // }
+        Solver::NegativeCostCanceling => {
+            // to slow...
+            if input_file_path.to_str().unwrap().contains("LibraryChecker") {
+                return;
+            }
+            CycleCanceling::default().solve(&mut graph)
+        }
+        Solver::OutOfKilter => {
+            // to slow...
+            if input_file_path.to_str().unwrap().contains("anti_ssp_00.txt") {
+                return;
+            }
+            OutOfKilter::default().solve(&mut graph)
+        }
         Solver::PrimalDual => {
             if input_file_path.to_str().unwrap().contains("anti_ssp_00.txt") {
                 return;

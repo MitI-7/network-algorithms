@@ -69,7 +69,7 @@ where
             assert!(edge.cost >= Flow::zero());
             assert!(edge.lower == Flow::zero());
             assert!(edge.upper >= Flow::zero());
-            assert!(edge.flow == Flow::zero());
+            // assert!(edge.flow == Flow::zero());
 
             let (u, v) = (edge.from, edge.to);
             let inside_edge_index_u = self.start[u] + counter[u];

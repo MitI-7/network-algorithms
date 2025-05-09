@@ -3,6 +3,7 @@ use crate::graph::minimum_cost_flow_graph::Graph;
 use crate::minimum_cost_flow::status::Status;
 use crate::minimum_cost_flow::{MinimumCostFlowNum, MinimumCostFlowSolver};
 use crate::graph::minimum_cost_flow_graph::construct_extend_network_feasible_solution;
+use crate::minimum_cost_flow::translater::translater;
 
 #[derive(Default)]
 pub struct CycleCanceling<Flow> {
@@ -13,8 +14,10 @@ where
     Flow: MinimumCostFlowNum,
 {
     fn solve(&mut self, graph: &mut Graph<Flow>) -> Result<Flow, Status> {
-        let (_source, artificial_nodes, artificial_edges) = construct_extend_network_feasible_solution(graph);
-        self.csr.build(graph);
+        let mut new_graph = translater(graph);
+        
+        let (_source, artificial_nodes, artificial_edges) = construct_extend_network_feasible_solution(&mut new_graph);
+        self.csr.build(&new_graph, None, None);
 
         let mut prev = vec![(usize::MAX, usize::MAX); self.csr.num_nodes];
         while let Some(start) = self.find_negative_cycle(&mut prev) {
@@ -36,14 +39,15 @@ where
             }
         }
 
+        self.csr.set_flow(&mut new_graph);
         self.csr.set_flow(graph);
 
-        let status = if artificial_edges.iter().all(|&edge_id| graph.edges[edge_id].flow == Flow::zero()) {
+        let status = if artificial_edges.iter().all(|&edge_id| new_graph.edges[edge_id].flow == Flow::zero()) {
             Status::Optimal
         } else {
             Status::Infeasible
         };
-        graph.remove_artificial_sub_graph(&artificial_nodes, &artificial_edges);
+        // graph.remove_artificial_sub_graph(&artificial_nodes, &artificial_edges);
 
         if status == Status::Optimal {
             Ok(graph.minimum_cost())

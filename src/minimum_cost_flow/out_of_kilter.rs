@@ -5,6 +5,7 @@ use crate::minimum_cost_flow::{MinimumCostFlowNum, MinimumCostFlowSolver};
 use std::cmp::Reverse;
 use std::collections::BinaryHeap;
 use crate::graph::minimum_cost_flow_graph::construct_extend_network_feasible_solution;
+use crate::minimum_cost_flow::translater::translater;
 
 // O(nU * (m + n) log n)
 #[derive(Default)]
@@ -21,8 +22,10 @@ where
             return Err(Status::Unbalanced);
         }
 
-        let (_source, artificial_nodes, artificial_edges) = construct_extend_network_feasible_solution(graph);
-        self.csr.build(graph);
+        let mut new_graph = translater(graph);
+        let (_source, artificial_nodes, artificial_edges) = construct_extend_network_feasible_solution(&mut new_graph);
+        self.csr.build(&new_graph, None, None);
+        self.csr.excesses = new_graph.b.clone().into_boxed_slice();
 
         let mut out_of_kilter_edges = Vec::new();
         for edge_id in 0..self.csr.to.len() {
@@ -55,14 +58,15 @@ where
             }
         }
 
+        self.csr.set_flow(&mut new_graph);
         self.csr.set_flow(graph);
 
-        let status = if artificial_edges.iter().all(|&edge_id| graph.edges[edge_id].flow == Flow::zero()) {
+        let status = if artificial_edges.iter().all(|&edge_id| new_graph.edges[edge_id].flow == Flow::zero()) {
             Status::Optimal
         } else {
             Status::Infeasible
         };
-        graph.remove_artificial_sub_graph(&artificial_nodes, &artificial_edges);
+        // graph.remove_artificial_sub_graph(&artificial_nodes, &artificial_edges);
 
         if status == Status::Optimal {
             Ok(graph.minimum_cost())

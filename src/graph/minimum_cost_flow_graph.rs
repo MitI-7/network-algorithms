@@ -146,18 +146,17 @@ where
     (source, sink, artificial_edges, total_excess)
 }
 
-pub(crate) fn construct_extend_network_feasible_solution<Flow>(graph: &Graph<Flow>) -> (usize, Vec<usize>, Vec<(usize, Edge<Flow>)>)
+pub(crate) fn construct_extend_network_feasible_solution<Flow>(graph: &mut Graph<Flow>) -> (usize, Vec<usize>, Vec<usize>)
 where
     Flow: MinimumCostFlowNum,
 {
     let inf_cost = graph.edges.iter().map(|e| e.cost).fold(Flow::one(), |acc, cost| acc + cost); // all edge costs are non-negative
 
     // add artificial nodes
-    let root = graph.num_nodes();
+    let root = graph.add_node();
 
     // add artificial edges
     let mut artificial_edges = Vec::new();
-    let mut edge_id = graph.num_edges();
     for u in 0..graph.num_nodes {
         if u == root {
             continue;
@@ -166,17 +165,16 @@ where
         let excess = graph.b[u];
         if excess >= Flow::zero() {
             // u -> root
-            // let edge_id = graph.add_directed_edge(u, root, Flow::zero(), excess, inf_cost).unwrap();
-            // graph.edges[edge_id].flow = excess;
-            artificial_edges.push((edge_id, Edge{from: u, to: root, flow: excess, lower:Flow::zero(), upper:excess, cost:inf_cost}));
+            let edge_id = graph.add_directed_edge(u, root, Flow::zero(), excess, inf_cost).unwrap();
+            graph.edges[edge_id].flow = excess;
+            artificial_edges.push(edge_id);
         } else {
             // root -> u
-            // let edge_id = graph.add_directed_edge(root, u, Flow::zero(), -excess, inf_cost).unwrap();
-            // graph.edges[edge_id].flow = -excess;
-            artificial_edges.push((edge_id, Edge{from: root, to: u, flow: -excess, lower:Flow::zero(), upper:-excess, cost:inf_cost}));
+            let edge_id = graph.add_directed_edge(root, u, Flow::zero(), -excess, inf_cost).unwrap();
+            graph.edges[edge_id].flow = -excess;
+            artificial_edges.push(edge_id);
         }
-        edge_id += 1;
-        // graph.b[u] = Flow::zero();
+        graph.b[u] = Flow::zero();
     }
 
     (root, vec![root], artificial_edges)
