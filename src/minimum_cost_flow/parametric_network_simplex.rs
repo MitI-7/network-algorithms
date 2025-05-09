@@ -1,10 +1,14 @@
-use crate::graph::minimum_cost_flow_graph::Graph;
 use crate::minimum_cost_flow::spanning_tree_structure::{EdgeState, SpanningTreeStructure};
 use crate::minimum_cost_flow::status::Status;
 use crate::minimum_cost_flow::{MinimumCostFlowNum, MinimumCostFlowSolver};
 use std::collections::VecDeque;
-use crate::graph::minimum_cost_flow_graph::construct_extend_network_one_supply_one_demand;
+use crate::core::direction::Directed;
+use crate::core::graph::Graph;
+use crate::core::ids::EdgeId;
+use crate::edge::capacity_cost::CapCostEdge;
+use crate::minimum_cost_flow::csr::construct_extend_network_one_supply_one_demand;
 use crate::minimum_cost_flow::translater::translater;
+use crate::node::excess::ExcessNode;
 
 #[derive(Default)]
 pub struct ParametricNetworkSimplex<Flow> {
@@ -16,15 +20,15 @@ impl<Flow> MinimumCostFlowSolver<Flow> for ParametricNetworkSimplex<Flow>
 where
     Flow: MinimumCostFlowNum,
 {
-    fn solve(&mut self, graph: &mut Graph<Flow>) -> Result<Flow, Status> {
-        if graph.is_unbalance() {
-            return Err(Status::Unbalanced);
-        }
+    fn solve(&mut self, graph: &mut Graph<Directed, ExcessNode<Flow>, CapCostEdge<Flow>>) -> Result<Flow, Status> {
+        // if graph.is_unbalance() {
+        //     return Err(Status::Unbalanced);
+        // }
 
         let mut new_graph = translater(graph);
         let (source, sink, artificial_edges) = construct_extend_network_one_supply_one_demand(&mut new_graph);
         self.st.build(&mut new_graph);
-        (self.st.root, self.sink) = (source, sink);
+        (self.st.root, self.sink) = (source.index(), sink.index());
 
         if !self.make_initial_spanning_tree_structure() {
             // there is no s-t path
@@ -36,16 +40,23 @@ where
                     let edge = &graph.edges[edge_id];
                     assert!(self.st.flow[edge_id] <= self.st.upper[edge_id]);
 
-                    graph.edges[edge_id].flow = if edge.cost >= Flow::zero() {
-                        self.st.flow[edge_id] + edge.lower
+                    graph.edges[edge_id].data.flow = if edge.data.cost >= Flow::zero() {
+                        self.st.flow[edge_id] + edge.data.lower
                     }
                     else {
-                        edge.upper - self.st.flow[edge_id]
+                        edge.data.upper - self.st.flow[edge_id]
                     };
-                    assert!(graph.edges[edge_id].flow <= graph.edges[edge_id].upper);
-                    assert!(graph.edges[edge_id].flow >= graph.edges[edge_id].lower);
+                    assert!(graph.edges[edge_id].data.flow <= graph.edges[edge_id].data.upper);
+                    assert!(graph.edges[edge_id].data.flow >= graph.edges[edge_id].data.lower);
                 }
-                Ok(graph.minimum_cost()) } else { Err(status) };
+
+                Ok((0..graph.num_edges()).fold(Flow::zero(), |cost, edge_id| {
+                    let edge = graph.get_edge(EdgeId(edge_id));
+                    cost + edge.data.cost * edge.data.flow
+                }))
+            } else {
+                Err(status)
+            };
         }
         debug_assert!(self.st.satisfy_optimality_conditions());
 
@@ -63,18 +74,21 @@ where
             let edge = &graph.edges[edge_id];
             assert!(self.st.flow[edge_id] <= self.st.upper[edge_id]);
 
-            graph.edges[edge_id].flow = if edge.cost >= Flow::zero() {
-                self.st.flow[edge_id] + edge.lower
+            graph.edges[edge_id].data.flow = if edge.data.cost >= Flow::zero() {
+                self.st.flow[edge_id] + edge.data.lower
             }
             else {
-                edge.upper - self.st.flow[edge_id]
+                edge.data.upper - self.st.flow[edge_id]
             };
-            assert!(graph.edges[edge_id].flow <= graph.edges[edge_id].upper);
-            assert!(graph.edges[edge_id].flow >= graph.edges[edge_id].lower);
+            assert!(graph.edges[edge_id].data.flow <= graph.edges[edge_id].data.upper);
+            assert!(graph.edges[edge_id].data.flow >= graph.edges[edge_id].data.lower);
         }
-        
+
         if status == Status::Optimal {
-            Ok(graph.minimum_cost())
+            Ok((0..graph.num_edges()).fold(Flow::zero(), |cost, edge_id| {
+                let edge = graph.get_edge(EdgeId(edge_id));
+                cost + edge.data.cost * edge.data.flow
+            }))
         } else {
             Err(status)
         }
@@ -85,7 +99,7 @@ impl<Flow> ParametricNetworkSimplex<Flow>
 where
     Flow: MinimumCostFlowNum,
 {
-    pub fn solve(&mut self, graph: &mut Graph<Flow>) -> Result<Flow, Status> {
+    fn solve(&mut self, graph: &mut Graph<Directed, ExcessNode<Flow>, CapCostEdge<Flow>>) -> Result<Flow, Status> {
         <Self as MinimumCostFlowSolver<Flow>>::solve(self, graph)
     }
 

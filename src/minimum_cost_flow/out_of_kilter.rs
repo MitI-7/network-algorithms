@@ -1,11 +1,15 @@
 use crate::minimum_cost_flow::csr::CSR;
-use crate::graph::minimum_cost_flow_graph::Graph;
+use crate::core::graph::Graph;
 use crate::minimum_cost_flow::status::Status;
 use crate::minimum_cost_flow::{MinimumCostFlowNum, MinimumCostFlowSolver};
 use std::cmp::Reverse;
 use std::collections::BinaryHeap;
-use crate::graph::minimum_cost_flow_graph::construct_extend_network_feasible_solution;
+use crate::core::direction::Directed;
+use crate::core::ids::EdgeId;
+use crate::edge::capacity_cost::CapCostEdge;
+use crate::minimum_cost_flow::csr::construct_extend_network_feasible_solution;
 use crate::minimum_cost_flow::translater::translater;
+use crate::node::excess::ExcessNode;
 
 // O(nU * (m + n) log n)
 #[derive(Default)]
@@ -17,15 +21,15 @@ impl<Flow> MinimumCostFlowSolver<Flow> for OutOfKilter<Flow>
 where
     Flow: MinimumCostFlowNum,
 {
-    fn solve(&mut self, graph: &mut Graph<Flow>) -> Result<Flow, Status> {
-        if graph.is_unbalance() {
-            return Err(Status::Unbalanced);
-        }
+    fn solve(&mut self, graph: &mut Graph<Directed, ExcessNode<Flow>, CapCostEdge<Flow>>) -> Result<Flow, Status> {
+        // if graph.is_unbalance() {
+        //     return Err(Status::Unbalanced);
+        // }
 
         let mut new_graph = translater(graph);
         let (_source, artificial_nodes, artificial_edges) = construct_extend_network_feasible_solution(&mut new_graph);
         self.csr.build(&new_graph, None, None);
-        self.csr.excesses = new_graph.b.clone().into_boxed_slice();
+        // self.csr.excesses = new_graph.b.clone().into_boxed_slice();
 
         let mut out_of_kilter_edges = Vec::new();
         for edge_id in 0..self.csr.to.len() {
@@ -61,7 +65,7 @@ where
         self.csr.set_flow(&mut new_graph);
         self.csr.set_flow(graph);
 
-        let status = if artificial_edges.iter().all(|&edge_id| new_graph.edges[edge_id].flow == Flow::zero()) {
+        let status = if artificial_edges.iter().all(|&edge_id| new_graph.edges[edge_id.index()].data.flow == Flow::zero()) {
             Status::Optimal
         } else {
             Status::Infeasible
@@ -69,7 +73,10 @@ where
         // graph.remove_artificial_sub_graph(&artificial_nodes, &artificial_edges);
 
         if status == Status::Optimal {
-            Ok(graph.minimum_cost())
+            Ok((0..graph.num_edges()).fold(Flow::zero(), |cost, edge_id| {
+                let edge = graph.get_edge(EdgeId(edge_id));
+                cost + edge.data.cost * edge.data.flow
+            }))
         } else {
             Err(status)
         }
@@ -80,7 +87,7 @@ impl<Flow> OutOfKilter<Flow>
 where
     Flow: MinimumCostFlowNum,
 {
-    pub fn solve(&mut self, graph: &mut Graph<Flow>) -> Result<Flow, Status> {
+    fn solve(&mut self, graph: &mut Graph<Directed, ExcessNode<Flow>, CapCostEdge<Flow>>) -> Result<Flow, Status> {
         <Self as MinimumCostFlowSolver<Flow>>::solve(self, graph)
     }
 

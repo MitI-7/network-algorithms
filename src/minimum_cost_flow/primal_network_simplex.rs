@@ -1,10 +1,14 @@
-use crate::graph::minimum_cost_flow_graph::Graph;
+use crate::core::direction::Directed;
+use crate::core::graph::Graph;
+use crate::core::ids::EdgeId;
+use crate::edge::capacity_cost::CapCostEdge;
 use crate::minimum_cost_flow::network_simplex_pivot_rules::{BlockSearchPivotRule, PivotRule};
 use crate::minimum_cost_flow::spanning_tree_structure::{EdgeState, SpanningTreeStructure};
 use crate::minimum_cost_flow::status::Status;
 use crate::minimum_cost_flow::{MinimumCostFlowNum, MinimumCostFlowSolver};
-use crate::graph::minimum_cost_flow_graph::construct_extend_network_feasible_solution;
+use crate::minimum_cost_flow::csr::construct_extend_network_feasible_solution;
 use crate::minimum_cost_flow::translater::translater;
+use crate::node::excess::ExcessNode;
 
 #[derive(Default)]
 pub struct PrimalNetworkSimplex<Flow, Pivot = BlockSearchPivotRule<Flow>> {
@@ -17,17 +21,17 @@ where
     Flow: MinimumCostFlowNum,
     Pivot: PivotRule<Flow>,
 {
-    fn solve(&mut self, graph: &mut Graph<Flow>) -> Result<Flow, Status> {
-        if graph.is_unbalance() {
-            return Err(Status::Unbalanced);
-        }
+    fn solve(&mut self, graph: &mut Graph<Directed, ExcessNode<Flow>, CapCostEdge<Flow>>) -> Result<Flow, Status> {
+        // if graph.is_unbalance() {
+        //     return Err(Status::Unbalanced);
+        // }
         
         let mut new_graph = translater(graph);
 
-        let inf_cost = new_graph.edges.iter().map(|e| e.cost).fold(Flow::one(), |acc, cost| acc + cost); // all edge costs are non-negative
+        let inf_cost = new_graph.edges.iter().map(|e| e.data.cost).fold(Flow::one(), |acc, cost| acc + cost); // all edge costs are non-negative
         let (root, artificial_nodes, artificial_edges) = construct_extend_network_feasible_solution(&mut new_graph);
         self.st.build(&mut new_graph);
-        (self.st.root, self.st.parent[root], self.st.parent_edge_id[root]) = (root, usize::MAX, usize::MAX);
+        (self.st.root, self.st.parent[root.index()], self.st.parent_edge_id[root.index()]) = (root.index(), usize::MAX, usize::MAX);
 
         self.make_initial_spanning_tree_structure(&mut new_graph, &artificial_edges, inf_cost);
         debug_assert!(self.st.validate_num_successors(self.st.root));
@@ -43,20 +47,23 @@ where
         // }
         for edge_id in 0..graph.num_edges() {
             let edge = &graph.edges[edge_id];
-            graph.edges[edge_id].flow = if edge.cost >= Flow::zero() {
-                self.st.flow[edge_id] + edge.lower
+            graph.edges[edge_id].data.flow = if edge.data.cost >= Flow::zero() {
+                self.st.flow[edge_id] + edge.data.lower
             }
             else {
-                edge.upper - self.st.flow[edge_id]
+                edge.data.upper - self.st.flow[edge_id]
             };
-            assert!(graph.edges[edge_id].flow <= graph.edges[edge_id].upper);
-            assert!(graph.edges[edge_id].flow >= graph.edges[edge_id].lower);
+            assert!(graph.edges[edge_id].data.flow <= graph.edges[edge_id].data.upper);
+            assert!(graph.edges[edge_id].data.flow >= graph.edges[edge_id].data.lower);
         }
         // graph.remove_artificial_sub_graph(&artificial_nodes, &artificial_edges);
 
         self.pivot.clear();
         if self.st.satisfy_constraints() {
-            Ok(graph.minimum_cost())
+            Ok((0..graph.num_edges()).fold(Flow::zero(), |cost, edge_id| {
+                let edge = graph.get_edge(EdgeId(edge_id));
+                cost + edge.data.cost * edge.data.flow
+            }))
         } else {
             Err(Status::Infeasible)
         }
@@ -72,11 +79,11 @@ where
         PrimalNetworkSimplex { st: self.st, pivot: new_pivot }
     }
 
-    pub fn solve(&mut self, graph: &mut Graph<Flow>) -> Result<Flow, Status> {
+    fn solve(&mut self, graph: &mut Graph<Directed, ExcessNode<Flow>, CapCostEdge<Flow>>) -> Result<Flow, Status> {
         <Self as MinimumCostFlowSolver<Flow>>::solve(self, graph)
     }
 
-    pub(crate) fn run(&mut self, artificial_edges: &[usize]) {
+    pub(crate) fn run(&mut self, artificial_edges: &[EdgeId]) {
         while let Some(entering_edge_id) = self.pivot.find_entering_edge(&self.st, Self::calculate_violation) {
             let (leaving_edge_id, apex, delta, t2_now_root, t2_new_root) = self.select_leaving_edge(entering_edge_id);
             self.st.update_flow_in_cycle(entering_edge_id, delta, apex);
@@ -88,6 +95,7 @@ where
 
         // if there is remaining flow on the artificial edge, revert it
         for &edge_id in artificial_edges.iter() {
+            let edge_id = edge_id.index();
             if self.st.flow[edge_id] > Flow::zero() {
                 self.st.excesses[self.st.from[edge_id]] += self.st.flow[edge_id];
                 self.st.excesses[self.st.to[edge_id]] -= self.st.flow[edge_id];
@@ -103,25 +111,25 @@ where
         }
     }
 
-    fn make_initial_spanning_tree_structure(&mut self, graph: &mut Graph<Flow>, artificial_edges: &[usize], inf_cost: Flow) {
+    fn make_initial_spanning_tree_structure(&mut self, graph: &mut Graph<Directed, ExcessNode<Flow>, CapCostEdge<Flow>>, artificial_edges: &[EdgeId], inf_cost: Flow) {
         let mut prev_node = self.st.root;
         for &edge_id in artificial_edges.iter() {
-            let edge = &graph.edges[edge_id];
-            let u = if edge.from == self.st.root { edge.to } else { edge.from };
+            let edge = &graph.edges[edge_id.index()];
+            let u = if edge.u.index() == self.st.root { edge.v } else { edge.u };
 
-            if edge.from == u {
-                (self.st.potential[u], self.st.state[edge_id]) = (inf_cost, EdgeState::Tree);
+            if edge.u == u {
+                (self.st.potential[u.index()], self.st.state[edge_id.index()]) = (inf_cost, EdgeState::Tree);
             } else {
-                (self.st.potential[u], self.st.state[edge_id]) = (-inf_cost, EdgeState::Tree);
+                (self.st.potential[u.index()], self.st.state[edge_id.index()]) = (-inf_cost, EdgeState::Tree);
             }
 
-            (self.st.parent[u], self.st.parent_edge_id[u]) = (self.st.root, edge_id);
-            self.st.next_node_dft[prev_node] = u;
-            self.st.prev_node_dft[u] = prev_node;
-            self.st.last_descendent_dft[u] = u;
-            self.st.num_successors[u] = 1;
+            (self.st.parent[u.index()], self.st.parent_edge_id[u.index()]) = (self.st.root, edge_id.index());
+            self.st.next_node_dft[prev_node] = u.index();
+            self.st.prev_node_dft[u.index()] = prev_node;
+            self.st.last_descendent_dft[u.index()] = u.index();
+            self.st.num_successors[u.index()] = 1;
             // graph.excesses[u] = Flow::zero();
-            prev_node = u;
+            prev_node = u.index();
         }
         self.st.next_node_dft[prev_node] = self.st.root;
         self.st.prev_node_dft[self.st.root] = prev_node;

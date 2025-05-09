@@ -1,10 +1,14 @@
 use crate::minimum_cost_flow::csr::CSR;
-use crate::graph::minimum_cost_flow_graph::Graph;
 use crate::minimum_cost_flow::status::Status;
 use crate::minimum_cost_flow::{MinimumCostFlowNum, MinimumCostFlowSolver};
 use std::cmp::Reverse;
 use std::collections::BinaryHeap;
+use crate::core::direction::Directed;
+use crate::core::graph::Graph;
+use crate::core::ids::EdgeId;
+use crate::edge::capacity_cost::CapCostEdge;
 use crate::minimum_cost_flow::translater::translater;
+use crate::node::excess::ExcessNode;
 
 #[derive(Default)]
 pub struct SuccessiveShortestPath<Flow> {
@@ -15,14 +19,14 @@ impl<Flow> MinimumCostFlowSolver<Flow> for SuccessiveShortestPath<Flow>
 where
     Flow: MinimumCostFlowNum,
 {
-    fn solve(&mut self, graph: &mut Graph<Flow>) -> Result<Flow, Status> {
-        if graph.is_unbalance() {
-            return Err(Status::Unbalanced);
-        }
+    fn solve(&mut self, graph: &mut Graph<Directed, ExcessNode<Flow>, CapCostEdge<Flow>>) -> Result<Flow, Status> {
+        // if graph.is_unbalance() {
+        //     return Err(Status::Unbalanced);
+        // }
 
         let new_graph = translater(graph);
         self.csr.build(&new_graph, None, None);
-        self.csr.excesses = new_graph.b.clone().into_boxed_slice();
+        // self.csr.excesses = new_graph.b.clone().into_boxed_slice();
 
         for s in 0..self.csr.num_nodes {
             while self.csr.excesses[s] > Flow::zero() {
@@ -45,7 +49,10 @@ where
         self.csr.set_flow(graph);
 
         if self.csr.excesses.iter().all(|&e| e == Flow::zero()) {
-            Ok(graph.minimum_cost())
+            Ok((0..graph.num_edges()).fold(Flow::zero(), |cost, edge_id| {
+                let edge = graph.get_edge(EdgeId(edge_id));
+                cost + edge.data.cost * edge.data.flow
+            }))
         } else {
             Err(Status::Infeasible)
         }
@@ -56,7 +63,7 @@ impl<Flow> SuccessiveShortestPath<Flow>
 where
     Flow: MinimumCostFlowNum,
 {
-    pub fn solve(&mut self, graph: &mut Graph<Flow>) -> Result<Flow, Status> {
+    fn solve(&mut self, graph: &mut Graph<Directed, ExcessNode<Flow>, CapCostEdge<Flow>>) -> Result<Flow, Status> {
         <Self as MinimumCostFlowSolver<Flow>>::solve(self, graph)
     }
 

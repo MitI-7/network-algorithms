@@ -1,9 +1,13 @@
+use crate::core::direction::Directed;
 use crate::minimum_cost_flow::csr::CSR;
-use crate::graph::minimum_cost_flow_graph::Graph;
+use crate::core::graph::Graph;
+use crate::core::ids::EdgeId;
+use crate::edge::capacity_cost::CapCostEdge;
 use crate::minimum_cost_flow::status::Status;
 use crate::minimum_cost_flow::{MinimumCostFlowNum, MinimumCostFlowSolver};
-use crate::graph::minimum_cost_flow_graph::construct_extend_network_feasible_solution;
+use crate::minimum_cost_flow::csr::construct_extend_network_feasible_solution;
 use crate::minimum_cost_flow::translater::translater;
+use crate::node::excess::ExcessNode;
 
 #[derive(Default)]
 pub struct CycleCanceling<Flow> {
@@ -13,7 +17,7 @@ impl<Flow> MinimumCostFlowSolver<Flow> for CycleCanceling<Flow>
 where
     Flow: MinimumCostFlowNum,
 {
-    fn solve(&mut self, graph: &mut Graph<Flow>) -> Result<Flow, Status> {
+    fn solve(&mut self, graph: &mut Graph<Directed, ExcessNode<Flow>, CapCostEdge<Flow>>) -> Result<Flow, Status> {
         let mut new_graph = translater(graph);
         
         let (_source, artificial_nodes, artificial_edges) = construct_extend_network_feasible_solution(&mut new_graph);
@@ -42,7 +46,7 @@ where
         self.csr.set_flow(&mut new_graph);
         self.csr.set_flow(graph);
 
-        let status = if artificial_edges.iter().all(|&edge_id| new_graph.edges[edge_id].flow == Flow::zero()) {
+        let status = if artificial_edges.iter().all(|&edge_id| new_graph.edges[edge_id.index()].data.flow == Flow::zero()) {
             Status::Optimal
         } else {
             Status::Infeasible
@@ -50,7 +54,10 @@ where
         // graph.remove_artificial_sub_graph(&artificial_nodes, &artificial_edges);
 
         if status == Status::Optimal {
-            Ok(graph.minimum_cost())
+            Ok((0..graph.num_edges()).fold(Flow::zero(), |cost, edge_id| {
+                let edge = graph.get_edge(EdgeId(edge_id));
+                cost + edge.data.cost * edge.data.flow
+            }))
         } else {
             Err(status)
         }
@@ -61,7 +68,7 @@ impl<Flow> CycleCanceling<Flow>
 where
     Flow: MinimumCostFlowNum,
 {
-    pub fn solve(&mut self, graph: &mut Graph<Flow>) -> Result<Flow, Status> {
+    fn solve(&mut self, graph: &mut Graph<Directed, ExcessNode<Flow>, CapCostEdge<Flow>>) -> Result<Flow, Status> {
         <Self as MinimumCostFlowSolver<Flow>>::solve(self, graph)
     }
 

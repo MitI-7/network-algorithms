@@ -1,7 +1,10 @@
-use crate::graph::minimum_cost_flow_graph::{Graph, Edge};
+use crate::core::graph::{Graph, Edge};
 use crate::minimum_cost_flow::MinimumCostFlowNum;
 use std::cmp::Reverse;
 use std::collections::BinaryHeap;
+use crate::core::direction::Directed;
+use crate::edge::capacity_cost::CapCostEdge;
+use crate::node::excess::ExcessNode;
 
 #[derive(Clone, Default, PartialEq, Debug)]
 pub enum EdgeState {
@@ -43,10 +46,15 @@ impl<Flow> SpanningTreeStructure<Flow>
 where
     Flow: MinimumCostFlowNum,
 {
-    pub(crate) fn build(&mut self, graph: &mut Graph<Flow>) {
+    pub(crate) fn build(&mut self, graph: &mut Graph<Directed, ExcessNode<Flow>, CapCostEdge<Flow>>) {
         (self.num_nodes, self.num_edges) = (graph.num_nodes(), graph.num_edges());
         // self.excesses = graph.excesses.clone().into_boxed_slice();
-        self.excesses = graph.b.clone().into_boxed_slice();
+        // self.excesses = graph.b.clone().into_boxed_slice();
+        let mut e = Vec::new();
+        for u in 0..self.num_nodes {
+            e.push(graph.nodes[u].b);
+        }
+        self.excesses = e.into_boxed_slice();
 
         self.parent = vec![usize::MAX; self.num_nodes].into_boxed_slice();
         self.parent_edge_id = vec![usize::MAX; self.num_nodes].into_boxed_slice();
@@ -60,12 +68,12 @@ where
         self.state = vec![EdgeState::Lower; self.num_edges].into_boxed_slice();
 
         for (i, edge) in graph.edges.iter().enumerate() {
-            assert!(edge.upper >= Flow::zero() && edge.cost >= Flow::zero());
-            self.from[i] = edge.from;
-            self.to[i] = edge.to;
-            self.flow[i] = edge.flow;
-            self.upper[i] = edge.upper;
-            self.cost[i] = edge.cost;
+            assert!(edge.data.upper >= Flow::zero() && edge.data.cost >= Flow::zero());
+            self.from[i] = edge.u.index();
+            self.to[i] = edge.v.index();
+            self.flow[i] = edge.data.flow;
+            self.upper[i] = edge.data.upper;
+            self.cost[i] = edge.data.cost;
             self.state[i] = EdgeState::Lower;
         }
 
