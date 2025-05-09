@@ -1,11 +1,14 @@
 use crate::maximum_flow::csr::CSR;
-use crate::graph::maximum_flow_graph::Graph;
+use crate::core::graph::Graph;
 use crate::maximum_flow::status::Status;
 use crate::maximum_flow::FlowNum;
 use crate::maximum_flow::MaximumFlowSolver;
 use crate::traits::One;
 use core::ops::{Div, DivAssign, Mul, MulAssign};
 use std::collections::VecDeque;
+use crate::core::direction::Directed;
+use crate::core::ids::NodeId;
+use crate::edge::capacity::CapEdge;
 
 #[derive(Default)]
 pub struct CapacityScaling<Flow> {
@@ -18,8 +21,8 @@ impl<Flow> MaximumFlowSolver<Flow> for CapacityScaling<Flow>
 where
     Flow: FlowNum + One + Mul<Output = Flow> + MulAssign + Div<Output = Flow> + DivAssign,
 {
-    fn solve(&mut self, graph: &mut Graph<Flow>, source: usize, sink: usize, upper: Option<Flow>) -> Result<Flow, Status> {
-        if source >= graph.num_nodes() || sink >= graph.num_nodes() || source == sink {
+    fn solve(&mut self, graph: &mut Graph<Directed, (), CapEdge<Flow>>, source: NodeId, sink: NodeId, upper: Option<Flow>) -> Result<Flow, Status> {
+        if source.index() >= graph.num_nodes() || sink.index() >= graph.num_nodes() || source == sink {
             return Err(Status::BadInput);
         }
 
@@ -34,20 +37,20 @@ where
         }
         delta /= two;
 
-        let mut residual = upper.unwrap_or_else(|| self.csr.neighbors(source).fold(Flow::zero(), |sum, i| sum + self.csr.upper[i]));
+        let mut residual = upper.unwrap_or_else(|| self.csr.neighbors(source.index()).fold(Flow::zero(), |sum, i| sum + self.csr.upper[i]));
         let mut flow = Flow::zero();
         while delta > Flow::zero() {
             // solve maximum flow in delta-residual network
             loop {
-                self.bfs(source, sink, delta);
+                self.bfs(source.index(), sink.index(), delta);
 
                 // no s-t path
-                if self.csr.distances_to_sink[source] >= self.csr.num_nodes {
+                if self.csr.distances_to_sink[source.index()] >= self.csr.num_nodes {
                     break;
                 }
 
                 self.current_edge.iter_mut().enumerate().for_each(|(u, e)| *e = self.csr.start[u]);
-                match self.dfs(source, sink, residual, delta) {
+                match self.dfs(source.index(), sink.index(), residual, delta) {
                     Some(delta) => {
                         flow += delta;
                         residual -= delta;
@@ -59,10 +62,7 @@ where
         }
 
         // copy
-        for edge_id in 0..graph.num_edges() {
-            let i = self.csr.edge_index_to_inside_edge_index[edge_id];
-            graph.edges[edge_id].flow = self.csr.flow[i];
-        }
+        self.csr.set_flow(graph);
 
         Ok(flow)
     }
@@ -72,7 +72,7 @@ impl<Flow> CapacityScaling<Flow>
 where
     Flow: FlowNum + One + Mul<Output = Flow> + MulAssign + Div<Output = Flow> + DivAssign,
 {
-    pub fn solve(&mut self, graph: &mut Graph<Flow>, source: usize, sink: usize, upper: Option<Flow>) -> Result<Flow, Status> {
+    pub fn solve(&mut self, graph: &mut Graph<Directed, (), CapEdge<Flow>>, source: NodeId, sink: NodeId, upper: Option<Flow>) -> Result<Flow, Status> {
         <Self as MaximumFlowSolver<Flow>>::solve(self, graph, source, sink, upper)
     }
 

@@ -1,5 +1,8 @@
+use crate::core::direction::Directed;
 use crate::maximum_flow::csr::CSR;
-use crate::graph::maximum_flow_graph::Graph;
+use crate::core::graph::Graph;
+use crate::core::ids::NodeId;
+use crate::edge::capacity::CapEdge;
 use crate::maximum_flow::status::Status;
 use crate::maximum_flow::FlowNum;
 use crate::maximum_flow::MaximumFlowSolver;
@@ -13,19 +16,19 @@ impl<Flow> MaximumFlowSolver<Flow> for FordFulkerson<Flow>
 where
     Flow: FlowNum,
 {
-    fn solve(&mut self, graph: &mut Graph<Flow>, source: usize, sink: usize, upper: Option<Flow>) -> Result<Flow, Status> {
-        if source >= graph.num_nodes() || sink >= graph.num_nodes() || source == sink {
+    fn solve(&mut self, graph: &mut Graph<Directed, (), CapEdge<Flow>>, source: NodeId, sink: NodeId, upper: Option<Flow>) -> Result<Flow, Status> {
+        if source.index() >= graph.num_nodes() || sink.index() >= graph.num_nodes() || source == sink {
             return Err(Status::BadInput);
         }
 
         self.csr.build(graph);
         let mut visited = vec![false; self.csr.num_nodes];
 
-        let mut residual = upper.unwrap_or_else(|| self.csr.neighbors(source).fold(Flow::zero(), |acc, i| acc + self.csr.upper[i]));
+        let mut residual = upper.unwrap_or_else(|| self.csr.neighbors(source.index()).fold(Flow::zero(), |acc, i| acc + self.csr.upper[i]));
         let mut flow = Flow::zero();
         while residual > Flow::zero() {
             visited.fill(false);
-            match self.dfs(source, sink, residual, &mut visited) {
+            match self.dfs(source.index(), sink.index(), residual, &mut visited) {
                 Some(delta) => {
                     flow += delta;
                     residual -= delta;
@@ -44,7 +47,7 @@ impl<Flow> FordFulkerson<Flow>
 where
     Flow: FlowNum,
 {
-    pub fn solve(&mut self, graph: &mut Graph<Flow>, source: usize, sink: usize, upper: Option<Flow>) -> Result<Flow, Status> {
+    pub fn solve(&mut self, graph: &mut Graph<Directed, (), CapEdge<Flow>>, source: NodeId, sink: NodeId, upper: Option<Flow>) -> Result<Flow, Status> {
         <Self as MaximumFlowSolver<Flow>>::solve(self, graph, source, sink, upper)
     }
 

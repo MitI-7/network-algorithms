@@ -1,5 +1,8 @@
+use crate::core::direction::Directed;
+use crate::core::graph::Graph;
+use crate::core::ids::NodeId;
+use crate::edge::capacity::CapEdge;
 use crate::maximum_flow::csr::CSR;
-use crate::graph::maximum_flow_graph::Graph;
 use crate::maximum_flow::status::Status;
 use crate::maximum_flow::FlowNum;
 use crate::maximum_flow::MaximumFlowSolver;
@@ -39,28 +42,28 @@ impl<Flow> MaximumFlowSolver<Flow> for PushRelabelFIFO<Flow>
 where
     Flow: FlowNum,
 {
-    fn solve(&mut self, graph: &mut Graph<Flow>, source: usize, sink: usize, upper: Option<Flow>) -> Result<Flow, Status> {
-        if source >= graph.num_nodes() || sink >= graph.num_nodes() || source == sink {
+    fn solve(&mut self, graph: &mut Graph<Directed, (), CapEdge<Flow>>, source: NodeId, sink: NodeId, upper: Option<Flow>) -> Result<Flow, Status> {
+        if source.index() >= graph.num_nodes() || sink.index() >= graph.num_nodes() || source == sink {
             return Err(Status::BadInput);
         }
 
-        let delta: Flow = graph.edges.iter().filter(|e| e.from == source).fold(Flow::zero(), |acc, e| acc + e.upper);
+        let delta: Flow = graph.edges.iter().filter(|e| e.u == source).fold(Flow::zero(), |acc, e| acc + e.data.upper);
         let dummy_source = graph.add_node(); // dummy source
-        graph.add_directed_edge(dummy_source, source, upper.unwrap_or(delta)); // dummy edge
+        graph.add_edge(dummy_source, source, CapEdge{flow: Flow::zero(), upper: upper.unwrap_or(delta)}); // dummy edge
         self.csr.build(graph);
         let source = dummy_source;
 
-        self.pre_process(source, sink);
+        self.pre_process(source.index(), sink.index());
         while let Some(u) = self.active_nodes.pop_front() {
             // no path to sink
-            if u == source || u == sink || self.csr.distances_to_sink[u] >= self.csr.num_nodes {
+            if u == source.index() || u == sink.index() || self.csr.distances_to_sink[u] >= self.csr.num_nodes {
                 continue;
             }
             self.discharge(u);
 
             if self.work > self.threshold {
                 self.work = 0;
-                self.csr.update_distances_to_sink(source, sink);
+                self.csr.update_distances_to_sink(source.index(), sink.index());
                 self.distance_count.fill(0);
                 for u in 0..self.csr.num_nodes {
                     self.distance_count[self.csr.distances_to_sink[u]] += 1;
@@ -69,7 +72,7 @@ where
         }
 
         if !self.value_only {
-            self.push_flow_excess_back_to_source(source, sink);
+            self.push_flow_excess_back_to_source(source.index(), sink.index());
             self.csr.set_flow(graph);
         }
 
@@ -77,7 +80,7 @@ where
         graph.pop_node();
         graph.pop_edge();
 
-        Ok(self.csr.excesses[sink])
+        Ok(self.csr.excesses[sink.index()])
     }
 }
 
@@ -95,7 +98,7 @@ where
         self
     }
 
-    pub fn solve(&mut self, graph: &mut Graph<Flow>, source: usize, sink: usize, upper: Option<Flow>) -> Result<Flow, Status> {
+    pub fn solve(&mut self, graph: &mut Graph<Directed, (), CapEdge<Flow>>, source: NodeId, sink: NodeId, upper: Option<Flow>) -> Result<Flow, Status> {
         <Self as MaximumFlowSolver<Flow>>::solve(self, graph, source, sink, upper)
     }
 

@@ -1,6 +1,7 @@
 use crate::maximum_flow::csr::CSR;
 use crate::core::graph::Graph;
 use crate::core::direction::Directed;
+use crate::core::ids::NodeId;
 use crate::edge::capacity::CapEdge;
 use crate::maximum_flow::status::Status;
 use crate::maximum_flow::FlowNum;
@@ -16,26 +17,26 @@ impl<Flow> MaximumFlowSolver<Flow> for Dinic<Flow>
 where
     Flow: FlowNum,
 {
-    fn solve(&mut self, graph: &mut Graph<Directed, (), CapEdge<Flow>>, source: usize, sink: usize, upper: Option<Flow>) -> Result<Flow, Status> {
-        if source >= graph.num_nodes() || sink >= graph.num_nodes() || source == sink {
+    fn solve(&mut self, graph: &mut Graph<Directed, (), CapEdge<Flow>>, source: NodeId, sink: NodeId, upper: Option<Flow>) -> Result<Flow, Status> {
+        if source.index() >= graph.num_nodes() || sink.index() >= graph.num_nodes() || source == sink {
             return Err(Status::BadInput);
         }
 
         self.csr.build(graph);
         self.current_edge.resize(graph.num_nodes(), 0);
 
-        let mut residual = upper.unwrap_or_else(|| self.csr.neighbors(source).fold(Flow::zero(), |sum, i| sum + self.csr.upper[i]));
+        let mut residual = upper.unwrap_or_else(|| self.csr.neighbors(source.index()).fold(Flow::zero(), |sum, i| sum + self.csr.upper[i]));
         let mut flow = Flow::zero();
         while residual > Flow::zero() {
-            self.csr.update_distances_to_sink(source, sink);
+            self.csr.update_distances_to_sink(source.index(), sink.index());
 
             // no s-t path
-            if self.csr.distances_to_sink[source] >= self.csr.num_nodes {
+            if self.csr.distances_to_sink[source.index()] >= self.csr.num_nodes {
                 break;
             }
 
             self.current_edge.iter_mut().enumerate().for_each(|(u, e)| *e = self.csr.start[u]);
-            match self.dfs(source, sink, residual) {
+            match self.dfs(source.index(), sink.index(), residual) {
                 Some(delta) => {
                     flow += delta;
                     residual -= delta;
@@ -53,7 +54,7 @@ impl<Flow> Dinic<Flow>
 where
     Flow: FlowNum,
 {
-    pub fn solve(&mut self, graph: &mut Graph<Directed, (), CapEdge<Flow>>, source: usize, sink: usize, upper: Option<Flow>) -> Result<Flow, Status> {
+    pub fn solve(&mut self, graph: &mut Graph<Directed, (), CapEdge<Flow>>, source: NodeId, sink: NodeId, upper: Option<Flow>) -> Result<Flow, Status> {
         <Self as MaximumFlowSolver<Flow>>::solve(self, graph, source, sink, upper)
     }
 

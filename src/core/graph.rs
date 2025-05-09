@@ -34,6 +34,10 @@ impl<D: Direction, N: Default, E> Graph<D, N, E> {
     pub fn add_nodes(&mut self, n: usize) -> Vec<NodeId> {
         (0..n).map(|_| self.add_node()).collect()
     }
+    
+    pub fn pop_node(&mut self) {
+        self.nodes.pop();
+    }
 
     pub fn add_directed_edge(&mut self, from: NodeId, to: NodeId, data: E) -> EdgeId {
         self.edges.push(Edge { u: from, v: to, data });
@@ -47,6 +51,10 @@ impl<D: Direction, N: Default, E> Graph<D, N, E> {
 
     pub fn get_edge(&self, edge_id: EdgeId) -> &Edge<E> {
         &self.edges[edge_id.index()]
+    }
+    
+    pub fn pop_edge(&mut self) {
+        self.edges.pop();   
     }
 
     // pub fn add_node_value(&mut self, v: NodeId, val: N)
