@@ -1,5 +1,6 @@
 use crate::maximum_flow::csr::CSR;
-use crate::graph::maximum_flow_graph::Graph;
+// use crate::graph::maximum_flow_graph::Graph;
+use crate::graph::graph::{Graph, CapEdge, Directed};
 use crate::maximum_flow::status::Status;
 use crate::maximum_flow::FlowNum;
 use crate::maximum_flow::MaximumFlowSolver;
@@ -14,7 +15,7 @@ impl<Flow> MaximumFlowSolver<Flow> for Dinic<Flow>
 where
     Flow: FlowNum,
 {
-    fn solve(&mut self, graph: &mut Graph<Flow>, source: usize, sink: usize, upper: Option<Flow>) -> Result<Flow, Status> {
+    fn solve(&mut self, graph: &mut Graph<Directed, (), CapEdge<Flow>>, source: usize, sink: usize, upper: Option<Flow>) -> Result<Flow, Status> {
         if source >= graph.num_nodes() || sink >= graph.num_nodes() || source == sink {
             return Err(Status::BadInput);
         }
@@ -51,7 +52,7 @@ impl<Flow> Dinic<Flow>
 where
     Flow: FlowNum,
 {
-    pub fn solve(&mut self, graph: &mut Graph<Flow>, source: usize, sink: usize, upper: Option<Flow>) -> Result<Flow, Status> {
+    pub fn solve(&mut self, graph: &mut Graph<Directed, (), CapEdge<Flow>>, source: usize, sink: usize, upper: Option<Flow>) -> Result<Flow, Status> {
         <Self as MaximumFlowSolver<Flow>>::solve(self, graph, source, sink, upper)
     }
 

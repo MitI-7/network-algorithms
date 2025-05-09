@@ -1,4 +1,4 @@
-use crate::graph::maximum_flow_graph::Graph;
+use crate::graph::graph::{Graph, CapEdge, Directed};
 use crate::maximum_flow::FlowNum;
 use std::collections::VecDeque;
 
@@ -23,7 +23,7 @@ impl<Flow> CSR<Flow>
 where
     Flow: FlowNum,
 {
-    pub fn build(&mut self, graph: &mut Graph<Flow>) {
+    pub fn build(&mut self, graph: &mut Graph<Directed, (), CapEdge<Flow>>) {
         self.num_nodes = graph.num_nodes();
         self.num_edges = graph.num_edges();
 
@@ -39,8 +39,8 @@ where
 
         let mut degree = vec![0; self.num_nodes].into_boxed_slice();
         for edge in graph.edges.iter() {
-            degree[edge.to] += 1;
-            degree[edge.from] += 1;
+            degree[edge.to.index()] += 1;
+            degree[edge.from.index()] += 1;
         }
 
         for u in 1..=self.num_nodes {
@@ -50,31 +50,31 @@ where
         let mut counter = vec![0; self.num_nodes];
         for (edge_index, e) in graph.edges.iter().enumerate() {
             let (u, v) = (e.from, e.to);
-            let inside_edge_index_u = self.start[u] + counter[u];
-            counter[u] += 1;
-            let inside_edge_index_v = self.start[v] + counter[v];
-            counter[v] += 1;
+            let inside_edge_index_u = self.start[u.index()] + counter[u.index()];
+            counter[u.index()] += 1;
+            let inside_edge_index_v = self.start[v.index()] + counter[v.index()];
+            counter[v.index()] += 1;
 
             self.edge_index_to_inside_edge_index[edge_index] = inside_edge_index_u;
 
             // u -> v
-            self.to[inside_edge_index_u] = v;
+            self.to[inside_edge_index_u] = v.index();
             self.flow[inside_edge_index_u] = Flow::zero();
-            self.upper[inside_edge_index_u] = e.upper;
+            self.upper[inside_edge_index_u] = e.data.upper;
             self.rev[inside_edge_index_u] = inside_edge_index_v;
 
             // v -> u
-            self.to[inside_edge_index_v] = u;
-            self.flow[inside_edge_index_v] = e.upper;
-            self.upper[inside_edge_index_v] = e.upper;
+            self.to[inside_edge_index_v] = u.index();
+            self.flow[inside_edge_index_v] = e.data.upper;
+            self.upper[inside_edge_index_v] = e.data.upper;
             self.rev[inside_edge_index_v] = inside_edge_index_u;
         }
     }
 
-    pub fn set_flow(&self, graph: &mut Graph<Flow>) {
+    pub fn set_flow(&self, graph: &mut Graph<Directed, (), CapEdge<Flow>>) {
         for edge_id in 0..graph.num_edges() {
             let inside_edge_id = self.edge_index_to_inside_edge_index[edge_id];
-            graph.edges[edge_id].flow = self.flow[inside_edge_id];
+            graph.edges[edge_id].data.flow = self.flow[inside_edge_id];
         }
     }
 

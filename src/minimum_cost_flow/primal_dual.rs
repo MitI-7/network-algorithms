@@ -1,9 +1,8 @@
-use crate::minimum_cost_flow::csr::CSR;
-use crate::graph::minimum_cost_flow_graph::Graph;
+use crate::minimum_cost_flow::csr::{CSR, construct_extend_network_one_supply_one_demand};
+use crate::graph::graph::{CapCostEdge, Directed, Graph, ExcessNode, EdgeId};
 use crate::minimum_cost_flow::status::Status;
 use crate::minimum_cost_flow::{MinimumCostFlowNum, MinimumCostFlowSolver};
 use std::collections::{BinaryHeap, VecDeque};
-use crate::graph::minimum_cost_flow_graph::construct_extend_network_one_supply_one_demand;
 use crate::minimum_cost_flow::translater::translater;
 
 #[derive(Default)]
@@ -20,17 +19,26 @@ impl<Flow> MinimumCostFlowSolver<Flow> for PrimalDual<Flow>
 where
     Flow: MinimumCostFlowNum,
 {
-    fn solve(&mut self, graph: &mut Graph<Flow>) -> Result<Flow, Status> {
-        if graph.is_unbalance() {
+    fn solve(&mut self, graph: &mut Graph<Directed, ExcessNode<Flow>, CapCostEdge<Flow>>) -> Result<Flow, Status> {
+        // if graph.is_unbalance() {
+        //     return Err(Status::Unbalanced);
+        // }
+        
+        let mut t = Flow::zero();
+        for u in 0..graph.num_nodes() {
+            t += graph.nodes[u].b;
+        }
+        if t != Flow::zero() {
             return Err(Status::Unbalanced);
         }
+        
         if graph.num_nodes() == 0 {
             return Ok(Flow::zero());
         }
 
         if graph.num_edges() == 0 {
             for u in 0..graph.num_nodes() {
-                if graph.b[u] != Flow::zero() {
+                if graph.nodes[u].b != Flow::zero() {
                     return Err(Status::Infeasible);
                 }
             }
@@ -46,21 +54,25 @@ where
         self.distances.resize(self.csr.num_nodes, 0);
         self.current_edge.resize(self.csr.num_nodes, 0);
 
-        while self.csr.excesses[source] > Flow::zero() {
-            if !self.dual(source, sink) {
+        while self.csr.excesses[source.index()] > Flow::zero() {
+            if !self.dual(source.index(), sink.index()) {
                 break;
             }
-            self.primal(source, sink);
+            self.primal(source.index(), sink.index());
         }
 
         self.csr.set_flow(graph);
 
         // graph.remove_artificial_sub_graph(&artificial_nodes, &artificial_edges);
-        if self.csr.excesses[source] != Flow::zero() || self.csr.excesses[sink] != Flow::zero() {
+        if self.csr.excesses[source.index()] != Flow::zero() || self.csr.excesses[sink.index()] != Flow::zero() {
             return Err(Status::Infeasible);
         }
 
-        Ok(graph.minimum_cost())
+            Ok((0..graph.num_edges()).fold(Flow::zero(), |cost, edge_id| {
+                let edge = graph.get_edge(EdgeId(edge_id));
+                cost + edge.data.cost * edge.data.flow
+            }))
+
     }
 }
 
@@ -68,7 +80,7 @@ impl<Flow> PrimalDual<Flow>
 where
     Flow: MinimumCostFlowNum,
 {
-    pub fn solve(&mut self, graph: &mut Graph<Flow>) -> Result<Flow, Status> {
+    pub fn solve(&mut self, graph: &mut Graph<Directed, ExcessNode<Flow>, CapCostEdge<Flow>>) -> Result<Flow, Status> {
         <Self as MinimumCostFlowSolver<Flow>>::solve(self, graph)
     }
 
@@ -205,13 +217,13 @@ where
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::graph::minimum_cost_flow_graph::Graph;
+    use crate::graph::graph::Graph;
 
     #[test]
     fn test() {
-        let mut g = Graph::default();
+        let mut g:Graph<Directed, ExcessNode<i32>, CapCostEdge<i32>> = Graph::new();
         let a = g.add_node();
-        g.add_directed_edge(a, a, -5, 0, 10);
+        g.add_edge(a, a, CapCostEdge{flow: 0, lower: -5, upper: 0, cost:10});
 
         let s = PrimalDual::default().solve(&mut g).unwrap();
         println!("{}", s);
