@@ -71,8 +71,8 @@ where
 
         // for edge in graph.edges.iter().chain(artificial_edges.unwrap()) {
         for edge in graph.edges.iter() {
-            degree[edge.to.index()] += 1;
-            degree[edge.from.index()] += 1;
+            degree[edge.v.index()] += 1;
+            degree[edge.u.index()] += 1;
         }
 
         for i in 1..=self.num_nodes {
@@ -87,7 +87,7 @@ where
             assert!(edge.data.upper >= Flow::zero());
             // assert!(edge.flow == Flow::zero());
 
-            let (u, v) = (edge.from.index(), edge.to.index());
+            let (u, v) = (edge.u.index(), edge.v.index());
             let inside_edge_index_u = self.start[u] + counter[u];
             counter[u] += 1;
             let inside_edge_index_v = self.start[v] + counter[v];

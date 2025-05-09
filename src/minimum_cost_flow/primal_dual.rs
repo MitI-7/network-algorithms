@@ -223,7 +223,8 @@ mod test {
 
     #[test]
     fn test() {
-        let mut g: Graph<Directed, ExcessNode<i32>, CapCostEdge<i32>> = Graph::new();
+        // let mut g: Graph<Directed, ExcessNode<i32>, CapCostEdge<i32>> = Graph::default();
+        let mut g = Graph::default();
         let a = g.add_node();
         g.add_edge(a, a, CapCostEdge { flow: 0, lower: -5, upper: 0, cost: 10 });
 

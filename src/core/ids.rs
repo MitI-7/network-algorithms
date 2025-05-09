@@ -10,3 +10,7 @@ impl NodeId {
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct EdgeId(pub usize);
 
+impl EdgeId {
+    #[inline] pub fn index(self) -> usize { self.0 }
+}
+
