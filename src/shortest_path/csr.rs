@@ -1,4 +1,6 @@
-use crate::graph::shortest_path_graph::Graph;
+use crate::core::graph::Graph;
+use crate::core::direction::Directed;
+use crate::edge::weight::WeightEdge;
 use crate::traits::*;
 
 #[derive(Default)]
@@ -15,7 +17,7 @@ impl<W> CSR<W>
 where
     W: Ord +  Zero + Clone + Copy,
 {
-    pub fn build(&mut self, graph: &Graph<W>) {
+    pub fn build(&mut self, graph: &Graph<Directed, (), WeightEdge<W>>) {
         self.num_nodes = graph.num_nodes();
         self.num_edges = graph.num_edges();
 
@@ -26,7 +28,7 @@ where
 
         let mut degree = vec![0; self.num_nodes].into_boxed_slice();
         for edge in graph.edges.iter() {
-            degree[edge.from] += 1;
+            degree[edge.u.index()] += 1;
         }
 
         for u in 1..=self.num_nodes {
@@ -35,9 +37,9 @@ where
 
         let mut counter = vec![0; self.num_nodes];
         for edge in graph.edges.iter() {
-            let (u, v) = (edge.from, edge.to);
+            let (u, v) = (edge.u.index(), edge.v.index());
             self.to[self.start[u] + counter[u]] = v;
-            self.weight[self.start[u] + counter[u]] = edge.weight;
+            self.weight[self.start[u] + counter[u]] = edge.data.weight;
 
             counter[u] += 1;
         }

@@ -1,5 +1,5 @@
 use crate::generalized_maximum_flow::csr::CSR;
-use crate::graph::generalized_maximum_flow_graph::Graph;
+use crate::generalized_maximum_flow::generalized_maximum_flow_graph::Graph;
 use crate::generalized_maximum_flow::status::Status;
 use num_traits::Float;
 use num_traits::{FromPrimitive, ToPrimitive};

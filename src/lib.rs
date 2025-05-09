@@ -5,7 +5,6 @@ pub mod maximum_flow;
 pub mod maximum_matching;
 pub mod minimum_cost_flow;
 pub mod traits;
-pub mod graph;
 pub mod shortest_path;
 pub mod core;
 pub mod edge;

@@ -1,8 +1,10 @@
-use crate::graph::shortest_path_graph::Graph;
+use crate::core::graph::Graph;
 use crate::data_structures::bit_vector;
 use crate::traits::{IntNum, Zero};
 use std::cmp::Reverse;
 use std::collections::BinaryHeap;
+use crate::core::direction::Directed;
+use crate::edge::weight::WeightEdge;
 use crate::shortest_path::csr::CSR;
 
 #[derive(Default)]
@@ -14,7 +16,7 @@ impl<W> Dijkstra<W>
 where
     W: IntNum + Zero + Copy + Ord,
 {
-    fn solve<E>(&mut self, graph: &Graph<W>, source: usize) -> Vec<W> {
+    fn solve<E>(&mut self, graph: &Graph<Directed, (), WeightEdge<W>>, source: usize) -> Vec<W> {
         self.csr.build(graph);
 
         let mut heap = BinaryHeap::new();

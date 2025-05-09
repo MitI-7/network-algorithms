@@ -1,5 +1,7 @@
+use crate::core::direction::Directed;
 use crate::shortest_path::csr::CSR;
-use crate::graph::shortest_path_graph::Graph;
+use crate::core::graph::Graph;
+use crate::edge::weight::WeightEdge;
 use crate::traits::{IntNum, Zero};
 
 #[derive(Default)]
@@ -11,7 +13,7 @@ impl<W> BellmanFord<W>
 where
     W: IntNum + Zero + Copy,
 {
-    fn solve(&mut self, graph: &Graph<W>, source: usize) -> Result<Vec<Option<W>>, String> {
+    fn solve(&mut self, graph: &Graph<Directed, (), WeightEdge<W>>, source: usize) -> Result<Vec<Option<W>>, String> {
         self.csr.build(graph);
 
         let mut distances = vec![None; self.csr.num_nodes];
