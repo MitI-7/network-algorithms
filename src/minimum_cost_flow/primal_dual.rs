@@ -4,6 +4,7 @@ use crate::minimum_cost_flow::status::Status;
 use crate::minimum_cost_flow::{MinimumCostFlowNum, MinimumCostFlowSolver};
 use std::collections::{BinaryHeap, VecDeque};
 use crate::graph::minimum_cost_flow_graph::construct_extend_network_one_supply_one_demand;
+use crate::minimum_cost_flow::translater::translater;
 
 #[derive(Default)]
 pub struct PrimalDual<Flow> {
@@ -23,10 +24,28 @@ where
         if graph.is_unbalance() {
             return Err(Status::Unbalanced);
         }
+        if graph.num_nodes() == 0 {
+            return Ok(Flow::zero());
+        }
 
+        if graph.num_edges() == 0 {
+            for u in 0..graph.num_nodes() {
+                if graph.b[u] != Flow::zero() {
+                    return Err(Status::Infeasible);
+                }
+            }
+            return Ok(Flow::zero());
+        }
+        
+        let new_graph = translater(graph);
+
+        
         // transforms the minimum cost flow problem into a problem with a single excess node and a single deficit node.
-        let (source, sink, artificial_nodes, artificial_edges) = construct_extend_network_one_supply_one_demand(graph);
-        self.csr.build(graph);
+        let (source, sink, artificial_edges, total_excess) = construct_extend_network_one_supply_one_demand(&new_graph);
+        self.csr.build(&new_graph, Some(&[source, sink]), Some(&artificial_edges));
+        self.csr.excesses = vec![Flow::zero(); self.csr.num_nodes].into_boxed_slice();
+        self.csr.excesses[source] = total_excess;
+        self.csr.excesses[sink] = -total_excess;
 
         self.distances.resize(self.csr.num_nodes, 0);
         self.current_edge.resize(self.csr.num_nodes, 0);
@@ -40,7 +59,7 @@ where
 
         self.csr.set_flow(graph);
 
-        graph.remove_artificial_sub_graph(&artificial_nodes, &artificial_edges);
+        // graph.remove_artificial_sub_graph(&artificial_nodes, &artificial_edges);
         if self.csr.excesses[source] != Flow::zero() || self.csr.excesses[sink] != Flow::zero() {
             return Err(Status::Infeasible);
         }
@@ -183,5 +202,50 @@ where
     #[inline]
     pub fn is_admissible_edge(&self, from: usize, i: usize) -> bool {
         self.csr.residual_capacity(i) > Flow::zero() && self.distances[from] == self.distances[self.csr.to[i]] + 1
+    }
+}
+
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::graph::minimum_cost_flow_graph::Graph;
+
+    #[test]
+    fn test() {
+        let mut g = Graph::default();
+        let a = g.add_node();
+        g.add_directed_edge(a, a, -5, 0, 10);
+        
+        let s = PrimalDual::default().solve(&mut g).unwrap();
+        println!("{}", s);
+        
+        // 1 20 77
+        // 0
+        // 0 0 -1 9 0
+        // 0 0 -6 0 -10
+        // 0 0 8 8 0
+        // 0 0 -8 -4 -4
+        // 0 0 -10 0 -3
+        // 0 0 -10 1 -2
+        // 0 0 -8 10 8
+        // 0 0 1 10 2
+        // 0 0 10 10 3
+        // 0 0 -5 5 1
+        // 0 0 -10 -6 -6
+        // 0 0 -3 7 8
+        // 0 0 0 9 0
+        // 0 0 0 0 -6
+        // 0 0 4 8 8
+        // 0 0 0 2 6
+        // 0 0 -10 -3 -6
+        // 0 0 -10 -8 -1
+        // 0 0 -10 0 0
+        // 0 0 -10 -10 -3
+        // 
+        
+        
+
+        
     }
 }

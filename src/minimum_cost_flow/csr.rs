@@ -2,6 +2,7 @@ use crate::graph::minimum_cost_flow_graph::Graph;
 use crate::minimum_cost_flow::MinimumCostFlowNum;
 use std::cmp::Reverse;
 use std::collections::BinaryHeap;
+use crate::graph::minimum_cost_flow_graph::Edge;
 
 #[derive(Default)]
 pub struct CSR<Flow> {
@@ -18,24 +19,26 @@ pub struct CSR<Flow> {
     pub upper: Box<[Flow]>,
     pub cost: Box<[Flow]>,
     pub rev: Box<[usize]>,
+
+    pub is_reversed: Box<[bool]>,
 }
 
 impl<Flow> CSR<Flow>
 where
     Flow: MinimumCostFlowNum,
 {
-    pub fn build(&mut self, graph: &Graph<Flow>) {
+    pub fn build(&mut self, graph: &Graph<Flow>, artificial_nodes: Option<&[usize]>, artificial_edges: Option<&[Edge<Flow>]>) {
         if graph.num_nodes() == 0 {
             return;
         }
 
-        self.num_nodes = graph.num_nodes();
-        self.num_edges = graph.num_edges();
+        self.num_nodes = graph.num_nodes() + artificial_nodes.unwrap_or(&[]).len();
+        self.num_edges = graph.num_edges() + artificial_edges.unwrap_or(&[]).len();
 
-        self.excesses = vec![Flow::zero(); self.num_nodes].into_boxed_slice();
-        for u in 0..self.num_nodes {
-            self.excesses[u] = graph.excesses[u];
-        }
+        // self.excesses = vec![Flow::zero(); self.num_nodes].into_boxed_slice();
+        // for u in 0..self.num_nodes {
+        //     self.excesses[u] = graph.excesses[u];
+        // }
 
         self.edge_index_to_inside_edge_index = vec![usize::MAX; self.num_edges].into_boxed_slice();
         self.start = vec![0; self.num_nodes + 1].into_boxed_slice();
@@ -46,12 +49,13 @@ where
         self.rev = vec![usize::MAX; self.num_edges * 2].into_boxed_slice();
         self.potentials = vec![Flow::zero(); self.num_nodes].into_boxed_slice();
 
-        self.make_csr(graph);
+        self.make_csr(graph, artificial_nodes, artificial_edges);
     }
 
-    fn make_csr(&mut self, graph: &Graph<Flow>) {
+    fn make_csr(&mut self, graph: &Graph<Flow>, _artificial_nodes: Option<&[usize]>, artificial_edges: Option<&[Edge<Flow>]>) {
         let mut degree = vec![0; self.num_nodes];
-        for edge in graph.edges.iter() {
+
+        for edge in graph.edges.iter().chain(artificial_edges.unwrap_or(&[])) {
             degree[edge.to] += 1;
             degree[edge.from] += 1;
         }
@@ -61,7 +65,12 @@ where
         }
 
         let mut counter = vec![0; self.num_nodes];
-        for (edge_index, edge) in graph.edges.iter().enumerate() {
+        for (edge_index, edge) in graph.edges.iter().chain(artificial_edges.unwrap_or(&[])).enumerate() {
+            assert!(edge.cost >= Flow::zero());
+            assert!(edge.lower == Flow::zero());
+            assert!(edge.upper >= Flow::zero());
+            assert!(edge.flow == Flow::zero());
+
             let (u, v) = (edge.from, edge.to);
             let inside_edge_index_u = self.start[u] + counter[u];
             counter[u] += 1;
@@ -84,20 +93,25 @@ where
             self.upper[inside_edge_index_v] = edge.upper;
             self.cost[inside_edge_index_v] = -edge.cost;
             self.rev[inside_edge_index_v] = inside_edge_index_u;
-
-            assert!(edge.cost >= Flow::zero());
-            assert!(edge.upper >= Flow::zero());
         }
     }
 
     pub fn set_flow(&self, graph: &mut Graph<Flow>) {
-        for u in 0..graph.num_nodes() {
-            graph.excesses[u] = self.excesses[u];
-        }
+        // for u in 0..graph.num_nodes() {
+        //     graph.excesses[u] = self.excesses[u];
+        // }
 
         for edge_id in 0..graph.num_edges() {
             let i = self.edge_index_to_inside_edge_index[edge_id];
-            graph.edges[edge_id].flow = self.flow[i];
+            let edge = &graph.edges[edge_id];
+            graph.edges[edge_id].flow = if edge.cost >= Flow::zero() {
+                self.flow[i] + edge.lower
+            }
+            else {
+                edge.upper - self.flow[i]
+            };
+            assert!(graph.edges[edge_id].flow <= graph.edges[edge_id].upper);
+            assert!(graph.edges[edge_id].flow >= graph.edges[edge_id].lower);
         }
     }
 

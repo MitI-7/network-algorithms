@@ -11,15 +11,13 @@ pub struct Edge<Flow> {
     pub cost: Flow,
 }
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct Graph<Flow> {
     num_nodes: usize,
     num_edges: usize,
     pub(crate) edges: Vec<Edge<Flow>>,
     pub(crate) b: Vec<Flow>,
-    pub(crate) lowers: Vec<Flow>,
-    pub(crate) excesses: Vec<Flow>,
-    pub(crate) is_reversed: Vec<bool>,
+    // pub(crate) excesses: Vec<Flow>,
 }
 
 impl<Flow> Graph<Flow>
@@ -38,26 +36,26 @@ where
 
     pub fn add_node(&mut self) -> usize {
         self.b.push(Flow::zero());
-        self.excesses.push(Flow::zero());
+        // self.excesses.push(Flow::zero());
         self.num_nodes += 1;
         self.num_nodes - 1
     }
 
     pub fn add_nodes(&mut self, num_nodes: usize) -> Vec<usize> {
         self.b.extend(vec![Flow::zero(); num_nodes]);
-        self.excesses.extend(vec![Flow::zero(); num_nodes]);
+        // self.excesses.extend(vec![Flow::zero(); num_nodes]);
         self.num_nodes += num_nodes;
         ((self.num_nodes - num_nodes)..self.num_nodes).collect()
     }
 
     pub fn add_supply(&mut self, u: usize, supply: Flow) {
         self.b[u] += supply;
-        self.excesses[u] += supply;
+        // self.excesses[u] += supply;
     }
 
     pub fn add_demand(&mut self, u: usize, demand: Flow) {
         self.b[u] -= demand;
-        self.excesses[u] -= demand;
+        // self.excesses[u] -= demand;
     }
 
     // return edge index
@@ -66,50 +64,37 @@ where
             return None;
         }
 
-        if cost >= Flow::zero() {
-            self.edges
-                .push(Edge { from, to, flow: Flow::zero(), lower: Flow::zero(), upper: upper - lower, cost });
-            self.excesses[from] -= lower;
-            self.excesses[to] += lower;
-            self.lowers.push(lower);
-            self.is_reversed.push(false);
-        } else {
-            self.edges
-                .push(Edge { from: to, to: from, flow: Flow::zero(), lower: Flow::zero(), upper: upper - lower, cost: -cost });
-            self.excesses[from] -= upper;
-            self.excesses[to] += upper;
-            self.lowers.push(lower);
-            self.is_reversed.push(true);
-        }
+        self.edges.push(Edge { from, to, flow: Flow::zero(), lower, upper, cost });
 
         self.num_edges += 1;
         Some(self.num_edges - 1)
     }
 
-    pub fn get_edge(&self, edge_id: usize) -> Option<Edge<Flow>> {
+    pub fn get_edge(&self, edge_id: usize) -> Option<&Edge<Flow>> {
         if edge_id >= self.edges.len() {
             return None;
         }
-        let edge = &self.edges[edge_id];
-        let lower = self.lowers[edge_id];
-        if self.is_reversed[edge_id] {
-            Some(Edge { from: edge.to, to: edge.from, flow: edge.upper - edge.flow + lower, lower, upper: edge.upper + lower, cost: -edge.cost })
-        } else {
-            Some(Edge { from: edge.from, to: edge.to, flow: edge.flow + lower, lower, upper: edge.upper + lower, cost: edge.cost })
-        }
+        Some(&self.edges[edge_id])
+        
+        // let lower = self.lowers[edge_id];
+        // if self.is_reversed[edge_id] {
+        //     Some(Edge { from: edge.to, to: edge.from, flow: edge.upper - edge.flow + lower, lower, upper: edge.upper + lower, cost: -edge.cost })
+        // } else {
+        //     Some(Edge { from: edge.from, to: edge.to, flow: edge.flow + lower, lower, upper: edge.upper + lower, cost: edge.cost })
+        // }
     }
 
     pub fn reset(&mut self) {
-        for u in 0..self.num_nodes {
-            self.excesses[u] = self.b[u];
-        }
-        self.edges.iter_mut().enumerate().for_each(|(edge_id, edge)| {
+        // for u in 0..self.num_nodes {
+        //     self.excesses[u] = self.b[u];
+        // }
+        self.edges.iter_mut().enumerate().for_each(|(_edge_id, edge)| {
             edge.flow = Flow::zero();
-            if self.is_reversed[edge_id] {
-                let u = self.lowers[edge_id] + edge.upper;
-                self.excesses[edge.from] += u;
-                self.excesses[edge.to] -= u;
-            }
+            // if self.is_reversed[edge_id] {
+            //     let u = self.lowers[edge_id] + edge.upper;
+            //     self.excesses[edge.from] += u;
+            //     self.excesses[edge.to] -= u;
+            // }
         });
     }
 
@@ -124,71 +109,74 @@ where
         self.b.iter().fold(Flow::zero(), |sum, &excess| sum + excess) != Flow::zero()
     }
 
-    pub(crate) fn remove_artificial_sub_graph(&mut self, artificial_nodes: &[usize], artificial_edges: &[usize]) {
-        self.edges.truncate(self.num_edges - artificial_edges.len());
-        self.b.truncate(self.num_nodes - artificial_nodes.len());
-        self.lowers.truncate(self.num_edges - artificial_edges.len());
-        self.excesses.truncate(self.num_nodes - artificial_nodes.len());
-        self.is_reversed.truncate(self.num_edges - artificial_edges.len());
-
-        self.num_nodes -= artificial_nodes.len();
-        self.num_edges -= artificial_edges.len();
-    }
+    // pub(crate) fn remove_artificial_sub_graph(&mut self, artificial_nodes: &[usize], artificial_edges: &[usize]) {
+    //     self.edges.truncate(self.num_edges - artificial_edges.len());
+    //     self.b.truncate(self.num_nodes - artificial_nodes.len());
+    //     self.lowers.truncate(self.num_edges - artificial_edges.len());
+    //     self.excesses.truncate(self.num_nodes - artificial_nodes.len());
+    //     self.is_reversed.truncate(self.num_edges - artificial_edges.len());
+    // 
+    //     self.num_nodes -= artificial_nodes.len();
+    //     self.num_edges -= artificial_edges.len();
+    // }
 }
 
-pub(crate) fn construct_extend_network_one_supply_one_demand<Flow>(graph: &mut Graph<Flow>) -> (usize, usize, Vec<usize>, Vec<usize>)
+pub(crate) fn construct_extend_network_one_supply_one_demand<Flow>(graph: &Graph<Flow>) -> (usize, usize, Vec<Edge<Flow>>, Flow)
 where
     Flow: MinimumCostFlowNum,
 {
     let mut artificial_edges = Vec::new();
-    let (source, sink) = (graph.add_node(), graph.add_node());
+    let source = graph.num_nodes;
+    let sink = source + 1;
+    let mut total_excess = Flow::zero();
+
     for u in 0..graph.num_nodes() {
         if u == source || u == sink {
             continue;
         }
-        if graph.excesses[u] > Flow::zero() {
-            artificial_edges.push(graph.add_directed_edge(source, u, Flow::zero(), graph.excesses[u], Flow::zero()).unwrap());
-            graph.excesses[source] = graph.excesses[source] + graph.excesses[u];
+        if graph.b[u] > Flow::zero() {
+            artificial_edges.push(Edge{from: source, to: u, flow: Flow::zero(), lower:Flow::zero(), upper:graph.b[u], cost:Flow::zero()});
+            total_excess += graph.b[u];
         }
-        if graph.excesses[u] < Flow::zero() {
-            artificial_edges.push(graph.add_directed_edge(u, sink, Flow::zero(), -graph.excesses[u], Flow::zero()).unwrap());
-            graph.excesses[sink] = graph.excesses[sink] + graph.excesses[u];
+        if graph.b[u] < Flow::zero() {
+            artificial_edges.push(Edge{from: u, to: sink, flow: Flow::zero(), lower: Flow::zero(), upper: -graph.b[u], cost: Flow::zero()});
         }
-        graph.excesses[u] = Flow::zero();
     }
 
-    (source, sink, vec![source, sink], artificial_edges)
+    (source, sink, artificial_edges, total_excess)
 }
 
-pub(crate) fn construct_extend_network_feasible_solution<Flow>(graph: &mut Graph<Flow>) -> (usize, Vec<usize>, Vec<usize>)
+pub(crate) fn construct_extend_network_feasible_solution<Flow>(graph: &Graph<Flow>) -> (usize, Vec<usize>, Vec<(usize, Edge<Flow>)>)
 where
     Flow: MinimumCostFlowNum,
 {
     let inf_cost = graph.edges.iter().map(|e| e.cost).fold(Flow::one(), |acc, cost| acc + cost); // all edge costs are non-negative
 
     // add artificial nodes
-    let root = graph.add_node();
+    let root = graph.num_nodes();
 
     // add artificial edges
     let mut artificial_edges = Vec::new();
+    let mut edge_id = graph.num_edges();
     for u in 0..graph.num_nodes {
         if u == root {
             continue;
         }
 
-        let excess = graph.excesses[u];
+        let excess = graph.b[u];
         if excess >= Flow::zero() {
             // u -> root
-            let edge_id = graph.add_directed_edge(u, root, Flow::zero(), excess, inf_cost).unwrap();
-            graph.edges[edge_id].flow = excess;
-            artificial_edges.push(edge_id);
+            // let edge_id = graph.add_directed_edge(u, root, Flow::zero(), excess, inf_cost).unwrap();
+            // graph.edges[edge_id].flow = excess;
+            artificial_edges.push((edge_id, Edge{from: u, to: root, flow: excess, lower:Flow::zero(), upper:excess, cost:inf_cost}));
         } else {
             // root -> u
-            let edge_id = graph.add_directed_edge(root, u, Flow::zero(), -excess, inf_cost).unwrap();
-            graph.edges[edge_id].flow = -excess;
-            artificial_edges.push(edge_id);
+            // let edge_id = graph.add_directed_edge(root, u, Flow::zero(), -excess, inf_cost).unwrap();
+            // graph.edges[edge_id].flow = -excess;
+            artificial_edges.push((edge_id, Edge{from: root, to: u, flow: -excess, lower:Flow::zero(), upper:-excess, cost:inf_cost}));
         }
-        graph.excesses[u] = Flow::zero();
+        edge_id += 1;
+        // graph.b[u] = Flow::zero();
     }
 
     (root, vec![root], artificial_edges)

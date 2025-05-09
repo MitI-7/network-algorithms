@@ -4,6 +4,7 @@ use crate::minimum_cost_flow::status::Status;
 use crate::minimum_cost_flow::{MinimumCostFlowNum, MinimumCostFlowSolver};
 use std::cmp::Reverse;
 use std::collections::BinaryHeap;
+use crate::minimum_cost_flow::translater::translater;
 
 #[derive(Default)]
 pub struct SuccessiveShortestPath<Flow> {
@@ -18,7 +19,10 @@ where
         if graph.is_unbalance() {
             return Err(Status::Unbalanced);
         }
-        self.csr.build(graph);
+
+        let new_graph = translater(graph);
+        self.csr.build(&new_graph, None, None);
+        self.csr.excesses = new_graph.b.clone().into_boxed_slice();
 
         for s in 0..self.csr.num_nodes {
             while self.csr.excesses[s] > Flow::zero() {
