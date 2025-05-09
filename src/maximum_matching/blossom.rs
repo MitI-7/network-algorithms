@@ -1,5 +1,7 @@
-use crate::graph::maximum_matching_graph::Graph;
+use crate::core::graph::Graph;
+use crate::core::ids::EdgeId;
 use std::collections::VecDeque;
+use crate::core::direction::Undirected;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 enum NodeType {
@@ -25,7 +27,7 @@ pub struct Blossom {
 }
 
 impl Blossom {
-    pub fn solve(&mut self, graph: &Graph) -> Vec<usize> {
+    pub fn solve(&mut self, graph: &Graph<Undirected, (), ()>) -> Vec<EdgeId> {
         self.preprocess(graph);
 
         for root in 0..graph.num_nodes() {
@@ -39,14 +41,14 @@ impl Blossom {
 
         let mut matching = Vec::new();
         for (i, e) in graph.edges.iter().enumerate() {
-            if self.mate[e.u] == Some(e.v) {
-                matching.push(i);
+            if self.mate[e.u.index()] == Some(e.v.index()) {
+                matching.push(EdgeId(i));
             }
         }
         matching
     }
 
-    fn preprocess(&mut self, graph: &Graph) {
+    fn preprocess(&mut self, graph: &Graph<Undirected, (), ()>) {
         let num_nodes = graph.num_nodes();
 
         self.mate = vec![None; num_nodes].into_boxed_slice();
@@ -62,8 +64,8 @@ impl Blossom {
         // make csr format
         let mut degree = vec![0; num_nodes];
         for e in graph.edges.iter() {
-            degree[e.u] += 1;
-            degree[e.v] += 1;
+            degree[e.u.index()] += 1;
+            degree[e.v.index()] += 1;
         }
 
         for i in 1..=num_nodes {
@@ -72,11 +74,11 @@ impl Blossom {
 
         let mut count = vec![0; num_nodes].into_boxed_slice();
         for e in graph.edges.iter() {
-            self.to[self.start[e.u] + count[e.u]] = e.v;
-            count[e.u] += 1;
+            self.to[self.start[e.u.index()] + count[e.u.index()]] = e.v.index();
+            count[e.u.index()] += 1;
 
-            self.to[self.start[e.v] + count[e.v]] = e.u;
-            count[e.v] += 1;
+            self.to[self.start[e.v.index()] + count[e.v.index()]] = e.u.index();
+            count[e.v.index()] += 1;
         }
     }
 
