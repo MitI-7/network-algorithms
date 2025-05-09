@@ -3,14 +3,8 @@ use network_algorithms::core::graph::Graph;
 use network_algorithms::core::ids::NodeId;
 use network_algorithms::edge::capacity_cost::CapCostEdge;
 use network_algorithms::algorithms::minimum_cost_flow::{
-    // CostScalingPushRelabel, CycleCanceling, DualNetworkSimplex, Graph, OutOfKilter, ParametricNetworkSimplex, PrimalDual, PrimalNetworkSimplex,
-    // CycleCanceling,
-    // DualNetworkSimplex,
-    // OutOfKilter,
-    // ParametricNetworkSimplex,
-    PrimalDual,
-    // PrimalNetworkSimplex,
-    // SuccessiveShortestPath,
+    //CostScalingPushRelabel,
+    SuccessiveShortestPath, CycleCanceling, DualNetworkSimplex, OutOfKilter, ParametricNetworkSimplex, PrimalDual, PrimalNetworkSimplex,
 };
 use network_algorithms::node::excess::ExcessNode;
 use rstest::rstest;
@@ -59,43 +53,43 @@ fn minimum_cost_flow(#[files("tests/minimum_cost_flow/*/*.txt")] input_file_path
 
     let result = match solver {
         // Solver::CostScalingPushRelabel => CostScalingPushRelabel::default().solve(&mut graph),
-        // Solver::NegativeCostCanceling => {
-        //     // to slow...
-        //     if input_file_path.to_str().unwrap().contains("LibraryChecker") {
-        //         return;
-        //     }
-        //     CycleCanceling::default().solve(&mut graph)
-        // }
-        // Solver::OutOfKilter => {
-        //     // to slow...
-        //     if input_file_path.to_str().unwrap().contains("anti_ssp_00.txt") {
-        //         return;
-        //     }
-        //     OutOfKilter::default().solve(&mut graph)
-        // }
+        Solver::NegativeCostCanceling => {
+            // to slow...
+            if input_file_path.to_str().unwrap().contains("LibraryChecker") {
+                return;
+            }
+            CycleCanceling::default().solve(&mut graph)
+        }
+        Solver::OutOfKilter => {
+            // to slow...
+            if input_file_path.to_str().unwrap().contains("anti_ssp_00.txt") {
+                return;
+            }
+            OutOfKilter::default().solve(&mut graph)
+        }
         Solver::PrimalDual => {
             if input_file_path.to_str().unwrap().contains("anti_ssp_00.txt") {
                 return;
             }
             PrimalDual::default().solve(&mut graph)
         }
-        // Solver::SuccessiveShortestPath => {
-        //     // to slow...
-        //     if input_file_path.to_str().unwrap().contains("anti_ssp_00.txt") {
-        //         return;
-        //     }
-        //     SuccessiveShortestPath::default().solve(&mut graph)
-        // }
-        //
-        // Solver::DualNetworkSimplex => DualNetworkSimplex::<i128>::default().solve(&mut graph),
-        // Solver::ParametricNetworkSimplex => {
-        //     // to slow...
-        //     if input_file_path.to_str().unwrap().contains("anti_ssp_00.txt") {
-        //         return;
-        //     }
-        //     ParametricNetworkSimplex::default().solve(&mut graph)
-        // }
-        // Solver::PrimalNetworkSimplex => PrimalNetworkSimplex::<i128>::default().solve(&mut graph),
+        Solver::SuccessiveShortestPath => {
+            // to slow...
+            if input_file_path.to_str().unwrap().contains("anti_ssp_00.txt") {
+                return;
+            }
+            SuccessiveShortestPath::default().solve(&mut graph)
+        }
+
+        Solver::DualNetworkSimplex => DualNetworkSimplex::<i128>::default().solve(&mut graph),
+        Solver::ParametricNetworkSimplex => {
+            // to slow...
+            if input_file_path.to_str().unwrap().contains("anti_ssp_00.txt") {
+                return;
+            }
+            ParametricNetworkSimplex::default().solve(&mut graph)
+        }
+        Solver::PrimalNetworkSimplex => PrimalNetworkSimplex::<i128>::default().solve(&mut graph),
         _ => {
             return;
         }

@@ -1,5 +1,5 @@
 use crate::core::direction::Directed;
-use crate::core::graph::{Edge, Graph};
+use crate::core::graph::Graph;
 use crate::core::ids::{NodeId, EdgeId};
 use crate::edge::capacity_cost::CapCostEdge;
 use crate::algorithms::minimum_cost_flow::MinimumCostFlowNum;
@@ -65,7 +65,7 @@ where
         &mut self,
         graph: &Graph<Directed, ExcessNode<Flow>, CapCostEdge<Flow>>,
         _artificial_nodes: Option<&[NodeId]>,
-        artificial_edges: Option<&[CapCostEdge<Flow>]>,
+        _artificial_edges: Option<&[CapCostEdge<Flow>]>,
     ) {
         let mut degree = vec![0; self.num_nodes];
 
@@ -211,7 +211,7 @@ pub(crate) fn construct_extend_network_one_supply_one_demand<Flow>(
 where
     Flow: MinimumCostFlowNum,
 {
-    let mut artificial_edges = Vec::new();
+    let artificial_edges = Vec::new();
     let source = graph.add_node();
     let sink = graph.add_node();
     let mut total_excess = Flow::zero();

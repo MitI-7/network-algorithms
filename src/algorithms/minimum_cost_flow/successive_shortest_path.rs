@@ -63,7 +63,7 @@ impl<Flow> SuccessiveShortestPath<Flow>
 where
     Flow: MinimumCostFlowNum,
 {
-    fn solve(&mut self, graph: &mut Graph<Directed, ExcessNode<Flow>, CapCostEdge<Flow>>) -> Result<Flow, Status> {
+    pub fn solve(&mut self, graph: &mut Graph<Directed, ExcessNode<Flow>, CapCostEdge<Flow>>) -> Result<Flow, Status> {
         <Self as MinimumCostFlowSolver<Flow>>::solve(self, graph)
     }
 

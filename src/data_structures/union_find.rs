@@ -77,7 +77,7 @@ impl UnionFind {
 }
 
 mod tests {
-    use super::UnionFind;
+    use super::*;
 
     #[test]
     fn test() {

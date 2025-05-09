@@ -27,7 +27,7 @@ where
         // }
 
         let mut new_graph = translater(graph);
-        let (_source, artificial_nodes, artificial_edges) = construct_extend_network_feasible_solution(&mut new_graph);
+        let (_source, _artificial_nodes, artificial_edges) = construct_extend_network_feasible_solution(&mut new_graph);
         self.csr.build(&new_graph, None, None);
         // self.csr.excesses = new_graph.b.clone().into_boxed_slice();
 
@@ -87,7 +87,7 @@ impl<Flow> OutOfKilter<Flow>
 where
     Flow: MinimumCostFlowNum,
 {
-    fn solve(&mut self, graph: &mut Graph<Directed, ExcessNode<Flow>, CapCostEdge<Flow>>) -> Result<Flow, Status> {
+    pub fn solve(&mut self, graph: &mut Graph<Directed, ExcessNode<Flow>, CapCostEdge<Flow>>) -> Result<Flow, Status> {
         <Self as MinimumCostFlowSolver<Flow>>::solve(self, graph)
     }
 

@@ -29,7 +29,7 @@ where
         let mut new_graph = translater(graph);
 
         let inf_cost = new_graph.edges.iter().map(|e| e.data.cost).fold(Flow::one(), |acc, cost| acc + cost); // all edge costs are non-negative
-        let (root, artificial_nodes, artificial_edges) = construct_extend_network_feasible_solution(&mut new_graph);
+        let (root, _artificial_nodes, artificial_edges) = construct_extend_network_feasible_solution(&mut new_graph);
         self.st.build(&mut new_graph);
         (self.st.root, self.st.parent[root.index()], self.st.parent_edge_id[root.index()]) = (root.index(), usize::MAX, usize::MAX);
 
@@ -79,7 +79,7 @@ where
         PrimalNetworkSimplex { st: self.st, pivot: new_pivot }
     }
 
-    fn solve(&mut self, graph: &mut Graph<Directed, ExcessNode<Flow>, CapCostEdge<Flow>>) -> Result<Flow, Status> {
+    pub fn solve(&mut self, graph: &mut Graph<Directed, ExcessNode<Flow>, CapCostEdge<Flow>>) -> Result<Flow, Status> {
         <Self as MinimumCostFlowSolver<Flow>>::solve(self, graph)
     }
 

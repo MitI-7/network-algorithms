@@ -30,7 +30,7 @@ where
 
         let mut new_graph = translater(graph);
 
-        let (source, sink, artificial_edges) = construct_extend_network_one_supply_one_demand(&mut new_graph);
+        let (source, sink, _artificial_edges) = construct_extend_network_one_supply_one_demand(&mut new_graph);
         self.st.build(&mut new_graph);
         (self.st.root, self.sink) = (source.index(), sink.index());
 
@@ -106,7 +106,7 @@ where
         DualNetworkSimplex { st: self.st, sink: self.sink, pivot: new_pivot }
     }
 
-    fn solve(&mut self, graph: &mut Graph<Directed, ExcessNode<Flow>, CapCostEdge<Flow>>) -> Result<Flow, Status> {
+    pub fn solve(&mut self, graph: &mut Graph<Directed, ExcessNode<Flow>, CapCostEdge<Flow>>) -> Result<Flow, Status> {
         <Self as MinimumCostFlowSolver<Flow>>::solve(self, graph)
     }
 

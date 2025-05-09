@@ -1,4 +1,4 @@
-use crate::core::graph::{Graph, Edge};
+use crate::core::graph::Graph;
 use crate::algorithms::minimum_cost_flow::MinimumCostFlowNum;
 use std::cmp::Reverse;
 use std::collections::BinaryHeap;
