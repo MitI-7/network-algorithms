@@ -1,5 +1,6 @@
 use crate::data_structures::{BitVector, SimpleQueue};
-use crate::graph::bipartite_graph::BipartiteGraph;
+use crate::core::bipartite_graph::BipartiteGraph;
+use crate::core::direction::Undirected;
 
 #[derive(Default)]
 pub enum WarmStart {
@@ -44,7 +45,7 @@ impl HopcroftKarp {
         self
     }
 
-    pub fn solve(&mut self, graph: &BipartiteGraph) -> Vec<usize> {
+    pub fn solve(&mut self, graph: &BipartiteGraph<Undirected, (), ()>) -> Vec<usize> {
         self.preprocess(graph);
 
         match &self.warm_start {
@@ -58,7 +59,7 @@ impl HopcroftKarp {
             WarmStart::UserDefined(initial_matching) => {
                 for &edge_id in initial_matching.iter() {
                     let edge = &graph.edges[edge_id];
-                    self.mate[edge.v] = Some(edge.u);
+                    self.mate[edge.v.index()] = Some(edge.u.index());
                 }
             }
         }
@@ -79,21 +80,21 @@ impl HopcroftKarp {
         let (mut used_u, mut used_v) = (vec![false; self.num_left_nodes].into_boxed_slice(), vec![false; self.num_right_nodes].into_boxed_slice());
         for (edge_id, edge) in graph.edges.iter().enumerate() {
             // for multiple edge
-            if used_u[edge.u] || used_v[edge.v] {
+            if used_u[edge.u.index()] || used_v[edge.v.index()] {
                 continue;
             }
 
-            if self.mate[edge.v] == Some(edge.u) {
+            if self.mate[edge.v.index()] == Some(edge.u.index()) {
                 matching.push(edge_id);
-                used_u[edge.u] = true;
-                used_v[edge.v] = true;
+                used_u[edge.u.index()] = true;
+                used_v[edge.v.index()] = true;
             }
         }
 
         matching
     }
 
-    fn preprocess(&mut self, graph: &BipartiteGraph) {
+    fn preprocess(&mut self, graph: &BipartiteGraph<Undirected, (), ()>) {
         self.num_left_nodes = graph.num_left_nodes();
         self.num_right_nodes = graph.num_right_nodes();
 
@@ -110,8 +111,8 @@ impl HopcroftKarp {
 
         let mut count = vec![0; self.num_left_nodes].into_boxed_slice();
         for edge in graph.edges.iter() {
-            self.to[self.start[edge.u] + count[edge.u]] = edge.v;
-            count[edge.u] += 1;
+            self.to[self.start[edge.u.index()] + count[edge.u.index()]] = edge.v.index();
+            count[edge.u.index()] += 1;
         }
     }
 
@@ -136,7 +137,7 @@ impl HopcroftKarp {
     }
 
     // O(m)
-    fn initial_solution_karp_sipser(&mut self, graph: &BipartiteGraph) {
+    fn initial_solution_karp_sipser(&mut self, graph: &BipartiteGraph<Undirected, (), ()>) {
         // make csr format(right -> left)
         let mut start_r = vec![0; self.num_right_nodes + 1].into_boxed_slice();
         let mut to_r: Box<[usize]> = (0..graph.edges.len()).map(|_| 0).collect();
@@ -147,8 +148,8 @@ impl HopcroftKarp {
 
         let mut count = vec![0; self.num_right_nodes].into_boxed_slice();
         for edge in graph.edges.iter() {
-            to_r[start_r[edge.v] + count[edge.v]] = edge.u;
-            count[edge.v] += 1;
+            to_r[start_r[edge.v.index()] + count[edge.v.index()]] = edge.u.index();
+            count[edge.v.index()] += 1;
         }
 
         let mut degree_left = graph.degree_left.clone();
