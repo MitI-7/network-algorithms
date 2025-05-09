@@ -1,4 +1,4 @@
-use crate::graph::minimum_cost_flow_graph::Graph;
+use crate::graph::minimum_cost_flow_graph::{Graph, Edge};
 use crate::minimum_cost_flow::MinimumCostFlowNum;
 use std::cmp::Reverse;
 use std::collections::BinaryHeap;
@@ -45,18 +45,19 @@ where
 {
     pub(crate) fn build(&mut self, graph: &mut Graph<Flow>) {
         (self.num_nodes, self.num_edges) = (graph.num_nodes(), graph.num_edges());
-        self.excesses = graph.excesses.clone().into_boxed_slice();
+        // self.excesses = graph.excesses.clone().into_boxed_slice();
+        self.excesses = graph.b.clone().into_boxed_slice();
 
-        self.parent = vec![usize::MAX; graph.num_nodes()].into_boxed_slice();
-        self.parent_edge_id = vec![usize::MAX; graph.num_nodes()].into_boxed_slice();
-        self.potential = vec![Flow::zero(); graph.num_nodes()].into_boxed_slice();
+        self.parent = vec![usize::MAX; self.num_nodes].into_boxed_slice();
+        self.parent_edge_id = vec![usize::MAX; self.num_nodes].into_boxed_slice();
+        self.potential = vec![Flow::zero(); self.num_nodes].into_boxed_slice();
 
-        self.from = vec![0; graph.num_edges()].into_boxed_slice();
-        self.to = vec![0; graph.num_edges()].into_boxed_slice();
-        self.upper = vec![Flow::zero(); graph.num_edges()].into_boxed_slice();
-        self.cost = vec![Flow::zero(); graph.num_edges()].into_boxed_slice();
-        self.flow = vec![Flow::zero(); graph.num_edges()].into_boxed_slice();
-        self.state = vec![EdgeState::Lower; graph.num_edges()].into_boxed_slice();
+        self.from = vec![0; self.num_edges].into_boxed_slice();
+        self.to = vec![0; self.num_edges].into_boxed_slice();
+        self.upper = vec![Flow::zero(); self.num_edges].into_boxed_slice();
+        self.cost = vec![Flow::zero(); self.num_edges].into_boxed_slice();
+        self.flow = vec![Flow::zero(); self.num_edges].into_boxed_slice();
+        self.state = vec![EdgeState::Lower; self.num_edges].into_boxed_slice();
 
         for (i, edge) in graph.edges.iter().enumerate() {
             assert!(edge.upper >= Flow::zero() && edge.cost >= Flow::zero());

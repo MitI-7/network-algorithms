@@ -4,6 +4,7 @@ use crate::minimum_cost_flow::spanning_tree_structure::{EdgeState, SpanningTreeS
 use crate::minimum_cost_flow::status::Status;
 use crate::minimum_cost_flow::{MinimumCostFlowNum, MinimumCostFlowSolver};
 use crate::graph::minimum_cost_flow_graph::construct_extend_network_feasible_solution;
+use crate::minimum_cost_flow::translater::translater;
 
 #[derive(Default)]
 pub struct PrimalNetworkSimplex<Flow, Pivot = BlockSearchPivotRule<Flow>> {
@@ -20,13 +21,15 @@ where
         if graph.is_unbalance() {
             return Err(Status::Unbalanced);
         }
+        
+        let mut new_graph = translater(graph);
 
-        let inf_cost = graph.edges.iter().map(|e| e.cost).fold(Flow::one(), |acc, cost| acc + cost); // all edge costs are non-negative
-        let (root, artificial_nodes, artificial_edges) = construct_extend_network_feasible_solution(graph);
-        self.st.build(graph);
+        let inf_cost = new_graph.edges.iter().map(|e| e.cost).fold(Flow::one(), |acc, cost| acc + cost); // all edge costs are non-negative
+        let (root, artificial_nodes, artificial_edges) = construct_extend_network_feasible_solution(&mut new_graph);
+        self.st.build(&mut new_graph);
         (self.st.root, self.st.parent[root], self.st.parent_edge_id[root]) = (root, usize::MAX, usize::MAX);
 
-        self.make_initial_spanning_tree_structure(graph, &artificial_edges, inf_cost);
+        self.make_initial_spanning_tree_structure(&mut new_graph, &artificial_edges, inf_cost);
         debug_assert!(self.st.validate_num_successors(self.st.root));
         debug_assert!(self.st.satisfy_constraints());
 
@@ -34,11 +37,22 @@ where
         self.run(&artificial_edges);
 
         // copy
-        graph.excesses = self.st.excesses.to_vec();
+        // graph.excesses = self.st.excesses.to_vec();
+        // for edge_id in 0..graph.num_edges() {
+        //     graph.edges[edge_id].flow = self.st.flow[edge_id];
+        // }
         for edge_id in 0..graph.num_edges() {
-            graph.edges[edge_id].flow = self.st.flow[edge_id];
+            let edge = &graph.edges[edge_id];
+            graph.edges[edge_id].flow = if edge.cost >= Flow::zero() {
+                self.st.flow[edge_id] + edge.lower
+            }
+            else {
+                edge.upper - self.st.flow[edge_id]
+            };
+            assert!(graph.edges[edge_id].flow <= graph.edges[edge_id].upper);
+            assert!(graph.edges[edge_id].flow >= graph.edges[edge_id].lower);
         }
-        graph.remove_artificial_sub_graph(&artificial_nodes, &artificial_edges);
+        // graph.remove_artificial_sub_graph(&artificial_nodes, &artificial_edges);
 
         self.pivot.clear();
         if self.st.satisfy_constraints() {
@@ -106,7 +120,7 @@ where
             self.st.prev_node_dft[u] = prev_node;
             self.st.last_descendent_dft[u] = u;
             self.st.num_successors[u] = 1;
-            graph.excesses[u] = Flow::zero();
+            // graph.excesses[u] = Flow::zero();
             prev_node = u;
         }
         self.st.next_node_dft[prev_node] = self.st.root;

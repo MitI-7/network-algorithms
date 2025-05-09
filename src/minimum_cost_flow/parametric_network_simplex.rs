@@ -4,6 +4,7 @@ use crate::minimum_cost_flow::status::Status;
 use crate::minimum_cost_flow::{MinimumCostFlowNum, MinimumCostFlowSolver};
 use std::collections::VecDeque;
 use crate::graph::minimum_cost_flow_graph::construct_extend_network_one_supply_one_demand;
+use crate::minimum_cost_flow::translater::translater;
 
 #[derive(Default)]
 pub struct ParametricNetworkSimplex<Flow> {
@@ -20,16 +21,31 @@ where
             return Err(Status::Unbalanced);
         }
 
-        let (source, sink, artificial_nodes, artificial_edges) = construct_extend_network_one_supply_one_demand(graph);
-        self.st.build(graph);
+        let mut new_graph = translater(graph);
+        let (source, sink, artificial_edges) = construct_extend_network_one_supply_one_demand(&mut new_graph);
+        self.st.build(&mut new_graph);
         (self.st.root, self.sink) = (source, sink);
 
         if !self.make_initial_spanning_tree_structure() {
             // there is no s-t path
             let status = if self.st.satisfy_constraints() { Status::Optimal } else { Status::Infeasible };
-            graph.remove_artificial_sub_graph(&artificial_nodes, &artificial_edges);
+            // graph.remove_artificial_sub_graph(&[source, sink], &artificial_edges);
 
-            return if status == Status::Optimal { Ok(graph.minimum_cost()) } else { Err(status) };
+            return if status == Status::Optimal {
+                for edge_id in 0..graph.num_edges() {
+                    let edge = &graph.edges[edge_id];
+                    assert!(self.st.flow[edge_id] <= self.st.upper[edge_id]);
+
+                    graph.edges[edge_id].flow = if edge.cost >= Flow::zero() {
+                        self.st.flow[edge_id] + edge.lower
+                    }
+                    else {
+                        edge.upper - self.st.flow[edge_id]
+                    };
+                    assert!(graph.edges[edge_id].flow <= graph.edges[edge_id].upper);
+                    assert!(graph.edges[edge_id].flow >= graph.edges[edge_id].lower);
+                }
+                Ok(graph.minimum_cost()) } else { Err(status) };
         }
         debug_assert!(self.st.satisfy_optimality_conditions());
 
@@ -37,12 +53,26 @@ where
 
         let status = if self.st.satisfy_constraints() { Status::Optimal } else { Status::Infeasible };
         // copy
-        graph.excesses = self.st.excesses.clone().to_vec();
-        for edge_id in 0..graph.num_edges() {
-            graph.edges[edge_id].flow = self.st.flow[edge_id];
-        }
-        graph.remove_artificial_sub_graph(&artificial_nodes, &artificial_edges);
+        // graph.excesses = self.st.excesses.clone().to_vec();
+        // for edge_id in 0..graph.num_edges() {
+        //     graph.edges[edge_id].flow = self.st.flow[edge_id];
+        // }
+        // graph.remove_artificial_sub_graph(&artificial_nodes, &artificial_edges);
 
+        for edge_id in 0..graph.num_edges() {
+            let edge = &graph.edges[edge_id];
+            assert!(self.st.flow[edge_id] <= self.st.upper[edge_id]);
+
+            graph.edges[edge_id].flow = if edge.cost >= Flow::zero() {
+                self.st.flow[edge_id] + edge.lower
+            }
+            else {
+                edge.upper - self.st.flow[edge_id]
+            };
+            assert!(graph.edges[edge_id].flow <= graph.edges[edge_id].upper);
+            assert!(graph.edges[edge_id].flow >= graph.edges[edge_id].lower);
+        }
+        
         if status == Status::Optimal {
             Ok(graph.minimum_cost())
         } else {

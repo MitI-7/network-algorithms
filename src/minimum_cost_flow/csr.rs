@@ -34,12 +34,8 @@ where
 
         self.num_nodes = graph.num_nodes() + artificial_nodes.unwrap_or(&[]).len();
         self.num_edges = graph.num_edges() + artificial_edges.unwrap_or(&[]).len();
-
-        // self.excesses = vec![Flow::zero(); self.num_nodes].into_boxed_slice();
-        // for u in 0..self.num_nodes {
-        //     self.excesses[u] = graph.excesses[u];
-        // }
-
+        self.excesses = graph.b.clone().into_boxed_slice();
+        
         self.edge_index_to_inside_edge_index = vec![usize::MAX; self.num_edges].into_boxed_slice();
         self.start = vec![0; self.num_nodes + 1].into_boxed_slice();
         self.to = vec![usize::MAX; self.num_edges * 2].into_boxed_slice();

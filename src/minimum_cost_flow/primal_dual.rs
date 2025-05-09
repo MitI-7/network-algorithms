@@ -36,16 +36,12 @@ where
             }
             return Ok(Flow::zero());
         }
-        
-        let new_graph = translater(graph);
 
-        
+        let mut new_graph = translater(graph);
+
         // transforms the minimum cost flow problem into a problem with a single excess node and a single deficit node.
-        let (source, sink, artificial_edges, total_excess) = construct_extend_network_one_supply_one_demand(&new_graph);
+        let (source, sink, artificial_edges) = construct_extend_network_one_supply_one_demand(&mut new_graph);
         self.csr.build(&new_graph, Some(&[source, sink]), Some(&artificial_edges));
-        self.csr.excesses = vec![Flow::zero(); self.csr.num_nodes].into_boxed_slice();
-        self.csr.excesses[source] = total_excess;
-        self.csr.excesses[sink] = -total_excess;
 
         self.distances.resize(self.csr.num_nodes, 0);
         self.current_edge.resize(self.csr.num_nodes, 0);
@@ -216,10 +212,10 @@ mod test {
         let mut g = Graph::default();
         let a = g.add_node();
         g.add_directed_edge(a, a, -5, 0, 10);
-        
+
         let s = PrimalDual::default().solve(&mut g).unwrap();
         println!("{}", s);
-        
+
         // 1 20 77
         // 0
         // 0 0 -1 9 0
@@ -242,10 +238,10 @@ mod test {
         // 0 0 -10 -8 -1
         // 0 0 -10 0 0
         // 0 0 -10 -10 -3
-        // 
-        
-        
+        //
 
-        
+
+
+
     }
 }

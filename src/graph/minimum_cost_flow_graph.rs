@@ -75,7 +75,7 @@ where
             return None;
         }
         Some(&self.edges[edge_id])
-        
+
         // let lower = self.lowers[edge_id];
         // if self.is_reversed[edge_id] {
         //     Some(Edge { from: edge.to, to: edge.from, flow: edge.upper - edge.flow + lower, lower, upper: edge.upper + lower, cost: -edge.cost })
@@ -115,19 +115,19 @@ where
     //     self.lowers.truncate(self.num_edges - artificial_edges.len());
     //     self.excesses.truncate(self.num_nodes - artificial_nodes.len());
     //     self.is_reversed.truncate(self.num_edges - artificial_edges.len());
-    // 
+    //
     //     self.num_nodes -= artificial_nodes.len();
     //     self.num_edges -= artificial_edges.len();
     // }
 }
 
-pub(crate) fn construct_extend_network_one_supply_one_demand<Flow>(graph: &Graph<Flow>) -> (usize, usize, Vec<Edge<Flow>>, Flow)
+pub(crate) fn construct_extend_network_one_supply_one_demand<Flow>(graph: &mut Graph<Flow>) -> (usize, usize, Vec<Edge<Flow>>)
 where
     Flow: MinimumCostFlowNum,
 {
     let mut artificial_edges = Vec::new();
-    let source = graph.num_nodes;
-    let sink = source + 1;
+    let source = graph.add_node();
+    let sink = graph.add_node();
     let mut total_excess = Flow::zero();
 
     for u in 0..graph.num_nodes() {
@@ -135,15 +135,18 @@ where
             continue;
         }
         if graph.b[u] > Flow::zero() {
-            artificial_edges.push(Edge{from: source, to: u, flow: Flow::zero(), lower:Flow::zero(), upper:graph.b[u], cost:Flow::zero()});
+            graph.add_directed_edge(source, u, Flow::zero(), graph.b[u], Flow::zero());
             total_excess += graph.b[u];
         }
         if graph.b[u] < Flow::zero() {
-            artificial_edges.push(Edge{from: u, to: sink, flow: Flow::zero(), lower: Flow::zero(), upper: -graph.b[u], cost: Flow::zero()});
+            graph.add_directed_edge(u, sink, Flow::zero(), -graph.b[u], Flow::zero());
         }
+        graph.b[u] = Flow::zero();
     }
+    graph.b[source] = total_excess;
+    graph.b[sink] = -total_excess;
 
-    (source, sink, artificial_edges, total_excess)
+    (source, sink, artificial_edges)
 }
 
 pub(crate) fn construct_extend_network_feasible_solution<Flow>(graph: &mut Graph<Flow>) -> (usize, Vec<usize>, Vec<usize>)
