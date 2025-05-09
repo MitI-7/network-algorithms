@@ -2,12 +2,12 @@ use crate::core::direction::Directed;
 use crate::core::graph::Graph;
 use crate::core::ids::EdgeId;
 use crate::edge::capacity_cost::CapCostEdge;
-use crate::minimum_cost_flow::network_simplex_pivot_rules::{BlockSearchPivotRule, PivotRule};
-use crate::minimum_cost_flow::spanning_tree_structure::{EdgeState, SpanningTreeStructure};
-use crate::minimum_cost_flow::status::Status;
-use crate::minimum_cost_flow::{MinimumCostFlowNum, MinimumCostFlowSolver};
-use crate::minimum_cost_flow::csr::construct_extend_network_feasible_solution;
-use crate::minimum_cost_flow::translater::translater;
+use crate::algorithms::minimum_cost_flow::network_simplex_pivot_rules::{BlockSearchPivotRule, PivotRule};
+use crate::algorithms::minimum_cost_flow::spanning_tree_structure::{EdgeState, SpanningTreeStructure};
+use crate::algorithms::minimum_cost_flow::status::Status;
+use crate::algorithms::minimum_cost_flow::{MinimumCostFlowNum, MinimumCostFlowSolver};
+use crate::algorithms::minimum_cost_flow::csr::construct_extend_network_feasible_solution;
+use crate::algorithms::minimum_cost_flow::translater::translater;
 use crate::node::excess::ExcessNode;
 
 #[derive(Default)]

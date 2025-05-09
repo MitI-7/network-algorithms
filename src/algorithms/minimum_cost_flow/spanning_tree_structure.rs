@@ -1,5 +1,5 @@
 use crate::core::graph::{Graph, Edge};
-use crate::minimum_cost_flow::MinimumCostFlowNum;
+use crate::algorithms::minimum_cost_flow::MinimumCostFlowNum;
 use std::cmp::Reverse;
 use std::collections::BinaryHeap;
 use crate::core::direction::Directed;

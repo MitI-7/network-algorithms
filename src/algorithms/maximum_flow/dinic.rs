@@ -1,11 +1,11 @@
-use crate::maximum_flow::csr::CSR;
+use crate::algorithms::maximum_flow::csr::CSR;
 use crate::core::graph::Graph;
 use crate::core::direction::Directed;
 use crate::core::ids::NodeId;
 use crate::edge::capacity::CapEdge;
-use crate::maximum_flow::status::Status;
-use crate::maximum_flow::FlowNum;
-use crate::maximum_flow::MaximumFlowSolver;
+use crate::algorithms::maximum_flow::status::Status;
+use crate::algorithms::maximum_flow::FlowNum;
+use crate::algorithms::maximum_flow::MaximumFlowSolver;
 
 #[derive(Default)]
 pub struct Dinic<Flow> {

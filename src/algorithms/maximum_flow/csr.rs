@@ -1,7 +1,7 @@
 use crate::core::graph::Graph;
 use crate::core::direction::Directed;
 use crate::edge::capacity::CapEdge;
-use crate::maximum_flow::FlowNum;
+use crate::algorithms::maximum_flow::FlowNum;
 use std::collections::VecDeque;
 
 #[derive(Default)]

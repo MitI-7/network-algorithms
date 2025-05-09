@@ -1,6 +1,6 @@
 use crate::data_structures::bit_vector::BitVector;
 use crate::data_structures::radix_heap::RadixHeap;
-use crate::generalized_maximum_flow::generalized_maximum_flow_graph::Graph;
+use crate::algorithms::generalized_maximum_flow::generalized_maximum_flow_graph::Graph;
 use num_traits::{Float, ToPrimitive};
 use std::collections::VecDeque;
 

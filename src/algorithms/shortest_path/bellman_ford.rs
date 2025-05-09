@@ -1,5 +1,5 @@
 use crate::core::direction::Directed;
-use crate::shortest_path::csr::CSR;
+use crate::algorithms::shortest_path::csr::CSR;
 use crate::core::graph::Graph;
 use crate::edge::weight::WeightEdge;
 use crate::traits::{IntNum, Zero};

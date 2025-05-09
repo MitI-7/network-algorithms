@@ -1,8 +1,8 @@
 use criterion::measurement::WallTime;
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkGroup, Criterion};
 use network_algorithms::io::dimacs::read_minimum_cost_flow_dimacs;
-use network_algorithms::maximum_flow::FlowNum;
-use network_algorithms::minimum_cost_flow::{MinimumCostFlowSolver, PrimalNetworkSimplex};
+use network_algorithms::algorithms::maximum_flow::FlowNum;
+use network_algorithms::algorithms::minimum_cost_flow::{MinimumCostFlowSolver, PrimalNetworkSimplex};
 use network_algorithms::traits::One;
 use std::ops::Neg;
 use std::str::FromStr;

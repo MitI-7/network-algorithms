@@ -2,7 +2,7 @@ use network_algorithms::core::direction::Directed;
 use network_algorithms::core::graph::Graph;
 use network_algorithms::core::ids::NodeId;
 use network_algorithms::edge::capacity_cost::CapCostEdge;
-use network_algorithms::minimum_cost_flow::{
+use network_algorithms::algorithms::minimum_cost_flow::{
     // CostScalingPushRelabel, CycleCanceling, DualNetworkSimplex, Graph, OutOfKilter, ParametricNetworkSimplex, PrimalDual, PrimalNetworkSimplex,
     // CycleCanceling,
     // DualNetworkSimplex,

@@ -1,14 +1,14 @@
-use crate::minimum_cost_flow::csr::CSR;
+use crate::algorithms::minimum_cost_flow::csr::CSR;
 use crate::core::graph::Graph;
-use crate::minimum_cost_flow::status::Status;
-use crate::minimum_cost_flow::{MinimumCostFlowNum, MinimumCostFlowSolver};
+use crate::algorithms::minimum_cost_flow::status::Status;
+use crate::algorithms::minimum_cost_flow::{MinimumCostFlowNum, MinimumCostFlowSolver};
 use std::cmp::Reverse;
 use std::collections::BinaryHeap;
 use crate::core::direction::Directed;
 use crate::core::ids::EdgeId;
 use crate::edge::capacity_cost::CapCostEdge;
-use crate::minimum_cost_flow::csr::construct_extend_network_feasible_solution;
-use crate::minimum_cost_flow::translater::translater;
+use crate::algorithms::minimum_cost_flow::csr::construct_extend_network_feasible_solution;
+use crate::algorithms::minimum_cost_flow::translater::translater;
 use crate::node::excess::ExcessNode;
 
 // O(nU * (m + n) log n)

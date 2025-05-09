@@ -2,7 +2,7 @@ use crate::core::direction::Directed;
 use crate::core::graph::{Edge, Graph};
 use crate::core::ids::{NodeId, EdgeId};
 use crate::edge::capacity_cost::CapCostEdge;
-use crate::minimum_cost_flow::MinimumCostFlowNum;
+use crate::algorithms::minimum_cost_flow::MinimumCostFlowNum;
 use crate::node::excess::ExcessNode;
 use std::cmp::Reverse;
 use std::collections::BinaryHeap;

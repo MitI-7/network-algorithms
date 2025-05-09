@@ -1,7 +1,7 @@
 use network_algorithms::core::direction::Directed;
 use network_algorithms::core::graph::Graph;
 use network_algorithms::edge::capacity::CapEdge;
-use network_algorithms::maximum_flow::{
+use network_algorithms::algorithms::maximum_flow::{
     CapacityScaling, Dinic, EdmondsKarp, FordFulkerson, PushRelabelFIFO, PushRelabelHighestLabel, ShortestAugmentingPath,
 };
 use rstest::rstest;

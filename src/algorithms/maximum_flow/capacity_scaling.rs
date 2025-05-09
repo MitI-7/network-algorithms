@@ -1,8 +1,8 @@
-use crate::maximum_flow::csr::CSR;
+use crate::algorithms::maximum_flow::csr::CSR;
 use crate::core::graph::Graph;
-use crate::maximum_flow::status::Status;
-use crate::maximum_flow::FlowNum;
-use crate::maximum_flow::MaximumFlowSolver;
+use crate::algorithms::maximum_flow::status::Status;
+use crate::algorithms::maximum_flow::FlowNum;
+use crate::algorithms::maximum_flow::MaximumFlowSolver;
 use crate::traits::One;
 use core::ops::{Div, DivAssign, Mul, MulAssign};
 use std::collections::VecDeque;

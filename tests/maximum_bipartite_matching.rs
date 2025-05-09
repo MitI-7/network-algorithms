@@ -1,4 +1,4 @@
-use network_algorithms::maximum_bipartite_matching::{HopcroftKarp, WarmStart};
+use network_algorithms::algorithms::maximum_bipartite_matching::{HopcroftKarp, WarmStart};
 use network_algorithms::core::bipartite_graph::BipartiteGraph;
 use rstest::rstest;
 use std::fs::read_to_string;

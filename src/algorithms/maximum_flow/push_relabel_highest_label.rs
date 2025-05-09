@@ -1,44 +1,52 @@
 use crate::core::direction::Directed;
+use crate::algorithms::maximum_flow::csr::CSR;
 use crate::core::graph::Graph;
 use crate::core::ids::NodeId;
 use crate::edge::capacity::CapEdge;
-use crate::maximum_flow::csr::CSR;
-use crate::maximum_flow::status::Status;
-use crate::maximum_flow::FlowNum;
-use crate::maximum_flow::MaximumFlowSolver;
-use std::collections::VecDeque;
+use crate::algorithms::maximum_flow::status::Status;
+use crate::algorithms::maximum_flow::FlowNum;
+use crate::algorithms::maximum_flow::MaximumFlowSolver;
 
-pub struct PushRelabelFIFO<Flow> {
+pub struct PushRelabelHighestLabel<Flow> {
     csr: CSR<Flow>,
+    current_edge: Vec<usize>,
 
     global_relabel_freq: f64,
     value_only: bool,
     threshold: usize,
     work: usize,
-    active_nodes: VecDeque<usize>,
-    current_edge: Vec<usize>,
+
+    buckets: Vec<Vec<usize>>, // buckets[i] = active nodes with distance i
+    in_bucket: Vec<bool>,
+    bucket_idx: usize,
+
     distance_count: Vec<usize>,
 }
 
-impl<Flow> Default for PushRelabelFIFO<Flow>
+impl<Flow> Default for PushRelabelHighestLabel<Flow>
 where
     Flow: Default,
 {
     fn default() -> Self {
         Self {
             csr: CSR::default(),
+            current_edge: Vec::new(),
+
             global_relabel_freq: 1.0,
             value_only: false,
             threshold: 0,
             work: 0,
-            active_nodes: VecDeque::new(),
-            current_edge: Vec::new(),
+
+            buckets: Vec::new(),
+            in_bucket: Vec::new(),
+            bucket_idx: 0,
+
             distance_count: Vec::new(),
         }
     }
 }
 
-impl<Flow> MaximumFlowSolver<Flow> for PushRelabelFIFO<Flow>
+impl<Flow> MaximumFlowSolver<Flow> for PushRelabelHighestLabel<Flow>
 where
     Flow: FlowNum,
 {
@@ -54,11 +62,17 @@ where
         let source = dummy_source;
 
         self.pre_process(source.index(), sink.index());
-        while let Some(u) = self.active_nodes.pop_front() {
-            // no path to sink
-            if u == source.index() || u == sink.index() || self.csr.distances_to_sink[u] >= self.csr.num_nodes {
+        loop {
+            if self.buckets[self.bucket_idx].is_empty() {
+                if self.bucket_idx == 0 {
+                    break;
+                }
+                self.bucket_idx -= 1;
                 continue;
             }
+
+            let u = self.buckets[self.bucket_idx].pop().unwrap();
+            self.in_bucket[u] = false;
             self.discharge(u);
 
             if self.work > self.threshold {
@@ -84,7 +98,7 @@ where
     }
 }
 
-impl<Flow> PushRelabelFIFO<Flow>
+impl<Flow> PushRelabelHighestLabel<Flow>
 where
     Flow: FlowNum,
 {
@@ -104,8 +118,10 @@ where
 
     fn pre_process(&mut self, source: usize, sink: usize) {
         self.csr.excesses.fill(Flow::zero());
-        self.current_edge.resize(self.csr.num_nodes, 0);
-        self.distance_count.resize(self.csr.num_nodes + 1, 0);
+        self.current_edge = vec![0; self.csr.num_nodes];
+        self.buckets = vec![Vec::new(); self.csr.num_nodes];
+        self.in_bucket = vec![false; self.csr.num_nodes];
+        self.distance_count = vec![0; self.csr.num_nodes + 1];
 
         self.csr.update_distances_to_sink(source, sink);
         self.csr.distances_to_sink[source] = self.csr.num_nodes;
@@ -123,9 +139,11 @@ where
 
         for u in 0..self.csr.num_nodes {
             if u != source && u != sink && self.csr.excesses[u] > Flow::zero() {
-                self.active_nodes.push_back(u);
+                self.enqueue(u);
             }
         }
+
+        self.in_bucket[sink] = true;
 
         self.threshold = if self.global_relabel_freq <= 0.0 {
             usize::MAX
@@ -134,9 +152,20 @@ where
         };
     }
 
+    fn enqueue(&mut self, u: usize) {
+        if self.in_bucket[u] || self.csr.excesses[u] <= Flow::zero() || self.csr.distances_to_sink[u] >= self.csr.num_nodes {
+            return;
+        }
+
+        self.in_bucket[u] = true;
+        self.buckets[self.csr.distances_to_sink[u]].push(u);
+        self.bucket_idx = self.bucket_idx.max(self.csr.distances_to_sink[u]);
+        self.current_edge[u] = self.csr.start[u];
+    }
+
     fn discharge(&mut self, u: usize) {
         // push
-        for i in self.csr.neighbors(u) {
+        for i in self.current_edge[u]..self.csr.start[u + 1] {
             self.current_edge[u] = i;
             if self.csr.excesses[u] > Flow::zero() {
                 self.push(u, i);
@@ -146,7 +175,6 @@ where
                 return;
             }
         }
-        self.current_edge[u] = self.csr.start[u];
 
         // relabel
         if self.distance_count[self.csr.distances_to_sink[u]] == 1 {
@@ -154,21 +182,14 @@ where
         } else {
             self.relabel(u);
         }
-
-        if self.csr.excesses[u] > Flow::zero() {
-            self.active_nodes.push_back(u);
-        }
     }
 
-    // push from u
     fn push(&mut self, u: usize, i: usize) {
         let to = self.csr.to[i];
         let delta = self.csr.excesses[u].min(self.csr.residual_capacity(i));
         if self.csr.is_admissible_edge(u, i) && delta > Flow::zero() {
             self.csr.push_flow(u, i, delta, false);
-            if self.csr.excesses[to] == delta {
-                self.active_nodes.push_back(to);
-            }
+            self.enqueue(to);
         }
     }
 
@@ -176,28 +197,27 @@ where
         self.work += self.csr.start[u + 1] - self.csr.start[u]; // add outdegree of u
         self.distance_count[self.csr.distances_to_sink[u]] -= 1;
 
-        let new_distance = self
+        self.csr.distances_to_sink[u] = self
             .csr
             .neighbors(u)
             .filter(|&i| self.csr.residual_capacity(i) > Flow::zero())
             .map(|i| self.csr.distances_to_sink[self.csr.to[i]] + 1)
             .min()
-            .unwrap()
+            .unwrap_or(self.csr.num_nodes)
             .min(self.csr.num_nodes);
 
-        self.csr.distances_to_sink[u] = new_distance;
         self.distance_count[self.csr.distances_to_sink[u]] += 1;
+        self.enqueue(u);
     }
 
     // gap relabeling heuristic
-    // set distance[u] >= k to distance[u] = n
-    // O(n)
     fn gap_relabeling(&mut self, k: usize) {
         for u in 0..self.csr.num_nodes {
             if self.csr.distances_to_sink[u] >= k {
                 self.distance_count[self.csr.distances_to_sink[u]] -= 1;
                 self.csr.distances_to_sink[u] = self.csr.distances_to_sink[u].max(self.csr.num_nodes);
                 self.distance_count[self.csr.distances_to_sink[u]] += 1;
+                self.enqueue(u);
             }
         }
     }

@@ -1,8 +1,8 @@
-use network_algorithms::generalized_maximum_flow::generalized_maximum_flow_graph::Graph;
-use network_algorithms::generalized_maximum_flow::highest_gain_path::HighestGainPath;
-use network_algorithms::generalized_maximum_flow::primal_dual::PrimalDual;
-use network_algorithms::generalized_maximum_flow::primal_dual_push_relabel::PrimalDualPushRelabel;
-use network_algorithms::generalized_maximum_flow::status::Status;
+use network_algorithms::algorithms::generalized_maximum_flow::generalized_maximum_flow_graph::Graph;
+use network_algorithms::algorithms::generalized_maximum_flow::highest_gain_path::HighestGainPath;
+use network_algorithms::algorithms::generalized_maximum_flow::primal_dual::PrimalDual;
+use network_algorithms::algorithms::generalized_maximum_flow::primal_dual_push_relabel::PrimalDualPushRelabel;
+use network_algorithms::algorithms::generalized_maximum_flow::status::Status;
 use rstest::rstest;
 use std::fs::read_to_string;
 use std::path::PathBuf;

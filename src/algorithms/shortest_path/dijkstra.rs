@@ -5,7 +5,7 @@ use std::cmp::Reverse;
 use std::collections::BinaryHeap;
 use crate::core::direction::Directed;
 use crate::edge::weight::WeightEdge;
-use crate::shortest_path::csr::CSR;
+use crate::algorithms::shortest_path::csr::CSR;
 
 #[derive(Default)]
 struct Dijkstra<W> {

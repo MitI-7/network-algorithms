@@ -1,4 +1,4 @@
-use network_algorithms::maximum_matching::Blossom;
+use network_algorithms::algorithms::maximum_matching::Blossom;
 use network_algorithms::core::graph::Graph;
 use rstest::rstest;
 use std::fs::read_to_string;

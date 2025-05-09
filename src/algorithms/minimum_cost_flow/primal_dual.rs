@@ -2,10 +2,10 @@ use crate::core::direction::Directed;
 use crate::core::graph::Graph;
 use crate::core::ids::EdgeId;
 use crate::edge::capacity_cost::CapCostEdge;
-use crate::minimum_cost_flow::csr::{construct_extend_network_one_supply_one_demand, CSR};
-use crate::minimum_cost_flow::status::Status;
-use crate::minimum_cost_flow::translater::translater;
-use crate::minimum_cost_flow::{MinimumCostFlowNum, MinimumCostFlowSolver};
+use crate::algorithms::minimum_cost_flow::csr::{construct_extend_network_one_supply_one_demand, CSR};
+use crate::algorithms::minimum_cost_flow::status::Status;
+use crate::algorithms::minimum_cost_flow::translater::translater;
+use crate::algorithms::minimum_cost_flow::{MinimumCostFlowNum, MinimumCostFlowSolver};
 use crate::node::excess::ExcessNode;
 use std::collections::{BinaryHeap, VecDeque};
 

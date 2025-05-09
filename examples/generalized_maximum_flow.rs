@@ -1,5 +1,5 @@
-use network_algorithms::generalized_maximum_flow::generalized_maximum_flow_graph::Graph;
-use network_algorithms::generalized_maximum_flow::primal_dual_push_relabel::PrimalDualPushRelabel;
+use network_algorithms::algorithms::generalized_maximum_flow::generalized_maximum_flow_graph::Graph;
+use network_algorithms::algorithms::generalized_maximum_flow::primal_dual_push_relabel::PrimalDualPushRelabel;
 
 fn main() {
     let epsilon = 0.01;

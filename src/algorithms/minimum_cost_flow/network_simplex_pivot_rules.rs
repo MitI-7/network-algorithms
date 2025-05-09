@@ -1,5 +1,5 @@
-use crate::minimum_cost_flow::spanning_tree_structure::{EdgeState, SpanningTreeStructure};
-use crate::minimum_cost_flow::MinimumCostFlowNum;
+use crate::algorithms::minimum_cost_flow::spanning_tree_structure::{EdgeState, SpanningTreeStructure};
+use crate::algorithms::minimum_cost_flow::MinimumCostFlowNum;
 
 pub trait PivotRule<Flow> {
     fn initialize(&mut self, num_edges: usize);
