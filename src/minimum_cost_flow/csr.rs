@@ -1,6 +1,6 @@
 use crate::core::direction::Directed;
-use crate::core::graph::Graph;
-use crate::core::ids::NodeId;
+use crate::core::graph::{Edge, Graph};
+use crate::core::ids::{NodeId, EdgeId};
 use crate::edge::capacity_cost::CapCostEdge;
 use crate::minimum_cost_flow::MinimumCostFlowNum;
 use crate::node::excess::ExcessNode;
@@ -235,11 +235,11 @@ where
     (source, sink, artificial_edges)
 }
 
-pub(crate) fn construct_extend_network_feasible_solution<Flow>(graph: &mut crate::graph::minimum_cost_flow_graph::Graph<Flow>) -> (usize, Vec<usize>, Vec<usize>)
+pub(crate) fn construct_extend_network_feasible_solution<Flow>(graph: &mut Graph<Directed, ExcessNode<Flow>, CapCostEdge<Flow>>) -> (NodeId, Vec<NodeId>, Vec<EdgeId>)
 where
     Flow: MinimumCostFlowNum,
 {
-    let inf_cost = graph.edges.iter().map(|e| e.cost).fold(Flow::one(), |acc, cost| acc + cost); // all edge costs are non-negative
+    let inf_cost = graph.edges.iter().map(|e| e.data.cost).fold(Flow::one(), |acc, cost| acc + cost); // all edge costs are non-negative
 
     // add artificial nodes
     let root = graph.add_node();
@@ -247,23 +247,23 @@ where
     // add artificial edges
     let mut artificial_edges = Vec::new();
     for u in 0..graph.num_nodes() {
-        if u == root {
+        if u == root.index() {
             continue;
         }
 
-        let excess = graph.b[u];
+        let excess = graph.nodes[u].b;
         if excess >= Flow::zero() {
             // u -> root
-            let edge_id = graph.add_directed_edge(u, root, Flow::zero(), excess, inf_cost).unwrap();
-            graph.edges[edge_id].flow = excess;
+            let edge_id = graph.add_edge(NodeId(u), root, CapCostEdge{flow: Flow::zero(), lower: Flow::zero(), upper: excess, cost: inf_cost});
+            graph.edges[edge_id.index()].data.flow = excess;
             artificial_edges.push(edge_id);
         } else {
             // root -> u
-            let edge_id = graph.add_directed_edge(root, u, Flow::zero(), -excess, inf_cost).unwrap();
-            graph.edges[edge_id].flow = -excess;
+            let edge_id = graph.add_edge(root, NodeId(u), CapCostEdge{flow: Flow::zero(), lower: Flow::zero(), upper: -excess, cost:inf_cost});
+            graph.edges[edge_id.index()].data.flow = -excess;
             artificial_edges.push(edge_id);
         }
-        graph.b[u] = Flow::zero();
+        graph.nodes[u].b = Flow::zero();
     }
 
     (root, vec![root], artificial_edges)
