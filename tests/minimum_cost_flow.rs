@@ -1,12 +1,14 @@
-use network_algorithms::core::direction::Directed;
-use network_algorithms::core::graph::Graph;
-use network_algorithms::core::ids::NodeId;
-use network_algorithms::edge::capacity_cost::CapCostEdge;
 use network_algorithms::algorithms::minimum_cost_flow::{
+    CycleCanceling,
+    DualNetworkSimplex,
+    MinimumCostFlowGraph,
+    OutOfKilter,
+    ParametricNetworkSimplex,
+    PrimalDual,
+    PrimalNetworkSimplex,
     //CostScalingPushRelabel,
-    SuccessiveShortestPath, CycleCanceling, DualNetworkSimplex, OutOfKilter, ParametricNetworkSimplex, PrimalDual, PrimalNetworkSimplex,
+    SuccessiveShortestPath,
 };
-use network_algorithms::node::excess::ExcessNode;
 use rstest::rstest;
 use std::fs::read_to_string;
 use std::path::PathBuf;
@@ -34,20 +36,21 @@ enum Solver {
 #[case::ns_primal(Solver::PrimalNetworkSimplex)]
 fn minimum_cost_flow(#[files("tests/minimum_cost_flow/*/*.txt")] input_file_path: PathBuf, #[case] solver: Solver) {
     let (mut num_nodes, mut num_edges, mut expected) = (0, 0, "dummy".to_string());
-    let mut graph: Graph<Directed, ExcessNode<i128>, CapCostEdge<i128>> = Graph::new();
+    let mut graph = MinimumCostFlowGraph::<i128>::default();
+    let mut nodes = Vec::new();
 
     read_to_string(&input_file_path).unwrap().split('\n').enumerate().for_each(|(i, line)| {
         let line: Vec<&str> = line.split_whitespace().collect();
         if i == 0 {
             (num_nodes, num_edges, expected) = (line[0].parse::<usize>().unwrap(), line[1].parse::<usize>().unwrap(), line[2].to_string());
-            graph.add_nodes(num_nodes);
+            nodes = graph.add_nodes(num_nodes);
         } else if i <= num_nodes {
             let b = line[0].parse().unwrap();
             graph.nodes[i - 1].b = b;
         } else {
             let (from, to, lower, upper, cost) =
                 (line[0].parse::<usize>().unwrap(), line[1].parse::<usize>().unwrap(), line[2].parse().unwrap(), line[3].parse().unwrap(), line[4].parse().unwrap());
-            graph.add_edge(NodeId(from), NodeId(to), CapCostEdge { flow: 0, lower, upper, cost });
+            graph.add_directed_edge(nodes[from], nodes[to], lower, upper, cost);
         }
     });
 
@@ -89,7 +92,7 @@ fn minimum_cost_flow(#[files("tests/minimum_cost_flow/*/*.txt")] input_file_path
             }
             ParametricNetworkSimplex::default().solve(&mut graph)
         }
-        Solver::PrimalNetworkSimplex => PrimalNetworkSimplex::<i128>::default().solve(&mut graph)
+        Solver::PrimalNetworkSimplex => PrimalNetworkSimplex::<i128>::default().solve(&mut graph),
     };
 
     match result {

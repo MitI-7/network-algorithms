@@ -39,10 +39,10 @@ impl<D: Direction, N: Default, E> Graph<D, N, E> {
         self.nodes.pop();
     }
 
-    pub fn add_directed_edge(&mut self, from: NodeId, to: NodeId, data: E) -> EdgeId {
-        self.edges.push(Edge { u: from, v: to, data });
-        EdgeId(self.edges.len() - 1)
-    }
+    // pub fn add_directed_edge(&mut self, from: NodeId, to: NodeId, data: E) -> EdgeId {
+    //     self.edges.push(Edge { u: from, v: to, data });
+    //     EdgeId(self.edges.len() - 1)
+    // }
 
     pub fn add_edge(&mut self, u: NodeId, v: NodeId, data: E) -> EdgeId {
         self.edges.push(Edge { u, v, data });

@@ -1,8 +1,5 @@
-use network_algorithms::core::direction::Directed;
-use network_algorithms::core::graph::Graph;
-use network_algorithms::edge::capacity::CapEdge;
-use network_algorithms::algorithms::maximum_flow::{
-    CapacityScaling, Dinic, EdmondsKarp, FordFulkerson, PushRelabelFIFO, PushRelabelHighestLabel, ShortestAugmentingPath,
+use network_algorithms::maximum_flow::{
+    CapacityScaling, Dinic, EdmondsKarp, FordFulkerson, PushRelabelFIFO, PushRelabelHighestLabel, ShortestAugmentingPath, MaximumFlowGraph
 };
 use rstest::rstest;
 use std::fs::read_to_string;
@@ -28,7 +25,7 @@ enum Solver {
 #[case::push_relabel_highest_label(Solver::PushRelabelHighestLabel)]
 #[case::shortest_augmenting_path(Solver::ShortestAugmentingPath)]
 fn maximum_flow(#[files("tests/maximum_flow/*/*.txt")] input_file_path: PathBuf, #[case] solver: Solver) {
-    let mut graph: Graph<Directed, (), CapEdge<usize>> = Graph::new();
+    let mut graph = MaximumFlowGraph::<usize>::new();
     let (mut num_nodes, mut num_edges, mut source, mut sink, mut expected) = (0, 0, NodeId(0), NodeId(0), 0);
     let mut nodes = Vec::new();
     
@@ -40,7 +37,7 @@ fn maximum_flow(#[files("tests/maximum_flow/*/*.txt")] input_file_path: PathBuf,
             nodes = graph.add_nodes(num_nodes);
         } else {
             let (from, to, upper) = (line[0].parse::<usize>().unwrap(), line[1].parse::<usize>().unwrap(), line[2].parse::<usize>().unwrap());
-            graph.add_directed_edge(nodes[from], nodes[to], CapEdge { flow: 0, upper });
+            graph.add_directed_edge(nodes[from], nodes[to], upper);
         }
     });
 
