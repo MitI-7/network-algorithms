@@ -1,8 +1,8 @@
 use crate::data_structures::bit_vector::BitVector;
 use crate::data_structures::radix_heap::RadixHeap;
 use crate::algorithms::generalized_maximum_flow::generalized_maximum_flow_graph::Graph;
-use num_traits::{Float, ToPrimitive};
 use std::collections::VecDeque;
+use crate::algorithms::generalized_maximum_flow::GeneralizedMaximumFlowNum;
 
 pub type Dist = i32;
 
@@ -32,7 +32,7 @@ pub struct CSR<Flow> {
 #[allow(dead_code)]
 impl<Flow> CSR<Flow>
 where
-    Flow: Float + Copy + Clone + ToPrimitive + Default,
+    Flow: GeneralizedMaximumFlowNum,
 {
     pub fn new(epsilon: Flow) -> Self {
         Self { epsilon, ..Default::default() }

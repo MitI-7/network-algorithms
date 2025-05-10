@@ -1,6 +1,5 @@
-use num_traits::Float;
-use num_traits::ToPrimitive;
 use std::fmt::Debug;
+use crate::algorithms::generalized_maximum_flow::GeneralizedMaximumFlowNum;
 
 #[derive(PartialEq, Debug, Clone)]
 pub struct Edge<Flow> {
@@ -22,7 +21,7 @@ pub struct Graph<Flow> {
 
 impl<Flow> Graph<Flow>
 where
-    Flow: Float + PartialOrd + Copy + Clone + ToPrimitive,
+    Flow: GeneralizedMaximumFlowNum,
 {
     #[inline]
     pub fn num_nodes(&self) -> usize {
