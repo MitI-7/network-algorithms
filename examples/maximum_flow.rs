@@ -1,8 +1,7 @@
 use network_algorithms::maximum_flow::{Dinic, MaximumFlowGraph, PushRelabelHighestLabel};
-use network_algorithms::prelude::*;
 
 fn dinic_sample() {
-    let mut graph = MaximumFlowGraph::default();
+    let mut graph = MaximumFlowGraph::<i32>::default();
     let nodes = graph.add_nodes(4);
     let mut edges = Vec::new();
     edges.push(graph.add_directed_edge(nodes[0], nodes[1], 2));
@@ -23,7 +22,7 @@ fn dinic_sample() {
 }
 
 fn push_relabel() {
-    let mut graph: Graph<Directed, (), CapEdge<i32>> = Graph::default();
+    let mut graph = MaximumFlowGraph::<i32>::default();
     let nodes = graph.add_nodes(4);
     let mut edges = Vec::new();
     edges.push(graph.add_directed_edge(nodes[0], nodes[1], 2));

@@ -1,7 +1,7 @@
 use network_algorithms::minimum_cost_flow::{MinimumCostFlowGraph, BestEligibleArcPivotRule, PrimalNetworkSimplex};
 
 fn primal_network_simplex() {
-    let mut graph = MinimumCostFlowGraph::default();
+    let mut graph = MinimumCostFlowGraph::<i32>::default();
     let nodes = graph.add_nodes(4);
 
     let edges = vec![
