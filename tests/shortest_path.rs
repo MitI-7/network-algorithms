@@ -21,7 +21,7 @@ fn shortest_path(#[files("tests/shortest_path/*/*.txt")] input_file_path: PathBu
     let mut graph: Graph<Directed, (), WeightEdge<usize>> = Graph::new();
     let (mut num_nodes, mut num_edges, mut s) = (0, 0, NodeId(0));
     let mut nodes = Vec::new();
-    let mut expected: Vec<usize> = Vec::new();
+    let mut expected: Vec<Option<usize>> = Vec::new();
     
     read_to_string(&input_file_path).unwrap().split('\n').enumerate().for_each(|(i, line)| {
         let line: Vec<&str> = line.split_whitespace().collect();
@@ -29,10 +29,10 @@ fn shortest_path(#[files("tests/shortest_path/*/*.txt")] input_file_path: PathBu
             (num_nodes, num_edges, s) = (line[0].parse().unwrap(), line[1].parse().unwrap(), NodeId(line[2].parse().unwrap()));
             nodes = graph.add_nodes(num_nodes);
         } else if i == 1 {
-            // for j in 0..num_nodes {
-            //     assert_eq!(line.len(), num_nodes);
-            //     expected.push(line[j].parse().unwrap());
-            // }
+            for j in 0..num_nodes {
+                assert_eq!(line.len(), num_nodes);
+                expected.push(line[j].parse().ok());
+            }
         } else {
             let (from, to, weight) = (line[0].parse::<usize>().unwrap(), line[1].parse::<usize>().unwrap(), line[2].parse::<usize>().unwrap());
             graph.add_directed_edge(nodes[from], nodes[to], WeightEdge { weight });
