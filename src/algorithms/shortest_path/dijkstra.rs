@@ -6,9 +6,10 @@ use std::collections::BinaryHeap;
 use crate::core::direction::Directed;
 use crate::edge::weight::WeightEdge;
 use crate::algorithms::shortest_path::csr::CSR;
+use crate::core::ids::NodeId;
 
 #[derive(Default)]
-struct Dijkstra<W> {
+pub struct Dijkstra<W> {
     csr: CSR<W>,
 }
 
@@ -16,16 +17,16 @@ impl<W> Dijkstra<W>
 where
     W: IntNum + Zero + Copy + Ord,
 {
-    fn solve<E>(&mut self, graph: &Graph<Directed, (), WeightEdge<W>>, source: usize) -> Vec<W> {
+    pub fn solve(&mut self, graph: &Graph<Directed, (), WeightEdge<W>>, source: NodeId) -> Result<Vec<Option<W>>, String> {
         self.csr.build(graph);
 
         let mut heap = BinaryHeap::new();
-        heap.push((Reverse(W::zero()), source));
+        heap.push((Reverse(W::zero()), source.index()));
 
         let mut visited = bit_vector::BitVector::new(self.csr.num_nodes);
-        let mut distance = vec![W::max_value(); self.csr.num_nodes];
+        let mut distance = vec![None; self.csr.num_nodes];
         let mut prev = vec![usize::MAX; self.csr.num_nodes];
-        distance[source] = W::zero();
+        distance[source.index()] = Some(W::zero());
 
         while let Some((d, u)) = heap.pop() {
             if visited.get(u) {
@@ -42,15 +43,14 @@ where
                 }
 
                 let new_dist = d.0 + w;
-                if new_dist < distance[to] {
-                    distance[to] = new_dist;
+                if distance[to].is_none() || new_dist < distance[to].unwrap() {
+                    distance[to] = Some(new_dist);
                     prev[to] = u;
                     heap.push((Reverse(new_dist), to));
                 }
             }
         }
-
-        distance
+        Ok(distance)
         // for u in 0..self.graph.num_nodes() {
         //     if visited.access(u) {
         //         self.distance[u] = Some(distance[u]);

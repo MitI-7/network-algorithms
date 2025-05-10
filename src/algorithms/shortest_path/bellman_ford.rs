@@ -1,11 +1,12 @@
 use crate::core::direction::Directed;
 use crate::algorithms::shortest_path::csr::CSR;
 use crate::core::graph::Graph;
+use crate::core::ids::NodeId;
 use crate::edge::weight::WeightEdge;
 use crate::traits::{IntNum, Zero};
 
 #[derive(Default)]
-struct BellmanFord<W> {
+pub struct BellmanFord<W> {
     csr: CSR<W>,
 }
 
@@ -13,16 +14,20 @@ impl<W> BellmanFord<W>
 where
     W: IntNum + Zero + Copy,
 {
-    fn solve(&mut self, graph: &Graph<Directed, (), WeightEdge<W>>, source: usize) -> Result<Vec<Option<W>>, String> {
+    pub fn solve(&mut self, graph: &Graph<Directed, (), WeightEdge<W>>, source: NodeId) -> Result<Vec<Option<W>>, String> {
         self.csr.build(graph);
 
         let mut distances = vec![None; self.csr.num_nodes];
-        distances[source] = Some(W::zero());
+        distances[source.index()] = Some(W::zero());
 
         let mut num_loop = 0;
         loop {
             let mut update = false;
             for u in 0..self.csr.num_nodes {
+                if distances[u].is_none() {
+                    continue;
+                }
+                
                 for i in self.csr.neighbors(u) {
                     let to = self.csr.to[i];
                     let w = self.csr.weight[i];

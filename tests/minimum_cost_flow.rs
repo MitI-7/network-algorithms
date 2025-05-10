@@ -89,10 +89,7 @@ fn minimum_cost_flow(#[files("tests/minimum_cost_flow/*/*.txt")] input_file_path
             }
             ParametricNetworkSimplex::default().solve(&mut graph)
         }
-        Solver::PrimalNetworkSimplex => PrimalNetworkSimplex::<i128>::default().solve(&mut graph),
-        _ => {
-            return;
-        }
+        Solver::PrimalNetworkSimplex => PrimalNetworkSimplex::<i128>::default().solve(&mut graph)
     };
 
     match result {

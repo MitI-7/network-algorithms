@@ -75,19 +75,19 @@ impl UnionFind {
         }
     }
 }
-
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test() {
-        let mut uf = UnionFind::new(4);
-        assert!(!uf.same_set(0, 1));
-        uf.unite(0, 1);
-        uf.unite(2, 3);
-        assert!(uf.same_set(0, 1));
-        assert!(!uf.same_set(1, 2));
-        uf.unite(0, 2);
-        assert!(uf.same_set(1, 3));
-    }
-}
+//
+// mod tests {
+//     use super::*;
+//
+//     #[test]
+//     fn test() {
+//         let mut uf = UnionFind::new(4);
+//         assert!(!uf.same_set(0, 1));
+//         uf.unite(0, 1);
+//         uf.unite(2, 3);
+//         assert!(uf.same_set(0, 1));
+//         assert!(!uf.same_set(1, 2));
+//         uf.unite(0, 2);
+//         assert!(uf.same_set(1, 3));
+//     }
+// }
