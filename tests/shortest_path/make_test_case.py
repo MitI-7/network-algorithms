@@ -24,7 +24,7 @@ def aoj_grl_1_a(input_directory_path: Path):
                     lines.append(f"{f} {t} {w}")
 
         output_file_path = Path(str(input_file_path).replace(".in.in", ".txt"))
-        with output_file_path.open("w") as f:
+        with output_file_path.open("w", newline="\n") as f:
             f.write("\n".join(lines))
 
 
