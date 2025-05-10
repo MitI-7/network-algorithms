@@ -5,7 +5,7 @@ edition = "2021"
 repository = "https://github.com/MitI-7/network-algorithms"
 
 [dependencies]
-rstest = "0.25.0"
+rstest = "0.25"
 
 [dev-dependencies]
 criterion = "0.5.1"
