@@ -93,7 +93,7 @@ fn maximum_flow(#[files("tests/maximum_flow/*/*.txt")] path: PathBuf, #[case] so
 #[case::push_relabel_fifo(Solver::PushRelabelFIFO)]
 #[case::push_relabel_highest_label(Solver::PushRelabelHighestLabel)]
 #[case::shortest_augmenting_path(Solver::ShortestAugmentingPath)]
-fn source_eq_sink(#[case] solver: Solver) {
+fn maximum_flow_source_eq_sink(#[case] solver: Solver) {
     let mut graph = MaximumFlowGraph::<usize>::new();
     let nodes = graph.add_nodes(2);
     graph.add_directed_edge(nodes[0], nodes[1], 1);
@@ -111,7 +111,7 @@ fn source_eq_sink(#[case] solver: Solver) {
 #[case::push_relabel_fifo(Solver::PushRelabelFIFO)]
 #[case::push_relabel_highest_label(Solver::PushRelabelHighestLabel)]
 #[case::shortest_augmenting_path(Solver::ShortestAugmentingPath)]
-fn no_edges(#[case] solver: Solver) {
+fn maximum_flow_no_edges(#[case] solver: Solver) {
     let mut graph = MaximumFlowGraph::<usize>::new();
     let nodes = graph.add_nodes(10);
 

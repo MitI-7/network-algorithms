@@ -30,7 +30,7 @@ where
         self.current_edge.resize(self.csr.num_nodes, 0);
         let two = Flow::one() + Flow::one();
 
-        let max_capacity = *self.csr.upper.iter().map(|f| f).max().unwrap();
+        let max_capacity = *self.csr.upper.iter().map(|f| f).max().unwrap_or(&Flow::zero());
         let mut delta = Flow::one();
         while delta <= max_capacity {
             delta *= two;
