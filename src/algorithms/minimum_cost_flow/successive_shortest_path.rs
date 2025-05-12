@@ -20,9 +20,9 @@ where
     Flow: MinimumCostFlowNum,
 {
     fn solve(&mut self, graph: &mut Graph<Directed, ExcessNode<Flow>, CapCostEdge<Flow>>) -> Result<Flow, Status> {
-        // if graph.is_unbalance() {
-        //     return Err(Status::Unbalanced);
-        // }
+        if (0..graph.num_nodes()).into_iter().fold(Flow::zero(), |sum, u| sum + graph.nodes[u].b) != Flow::zero() {
+            return Err(Status::Unbalanced);
+        }
 
         let new_graph = translater(graph);
         self.csr.build(&new_graph, None, None);

@@ -13,6 +13,20 @@ pub trait Bounded {
     fn max_value() -> Self;
 }
 
+pub trait FromPrimitive: Sized {
+    fn from_u8(n: u8) -> Self;
+    fn from_i64(n: i64) -> Self;
+}
+macro_rules! impl_from_prim {
+    ($($t:ty),*) => {$(
+        impl FromPrimitive for $t {
+            #[inline] fn from_u8(n: u8)  -> Self { n as $t }
+            #[inline] fn from_i64(n: i64)-> Self { n as $t }
+        }
+    )*};
+}
+impl_from_prim!(u16, u32, u64, usize, i16, i32, i64, i128, f32, f64);
+
 macro_rules! impl_nums {
     ($($t:ty => $max:expr),* $(,)?) => { $(
         impl Zero for $t { #[inline] fn zero() -> Self { 0 as $t } }

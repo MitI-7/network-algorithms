@@ -1,7 +1,8 @@
-// pub mod cost_scaling_push_relabel;
+pub mod cost_scaling_push_relabel;
 pub mod csr;
 pub mod cycle_canceling;
 pub mod dual_network_simplex;
+mod minimum_cost_flow_graph;
 pub mod network_simplex_pivot_rules;
 pub mod out_of_kilter;
 pub mod parametric_network_simplex;
@@ -11,7 +12,6 @@ pub mod spanning_tree_structure;
 pub mod status;
 pub mod successive_shortest_path;
 pub mod translater;
-mod minimum_cost_flow_graph;
 
 use crate::core::direction::Directed;
 use crate::core::graph::Graph;
@@ -25,12 +25,10 @@ where
     fn solve(&mut self, graph: &mut Graph<Directed, ExcessNode<Flow>, CapCostEdge<Flow>>) -> Result<Flow, Status>;
 }
 
-use crate::traits::{One, Zero};
-use std::fmt::Debug;
-use std::ops::{Add, AddAssign, Mul, Neg, Sub, SubAssign};
-// pub use self::cost_scaling_push_relabel::CostScalingPushRelabel;
+pub use self::cost_scaling_push_relabel::CostScalingPushRelabel;
 pub use self::cycle_canceling::CycleCanceling;
 pub use self::dual_network_simplex::DualNetworkSimplex;
+pub use self::minimum_cost_flow_graph::MinimumCostFlowGraph;
 pub use self::network_simplex_pivot_rules::{
     AlteringCandidateListPivotRule, BestEligibleArcPivotRule, BlockSearchPivotRule, CandidateListPivotRule, FirstEligibleArcPivotRule,
 };
@@ -40,7 +38,9 @@ pub use self::primal_dual::PrimalDual;
 pub use self::primal_network_simplex::PrimalNetworkSimplex;
 pub use self::status::Status;
 pub use self::successive_shortest_path::SuccessiveShortestPath;
-pub use self::minimum_cost_flow_graph::MinimumCostFlowGraph;
+use crate::traits::{One, Zero};
+use std::fmt::Debug;
+use std::ops::{Add, AddAssign, Mul, Neg, Sub, SubAssign};
 
 // pub trait FlowNum = Zero + Ord + Add<Output = Self> + Sub<Output = Self> + AddAssign + SubAssign + Copy;
 // Flow: FlowNum + Neg<Output = Flow> + std::ops::Mul<Output = Flow> + One,

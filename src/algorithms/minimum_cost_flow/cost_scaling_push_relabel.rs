@@ -1,15 +1,14 @@
-use crate::maximum_flow::capacity_scaling::CapacityScaling;
-use crate::minimum_cost_flow::csr::CSR;
-use crate::minimum_cost_flow::status::Status;
-use crate::minimum_cost_flow::MinimumCostFlowSolver;
-use num_traits::{FromPrimitive, NumAssign};
-use std::collections::VecDeque;
-use std::ops::Neg;
 use crate::core::direction::Directed;
 use crate::core::graph::Graph;
 use crate::core::ids::EdgeId;
 use crate::edge::capacity_cost::CapCostEdge;
+use crate::minimum_cost_flow::csr::CSR;
+use crate::minimum_cost_flow::status::Status;
+use crate::minimum_cost_flow::{MinimumCostFlowNum, MinimumCostFlowSolver};
 use crate::node::excess::ExcessNode;
+use std::collections::VecDeque;
+use std::fmt::Debug;
+use crate::maximum_flow::MaximumFlowGraph;
 
 pub struct CostScalingPushRelabel<Flow> {
     csr: CSR<Flow>,
@@ -20,26 +19,27 @@ pub struct CostScalingPushRelabel<Flow> {
 
 impl<Flow> MinimumCostFlowSolver<Flow> for CostScalingPushRelabel<Flow>
 where
-    Flow: NumAssign + Neg<Output = Flow> + Ord + Copy + FromPrimitive + Default,
+    Flow: MinimumCostFlowNum + TryFrom<usize> + std::ops::MulAssign + std::ops::Div<Output = Flow> + std::ops::DivAssign,
+    <Flow as TryFrom<usize>>::Error: Debug
 {
     fn solve(&mut self, graph: &mut Graph<Directed, ExcessNode<Flow>, CapCostEdge<Flow>>) -> Result<Flow, Status> {
-        // if graph.is_unbalance() {
-        //     return Err(Status::Unbalanced);
-        // }
-        self.csr.build(graph);
+        if (0..graph.num_nodes()).into_iter().fold(Flow::zero(), |sum, u| sum + graph.nodes[u].b) != Flow::zero() {
+            return Err(Status::Unbalanced);
+        }
+        self.csr.build(graph, None, None);
 
         // all edge costs are non-negative
-        if self.csr.excesses.iter().all(|&excess| excess == Flow::zero()) {
-            return Ok(graph.minimum_cost());
-        }
+        // if self.csr.excesses.iter().all(|&excess| excess == Flow::zero()) {
+        //     return Ok(graph.minimum_cost());
+        // }
 
-        if !self.check_feasibility(graph) {
-            return Err(Status::Infeasible);
-        }
+        // if !self.check_feasibility(graph) {
+        //     return Err(Status::Infeasible);
+        // }
 
         self.current_edge.resize(self.csr.num_nodes, 0);
         let gamma = self.csr.cost.iter().map(|&c| c).max().unwrap_or(Flow::one()); // all edge costs are non-negative
-        let cost_scaling_factor = self.alpha * Flow::from_usize(self.csr.num_nodes).unwrap();
+        let cost_scaling_factor = self.alpha * Flow::try_from(self.csr.num_nodes).expect("node count exceeds Flow::max_value()");
         let mut epsilon = Flow::one().max(gamma * cost_scaling_factor);
 
         // scale cost
@@ -70,17 +70,19 @@ where
 
 impl<Flow> Default for CostScalingPushRelabel<Flow>
 where
-    Flow: NumAssign + Neg<Output = Flow> + Ord + Copy + FromPrimitive + Default,
+    Flow: MinimumCostFlowNum + TryFrom<usize> + std::ops::MulAssign + std::ops::Div<Output = Flow> + std::ops::DivAssign,
+    <Flow as TryFrom<usize>>::Error: Debug
 {
     fn default() -> Self {
-        Self { csr: CSR::default(), active_nodes: VecDeque::new(), current_edge: Vec::new(), alpha: Flow::from_isize(16).unwrap() }
+        Self { csr: CSR::default(), active_nodes: VecDeque::new(), current_edge: Vec::new(), alpha: Flow::try_from(16).unwrap() }
     }
 }
 
 #[allow(dead_code)]
 impl<Flow> CostScalingPushRelabel<Flow>
 where
-    Flow: NumAssign + Neg<Output = Flow> + Ord + Copy + FromPrimitive + Default,
+    Flow: MinimumCostFlowNum + TryFrom<usize> + std::ops::MulAssign + std::ops::Div<Output = Flow> + std::ops::DivAssign,
+    <Flow as TryFrom<usize>>::Error: Debug
 {
     // scaling_factor: it was usually between 8 and 24. default scaling factor is 16
     pub fn new(scaling_factor: Flow) -> Self {
@@ -110,8 +112,7 @@ where
 
         self.current_edge.iter_mut().enumerate().for_each(|(u, e)| *e = self.csr.start[u]);
         debug_assert_eq!(self.active_nodes.len(), 0);
-        self.active_nodes
-            .extend((0..self.csr.num_nodes).filter(|&u| self.csr.excesses[u] > Flow::zero()));
+        self.active_nodes.extend((0..self.csr.num_nodes).filter(|&u| self.csr.excesses[u] > Flow::zero()));
 
         // 0-optimal pseudo flow -> epsilon-optimal feasible flow
         while let Some(u) = self.active_nodes.pop_back() {
@@ -245,35 +246,31 @@ where
         false
     }
 
-    fn check_feasibility(&self, graph: &Graph<Flow>) -> bool {
-        let mut maximum_flow_graph = graph::Graph::default();
-        maximum_flow_graph.add_nodes(graph.num_nodes());
-        let source = maximum_flow_graph.add_node();
-        let sink = maximum_flow_graph.add_node();
-
-        let mut excesses = graph.b.clone();
-        for (edge_id, edge) in graph.edges.iter().enumerate() {
-            let (from, to) = if graph.is_reversed[edge_id] {
-                (edge.to, edge.from)
-            } else {
-                (edge.from, edge.to)
-            };
-            excesses[from] -= graph.lowers[edge_id];
-            excesses[to] += graph.lowers[edge_id];
-            maximum_flow_graph.add_directed_edge(from, to, edge.upper);
-        }
-
-        let mut total_excess = Flow::zero();
-        for u in 0..graph.num_nodes() {
-            if excesses[u] > Flow::zero() {
-                maximum_flow_graph.add_directed_edge(source, u, excesses[u]);
-                total_excess += excesses[u];
-            }
-            if excesses[u] < Flow::zero() {
-                maximum_flow_graph.add_directed_edge(u, sink, -excesses[u]);
-            }
-        }
-        let r = CapacityScaling::default().solve(&mut maximum_flow_graph, source, sink, None);
-        r.unwrap() >= total_excess
-    }
+    // fn check_feasibility(&self, graph: &Graph<Directed, ExcessNode<Flow>, CapCostEdge<Flow>>) -> bool {
+    //     let mut maximum_flow_graph = MaximumFlowGraph::default();
+    //     maximum_flow_graph.add_nodes(graph.num_nodes());
+    //     let source = maximum_flow_graph.add_node();
+    //     let sink = maximum_flow_graph.add_node();
+    // 
+    //     let mut excesses = graph.b.clone();
+    //     for (edge_id, edge) in graph.edges.iter().enumerate() {
+    //         let (from, to) = if graph.is_reversed[edge_id] { (edge.to, edge.from) } else { (edge.from, edge.to) };
+    //         excesses[from] -= graph.lowers[edge_id];
+    //         excesses[to] += graph.lowers[edge_id];
+    //         maximum_flow_graph.add_directed_edge(from, to, edge.upper);
+    //     }
+    // 
+    //     let mut total_excess = Flow::zero();
+    //     for u in 0..graph.num_nodes() {
+    //         if excesses[u] > Flow::zero() {
+    //             maximum_flow_graph.add_directed_edge(source, u, excesses[u]);
+    //             total_excess += excesses[u];
+    //         }
+    //         if excesses[u] < Flow::zero() {
+    //             maximum_flow_graph.add_directed_edge(u, sink, -excesses[u]);
+    //         }
+    //     }
+    //     let r = CapacityScaling::default().solve(&mut maximum_flow_graph, source, sink, None);
+    //     r.unwrap() >= total_excess
+    // }
 }

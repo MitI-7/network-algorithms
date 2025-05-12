@@ -7,7 +7,7 @@ use network_algorithms::algorithms::minimum_cost_flow::{
     ParametricNetworkSimplex,
     PrimalDual,
     PrimalNetworkSimplex,
-    //CostScalingPushRelabel,
+    CostScalingPushRelabel,
     SuccessiveShortestPath,
 };
 use network_algorithms::minimum_cost_flow::network_simplex_pivot_rules::PivotRule;
@@ -15,9 +15,11 @@ use network_algorithms::minimum_cost_flow::{BlockSearchPivotRule, MinimumCostFlo
 use rstest::rstest;
 use std::fs::read_to_string;
 use std::path::PathBuf;
+use network_algorithms::algorithms::minimum_cost_flow::status::Status;
+use std::fmt::Debug;
 
 enum Solver {
-    // CostScalingPushRelabel,
+    CostScalingPushRelabel,
     NegativeCostCanceling,
     OutOfKilter,
     PrimalDual,
@@ -38,8 +40,14 @@ impl Solver {
         a || b
     }
 
-    pub fn build<F: MinimumCostFlowNum + Default + 'static, P: Default + PivotRule<F> + 'static>(&self) -> Box<dyn MinimumCostFlowSolver<F>> {
+    pub fn build<F, P>(&self) -> Box<dyn MinimumCostFlowSolver<F>>
+    where
+        F: MinimumCostFlowNum + TryFrom<usize> + std::ops::MulAssign + std::ops::Div<Output = F> + std::ops::DivAssign + Default + 'static,
+        P: Default + PivotRule<F> + 'static,
+        <F as TryFrom<usize>>::Error: Debug
+    {
         match self {
+            Solver::CostScalingPushRelabel => Box::new(CostScalingPushRelabel::default()),
             Solver::NegativeCostCanceling => Box::new(CycleCanceling::default()),
             Solver::OutOfKilter => Box::new(OutOfKilter::default()),
             Solver::PrimalDual => Box::new(PrimalDual::default()),
@@ -84,7 +92,7 @@ fn minimum_cost_flow(#[files("tests/minimum_cost_flow/*/*.txt")] path: PathBuf, 
         }
     });
 
-    let mut solver_impl = solver.build::<i128, BlockSearchPivotRule<i128>>();
+    let mut solver_impl = solver.build::<_, BlockSearchPivotRule<_>>();
     let actual = solver_impl.solve(&mut graph);
 
     match actual {
@@ -98,7 +106,7 @@ fn minimum_cost_flow(#[files("tests/minimum_cost_flow/*/*.txt")] path: PathBuf, 
 }
 
 #[rstest]
-// #[case::cs(Solver::CostScalingPushRelabel)]
+#[case::cs(Solver::CostScalingPushRelabel)]
 #[case::nc(Solver::NegativeCostCanceling)]
 #[case::ok(Solver::OutOfKilter)]
 #[case::pd(Solver::PrimalDual)]
@@ -107,32 +115,16 @@ fn minimum_cost_flow(#[files("tests/minimum_cost_flow/*/*.txt")] path: PathBuf, 
 #[case::ns_parametric(Solver::ParametricNetworkSimplex)]
 #[case::ns_primal(Solver::PrimalNetworkSimplex)]
 fn minimum_cost_flow_unbalance(#[case] solver: Solver) {
-    // let mut graph = MinimumCostFlowGraph::<i32>::new();
-    // let nodes = graph.add_nodes(2);
-    // graph.add_directed_edge(nodes[0], nodes[1], 1);
-    //
-    // let mut solver_impl = solver.build();
-    // let actual = solver_impl.solve(&mut graph, nodes[0], nodes[0], None);
-    // assert_eq!(actual.err().unwrap(), Status::BadInput);
-}
+    let mut graph = MinimumCostFlowGraph::<i32>::new();
+    let nodes = graph.add_nodes(2);
+    graph.add_directed_edge(nodes[0], nodes[1], 0, 1, 1);
 
-#[rstest]
-// #[case::cs(Solver::CostScalingPushRelabel)]
-#[case::nc(Solver::NegativeCostCanceling)]
-#[case::ok(Solver::OutOfKilter)]
-#[case::pd(Solver::PrimalDual)]
-#[case::ssp(Solver::SuccessiveShortestPath)]
-#[case::ns_dual(Solver::DualNetworkSimplex)]
-#[case::ns_parametric(Solver::ParametricNetworkSimplex)]
-#[case::ns_primal(Solver::PrimalNetworkSimplex)]
-fn minimum_cost_flow_no_balance(#[case] solver: Solver) {
-    // let mut graph = MinimumCostFlowGraph::<i32>::new();
-    // let nodes = graph.add_nodes(2);
-    // graph.add_directed_edge(nodes[0], nodes[1], 1);
-    //
-    // let mut solver_impl = solver.build();
-    // let actual = solver_impl.solve(&mut graph, nodes[0], nodes[0], None);
-    // assert_eq!(actual.err().unwrap(), Status::BadInput);
+    graph.nodes[0].b = 1;
+    graph.nodes[1].b = 1;
+
+    let mut solver_impl = solver.build::<_, BlockSearchPivotRule<_>>();
+    let actual = solver_impl.solve(&mut graph);
+    assert_eq!(actual.err().unwrap(), Status::Unbalanced);
 }
 
 #[rstest]
@@ -145,10 +137,28 @@ fn minimum_cost_flow_no_balance(#[case] solver: Solver) {
 #[case::ns_parametric(Solver::ParametricNetworkSimplex)]
 #[case::ns_primal(Solver::PrimalNetworkSimplex)]
 fn minimum_cost_flow_no_edges(#[case] solver: Solver) {
-    // let mut graph = MinimumCostFlowGraph::<i32>::new();
-    // let nodes = graph.add_nodes(10);
-    //
-    // let mut solver_impl = solver.build();
-    // let actual = solver_impl.solve(&mut graph, nodes[0], nodes[9], None);
-    // assert_eq!(actual.unwrap(), 0);
+    let mut graph = MinimumCostFlowGraph::<i32>::new();
+    let _nodes = graph.add_nodes(2);
+    graph.nodes[0].b = 1;
+    graph.nodes[1].b = -1;
+
+    let mut solver_impl = solver.build::<_, BlockSearchPivotRule<_>>();
+    let actual = solver_impl.solve(&mut graph);
+    assert_eq!(actual.err().unwrap(), Status::Infeasible);
+}
+
+#[rstest]
+#[case::cs(Solver::CostScalingPushRelabel)]
+#[case::nc(Solver::NegativeCostCanceling)]
+#[case::ok(Solver::OutOfKilter)]
+#[case::pd(Solver::PrimalDual)]
+#[case::ssp(Solver::SuccessiveShortestPath)]
+#[case::ns_dual(Solver::DualNetworkSimplex)]
+#[case::ns_parametric(Solver::ParametricNetworkSimplex)]
+#[case::ns_primal(Solver::PrimalNetworkSimplex)]
+fn minimum_cost_flow_no_nodes(#[case] solver: Solver) {
+    let mut graph = MinimumCostFlowGraph::<i32>::new();
+    let mut solver_impl = solver.build::<_, BlockSearchPivotRule<_>>();
+    let actual = solver_impl.solve(&mut graph);
+    assert_eq!(actual.unwrap(), 0);
 }
