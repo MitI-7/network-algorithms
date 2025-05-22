@@ -8,7 +8,6 @@ use crate::minimum_cost_flow::{MinimumCostFlowNum, MinimumCostFlowSolver};
 use crate::node::excess::ExcessNode;
 use std::collections::VecDeque;
 use std::fmt::Debug;
-use crate::maximum_flow::MaximumFlowGraph;
 
 pub struct CostScalingPushRelabel<Flow> {
     csr: CSR<Flow>,

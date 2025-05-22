@@ -25,7 +25,7 @@ macro_rules! impl_from_prim {
         }
     )*};
 }
-impl_from_prim!(u16, u32, u64, usize, i16, i32, i64, i128, f32, f64);
+impl_from_prim!(u16, u32, u64, u128, usize, i16, i32, i64, i128, f32, f64);
 
 macro_rules! impl_nums {
     ($($t:ty => $max:expr),* $(,)?) => { $(
@@ -39,6 +39,7 @@ impl_nums!(
     u16 => u16::MAX,
     u32 => u32::MAX,
     u64 => u64::MAX,
+    u128 => u128::MAX,
     i16 => i16::MAX,
     i32 => i32::MAX,
     i64 => i64::MAX,
