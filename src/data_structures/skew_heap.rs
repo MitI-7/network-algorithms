@@ -1,8 +1,5 @@
 use crate::traits::{IntNum, Zero};
 
-// heap.rs
-/// スキュー・ヒープに遅延加算機能を持たせた実装
-/// `v` がキー、`id` が対応する辺の添え字
 #[derive(Clone)]
 pub struct SkewHeap<W> {
     left: Option<Box<SkewHeap<W>>>,
