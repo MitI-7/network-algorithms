@@ -28,7 +28,7 @@ where
     pub fn solve(&mut self, graph: &Graph<Directed, (), WeightEdge<W>>, root: usize) -> Option<(W, Vec<EdgeId>)> {
         self.num_nodes = graph.num_nodes();
         self.num_edges = graph.num_edges();
-        
+
         let mut edges = Vec::with_capacity(graph.num_edges());
         for (i, edge) in graph.edges.iter().enumerate() {
             edges.push(Edge { id: EdgeId(i), from: edge.u.index(), to: edge.v.index(), cost: edge.data.weight });
@@ -61,7 +61,7 @@ where
             }
             total_cost += c;
         }
-        
+
         // decomposition of strongly connected components
         let mut ids = vec![usize::MAX; num_nodes];
         let mut scc_cnt = 0;
@@ -108,25 +108,21 @@ where
 
         match self.minimum_cost(scc_cnt, &next_edges, ids[root]) {
             Some((cost, mut arborescence)) => {
-                let mut entry_nodes_in_current_graph = vec![false; num_nodes];
+                let mut has_entry_edge = vec![false; num_nodes];
                 for &edge_id in arborescence.iter() {
                     if let Some(to) = edge_id_to_node[edge_id.index()] {
-                        entry_nodes_in_current_graph[to] = true;
+                        has_entry_edge[to] = true;
                     }
                 }
-                
-                for u in 0..num_nodes {
-                    if u == root || parent[u] == usize::MAX {
+
+                for (u, edge_id) in in_edge_id.iter().enumerate() {
+                    if u == root {
                         continue;
                     }
-                
+
                     // cycle
-                    if ids[u] == ids[parent[u]] {
-                        if !entry_nodes_in_current_graph[u] {
-                            if let Some(cycle_edge_id) = in_edge_id[u] {
-                                arborescence.push(cycle_edge_id);
-                            }
-                        }
+                    if !has_entry_edge[u] && ids[u] == ids[parent[u]] {
+                        arborescence.push(edge_id.unwrap());
                     }
                 }
                 Some((cost + total_cost, arborescence))
