@@ -16,6 +16,8 @@ struct Edge<W> {
 // O(nm)
 #[derive(Default)]
 pub struct Edmonds<W> {
+    num_nodes: usize,
+    num_edges: usize,
     phantom_data: PhantomData<W>,
 }
 
@@ -23,7 +25,10 @@ impl<W> Edmonds<W>
 where
     W: IntNum + Zero,
 {
-    pub fn solve(&self, graph: &Graph<Directed, (), WeightEdge<W>>, root: usize) -> Option<(W, Vec<EdgeId>)> {
+    pub fn solve(&mut self, graph: &Graph<Directed, (), WeightEdge<W>>, root: usize) -> Option<(W, Vec<EdgeId>)> {
+        self.num_nodes = graph.num_nodes();
+        self.num_edges = graph.num_edges();
+        
         let mut edges = Vec::with_capacity(graph.num_edges());
         for (i, edge) in graph.edges.iter().enumerate() {
             edges.push(Edge { id: EdgeId(i), from: edge.u.index(), to: edge.v.index(), cost: edge.data.weight });
@@ -38,13 +43,16 @@ where
 
         let mut in_cost = vec![inf; num_nodes];
         let mut parent = vec![usize::MAX; num_nodes];
+        let mut in_edge_id = vec![None; num_nodes];
         for &Edge { id, from, to, cost } in edges.iter() {
             if from != to && cost < in_cost[to] {
                 in_cost[to] = cost;
                 parent[to] = from;
+                in_edge_id[to] = Some(id);
             }
         }
         in_cost[root] = W::zero();
+        in_edge_id[root] = None;
         for &c in in_cost.iter() {
             if c == inf {
                 return None;
@@ -77,7 +85,7 @@ where
 
             // no cycle
             if scc_cnt == 0 {
-                return Some((total_cost, Vec::new()));
+                return Some((total_cost, in_edge_id.iter().filter_map(|&edge| edge).collect()));
             }
 
             for u in 0..num_nodes {
@@ -97,7 +105,36 @@ where
         }
 
         match self.minimum_cost(scc_cnt, &next_edges, ids[root]) {
-            Some((c, e)) => Some((c + total_cost, e)),
+            Some((cost, mut arborescence)) => {
+
+                let mut edge_id_to_original_to_node_map = vec![None; self.num_edges];
+                for edge in edges.iter() {
+                    edge_id_to_original_to_node_map[edge.id.index()] = Some(edge.to);
+                }
+
+                let mut entry_nodes_in_current_graph = vec![false; num_nodes];
+                for &edge_id in arborescence.iter() {
+                    if let Some(to) = edge_id_to_original_to_node_map[edge_id.index()] {
+                        entry_nodes_in_current_graph[to] = true;
+                    }
+                }
+
+                for u in 0..num_nodes {
+                    if u == root || parent[u] == usize::MAX {
+                        continue;
+                    }
+
+                    // cycle
+                    if ids[u] == ids[parent[u]] {
+                        if !entry_nodes_in_current_graph[u] {
+                            if let Some(cycle_edge_id) = in_edge_id[u] {
+                                arborescence.push(cycle_edge_id);
+                            }
+                        }
+                    }
+                }
+                Some((cost + total_cost, arborescence))
+            }
             None => None,
         }
     }
