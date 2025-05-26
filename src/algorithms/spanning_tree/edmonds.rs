@@ -44,12 +44,14 @@ where
         let mut in_cost = vec![inf; num_nodes];
         let mut parent = vec![usize::MAX; num_nodes];
         let mut in_edge_id = vec![None; num_nodes];
+        let mut edge_id_to_node = vec![None; self.num_edges];
         for &Edge { id, from, to, cost } in edges.iter() {
             if from != to && cost < in_cost[to] {
                 in_cost[to] = cost;
                 parent[to] = from;
                 in_edge_id[to] = Some(id);
             }
+            edge_id_to_node[id.index()] = Some(to);
         }
         in_cost[root] = W::zero();
         in_edge_id[root] = None;
@@ -59,7 +61,7 @@ where
             }
             total_cost += c;
         }
-
+        
         // decomposition of strongly connected components
         let mut ids = vec![usize::MAX; num_nodes];
         let mut scc_cnt = 0;
@@ -106,24 +108,18 @@ where
 
         match self.minimum_cost(scc_cnt, &next_edges, ids[root]) {
             Some((cost, mut arborescence)) => {
-
-                let mut edge_id_to_original_to_node_map = vec![None; self.num_edges];
-                for edge in edges.iter() {
-                    edge_id_to_original_to_node_map[edge.id.index()] = Some(edge.to);
-                }
-
                 let mut entry_nodes_in_current_graph = vec![false; num_nodes];
                 for &edge_id in arborescence.iter() {
-                    if let Some(to) = edge_id_to_original_to_node_map[edge_id.index()] {
+                    if let Some(to) = edge_id_to_node[edge_id.index()] {
                         entry_nodes_in_current_graph[to] = true;
                     }
                 }
-
+                
                 for u in 0..num_nodes {
                     if u == root || parent[u] == usize::MAX {
                         continue;
                     }
-
+                
                     // cycle
                     if ids[u] == ids[parent[u]] {
                         if !entry_nodes_in_current_graph[u] {
