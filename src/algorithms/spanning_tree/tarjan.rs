@@ -2,6 +2,7 @@ use crate::edge::weight::WeightEdge;
 use crate::prelude::{Directed, EdgeId, Graph};
 use crate::traits::{Bounded, IntNum, Zero};
 use std::marker::PhantomData;
+use crate::data_structures::SkewHeap;
 
 struct UnionFind {
     par: Vec<usize>,
@@ -38,59 +39,6 @@ impl UnionFind {
     }
 }
 
-#[derive(Clone)]
-struct Heap<W> {
-    l: Option<Box<Heap<W>>>,
-    r: Option<Box<Heap<W>>>,
-    add: W,
-    v: W,
-    id: usize,
-}
-
-impl<W> Heap<W>
-where
-    W: IntNum + Zero,
-{
-    fn new(v: W, id: usize) -> Box<Self> {
-        Box::new(Heap { l: None, r: None, add: W::zero(), v, id })
-    }
-}
-
-fn lazy<W: IntNum + Zero>(a: &mut Box<Heap<W>>) {
-    if let Some(ref mut left) = a.l {
-        left.add += a.add;
-    }
-    if let Some(ref mut right) = a.r {
-        right.add += a.add;
-    }
-    a.v += a.add;
-    a.add = W::zero();
-}
-
-fn meld<W: IntNum + Zero>(a: Option<Box<Heap<W>>>, b: Option<Box<Heap<W>>>) -> Option<Box<Heap<W>>> {
-    match (a, b) {
-        (None, x) => x,
-        (x, None) => x,
-        (Some(mut xh), Some(mut yh)) => {
-            if xh.v + xh.add > yh.v + yh.add {
-                return meld(Some(yh), Some(xh));
-            }
-            lazy(&mut xh);
-            xh.r = meld(xh.r.take(), Some(yh));
-            std::mem::swap(&mut xh.l, &mut xh.r);
-            Some(xh)
-        }
-    }
-}
-
-fn pop<W: IntNum + Zero>(mut a: Option<Box<Heap<W>>>) -> Option<Box<Heap<W>>> {
-    if let Some(mut node) = a {
-        lazy(&mut node);
-        meld(node.l.take(), node.r.take())
-    } else {
-        None
-    }
-}
 
 struct Edge<W> {
     id: EdgeId,
@@ -119,7 +67,7 @@ where
 
     fn msa(&self, n: usize, edges: &[Edge<W>], r: usize) -> W {
         let mut uf = UnionFind::new(n);
-        let mut come: Vec<Option<Box<Heap<W>>>> = Vec::with_capacity(n);
+        let mut come: Vec<Option<Box<SkewHeap<W>>>> = Vec::with_capacity(n);
         come.resize(n, None);
         let mut used = vec![0; n];
         let mut from = vec![0; n];
@@ -128,8 +76,8 @@ where
 
         // build initial heaps
         for (i, e) in edges.iter().enumerate() {
-            let mut node = Heap::new(e.cost, i);
-            come[e.to] = meld(come[e.to].take(), Some(node));
+            let node = SkewHeap::new(e.cost, i);
+            come[e.to] = SkewHeap::meld(come[e.to].take(), Some(node));
         }
 
         let mut res = W::zero();
@@ -149,11 +97,11 @@ where
                 }
                 // take smallest incoming edge
                 let mut heap = come[cur].take().unwrap();
-                lazy(&mut heap);
+                heap.push_lazy();
                 let eidx = heap.id;
                 from[cur] = uf.find(edges[eidx].from);
                 from_cost[cur] = heap.v;
-                come[cur] = pop(Some(heap));
+                come[cur] = heap.pop();
 
                 // ignore self loops
                 if from[cur] == cur {
@@ -170,7 +118,7 @@ where
                         }
                         if p != cur {
                             uf.unite(p, cur);
-                            come[cur] = meld(come[cur].take(), come[p].take());
+                            come[cur] = SkewHeap::meld(come[cur].take(), come[p].take());
                         }
                         p = uf.find(from[p]);
                         if p == cur {
