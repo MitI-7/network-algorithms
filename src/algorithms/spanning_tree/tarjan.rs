@@ -41,16 +41,16 @@ impl UnionFind {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum State {
-    Unvisited,   // =0
-    Processing,  // =1
-    Done,        // =2
+    Unvisited,
+    Processing,
+    Done,
 }
 
 struct Edge<W> {
     id: EdgeId,
-    pub from: usize,
-    pub to: usize,
-    pub cost: W,
+    from: usize,
+    to: usize,
+    cost: W,
 }
 
 #[derive(Default)]
@@ -70,7 +70,7 @@ where
             edges.push(Edge { id: EdgeId(i), from: edge.u.index(), to: edge.v.index(), cost: edge.data.weight });
         }
 
-        let s =self.msa(&edges, root);
+        let s = self.msa(&edges, root);
         if s.is_none() {
             return None;
         }
@@ -79,39 +79,39 @@ where
 
     fn msa(&self, edges: &[Edge<W>], r: usize) -> Option<W> {
         let mut uf = UnionFind::new(self.num_nodes);
-        let mut come: Vec<Option<Box<SkewHeap<W>>>> = Vec::with_capacity(self.num_nodes);
-        come.resize(self.num_nodes, None);
-        let mut used = vec![State::Unvisited; self.num_nodes];
-        let mut from = vec![0; self.num_nodes];
-        let mut from_cost = vec![W::zero(); self.num_nodes];
-        used[r] = State::Done;
+        let mut come: Vec<Option<Box<SkewHeap<W>>>> = vec![None; self.num_nodes]; // （圧縮されたグラフ上で）その点に入ってくる辺をコストの小さい順に管理するヒープです。
+        let mut status = vec![State::Unvisited; self.num_nodes];
+        let mut from = vec![0; self.num_nodes]; // 作っている木においてその点に入ってくる辺の（圧縮されたグラフ上の）コストです。
+        let mut from_cost = vec![W::zero(); self.num_nodes]; // 作っている木においてその点に入ってくる辺の（圧縮されたグラフ上の） from です。
+        status[r] = State::Done;
 
         // build initial heaps
-        for (i, e) in edges.iter().enumerate() {
-            let node = SkewHeap::new(e.cost, i);
-            come[e.to] = SkewHeap::meld(come[e.to].take(), Some(node));
+        for (i, edge) in edges.iter().enumerate() {
+            let node = SkewHeap::new(edge.cost, i);
+            come[edge.to] = SkewHeap::meld(come[edge.to].take(), Some(node));
         }
 
         let mut total_cost = W::zero();
         for start in 0..self.num_nodes {
-            if used[start] != State::Unvisited {
+            if status[start] != State::Unvisited {
                 continue;
             }
+            
             let mut processing_nodes = Vec::new();
             let mut now = start;
-            while used[now] != State::Done {
-                used[now] = State::Processing;
+            while status[now] != State::Done {
+                status[now] = State::Processing;
                 processing_nodes.push(now);
 
                 if come[now].is_none() {
                     return None;
                 }
 
-                let mut heap = come[now].take().unwrap();
-                heap.push_lazy();
-                from[now] = uf.find(edges[heap.id].from);
-                from_cost[now] = heap.v;
-                come[now] = heap.pop();
+                let mut mini_edge_heap = come[now].take().unwrap();
+                mini_edge_heap.push_lazy();
+                from[now] = uf.find(edges[mini_edge_heap.id].from);
+                from_cost[now] = mini_edge_heap.v;
+                come[now] = mini_edge_heap.pop();
 
                 // ignore self loops
                 if from[now] == now {
@@ -120,7 +120,7 @@ where
                 total_cost += from_cost[now];
 
                 // cycle detected
-                if used[from[now]] == State::Processing {
+                if status[from[now]] == State::Processing {
                     let mut p = now;
                     loop {
                         if let Some(ref mut h) = come[p] {
@@ -140,7 +140,7 @@ where
                 }
             }
 
-            processing_nodes.iter().for_each(|&u| used[u] = State::Done);
+            processing_nodes.iter().for_each(|&u| status[u] = State::Done);
         }
 
         Some(total_cost)
