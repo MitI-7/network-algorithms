@@ -1,69 +1,13 @@
-use crate::data_structures::UnionFind;
 use crate::data_structures::rollback_union_find::RollbackUnionFind;
+use crate::data_structures::UnionFind;
+use crate::data_structures::skew_heap::SkewHeap;
 use crate::edge::weight::WeightEdge;
 use crate::prelude::{Directed, EdgeId, Graph};
 use crate::traits::{Bounded, IntNum, Zero};
 use std::marker::PhantomData;
 
-#[derive(Clone)]
-struct Node<W> {
-    left: Option<usize>,
-    right: Option<usize>,
-    from: usize,
-    to: usize,
-    w: W,
-    lz: W,
-    orig: usize, // ← 追加: 入力辺のインデックス
-}
-
-#[inline]
-fn apply<W: IntNum + Zero + Bounded + std::ops::Neg<Output = W> + Default>(ns: &mut [Node<W>], i: usize, d: W) {
-    ns[i].w -= d;
-    ns[i].lz += d;
-}
-
-fn push<W: IntNum + Zero + Bounded + std::ops::Neg<Output = W> + Default>(ns: &mut [Node<W>], i: usize) {
-    let lz = ns[i].lz;
-    if lz != W::default() {
-        let (l, r) = (ns[i].left, ns[i].right);
-        ns[i].lz = W::default();
-        if let Some(c) = l {
-            apply(ns, c, lz);
-        }
-        if let Some(c) = r {
-            apply(ns, c, lz);
-        }
-    }
-}
-fn merge<W: IntNum + Zero + Bounded + std::ops::Neg<Output = W> + Default>(ns: &mut Vec<Node<W>>, a: Option<usize>, b: Option<usize>) -> Option<usize> {
-    match (a, b) {
-        (None, None) => None,
-        (Some(x), None) | (None, Some(x)) => Some(x),
-        (Some(mut u), Some(mut v)) => {
-            if ns[v].w < ns[u].w {
-                std::mem::swap(&mut u, &mut v);
-            }
-            push(ns, u);
-            let right = ns[u].right;
-            ns[u].right = merge(ns, right, Some(v));
-            /* swap children */
-            let tmp = ns[u].left;
-            ns[u].left = ns[u].right;
-            ns[u].right = tmp;
-            Some(u)
-        }
-    }
-}
-fn pop<W: IntNum + Zero + Bounded + std::ops::Neg<Output = W> + Default>(ns: &mut Vec<Node<W>>, root: &mut [Option<usize>], v: usize) {
-    if let Some(r) = root[v] {
-        push(ns, r);
-        root[v] = merge(ns, ns[r].left, ns[r].right);
-    }
-}
-
 #[derive(Default)]
 pub struct Tarjan<W> {
-    num_nodes: usize,
     phantom_data: PhantomData<W>,
 }
 
@@ -71,32 +15,29 @@ impl<W> Tarjan<W>
 where
     W: IntNum + Zero + Bounded + std::ops::Neg<Output = W> + Default,
 {
-    pub fn solve(&mut self, graph: &Graph<Directed, (), WeightEdge<W>>, root: usize) -> Option<(W, Vec<usize>)> {
-        self.num_nodes = graph.num_nodes();
-        let mut edges = Vec::with_capacity(graph.num_edges());
-        for (i, edge) in graph.edges.iter().enumerate() {
-            edges.push((edge.u.index(), edge.v.index(), edge.data.weight ));
+    pub fn solve(&mut self, graph: &Graph<Directed, (), WeightEdge<W>>, root: usize) -> Option<(W, Vec<EdgeId>)> {
+        struct Edge {
+            id: EdgeId,
+            from: usize,
+            to: usize,
         }
 
-        self.min_arborescence(root, &mut edges)
-    }
+        let num_nodes = graph.num_nodes();
+        let mut skew_heap = SkewHeap::<W, Edge>::with_capacity(graph.num_edges());
+        let mut heap = vec![None; num_nodes];
 
-    fn min_arborescence(&self, root: usize, edges: &[(usize, usize, W)]) -> Option<(W, Vec<usize>)> {
-        let mut ns = Vec::<Node<W>>::with_capacity(edges.len());
-        let mut heap = vec![None; self.num_nodes];
-        for (idx, &(u, v, w)) in edges.iter().enumerate() {
-            ns.push(Node { left: None, right: None, from: u, to: v, w, lz: W::zero(), orig: idx });
-            let id = ns.len() - 1;
-            heap[v] = merge(&mut ns, heap[v], Some(id));
+        for (idx, edge) in graph.edges.iter().enumerate() {
+            let id = skew_heap.add_node(edge.data.weight, Edge {id: EdgeId(idx), from: edge.u.index(), to: edge.v.index()});
+            heap[edge.v.index()] = skew_heap.merge(heap[edge.v.index()], Some(id));
         }
 
-        let mut cost = W::zero();
-        let mut edge = vec![None::<usize>; self.num_nodes];
+        let mut total_cost = W::zero();
+        let mut edge = vec![None::<usize>; num_nodes];
         let mut cycles = Vec::<(usize, usize)>::new();
-        let mut uf = UnionFind::new(self.num_nodes);
-        let mut ruf = RollbackUnionFind::new(self.num_nodes);
+        let mut uf = UnionFind::new(num_nodes);
+        let mut ruf = RollbackUnionFind::new(num_nodes);
 
-        for u in 0..self.num_nodes {
+        for u in 0..num_nodes {
             if u == root {
                 continue;
             }
@@ -104,11 +45,11 @@ where
             loop {
                 let e = heap[now]?; // 到達不能
                 edge[now] = Some(e);
-                let w = ns[e].w;
-                cost += w;
-                apply(&mut ns, e, w);
+                let w = skew_heap.get_node(e).key;
+                total_cost += w;
+                skew_heap.apply(e, w);
 
-                let fr = ruf.find(ns[e].from);
+                let fr = ruf.find(skew_heap.get_node(e).val.from);
                 if uf.unite(now, fr) {
                     break;
                 }
@@ -118,9 +59,9 @@ where
                 let mut nxt = fr;
                 while ruf.join(now, nxt) {
                     let rep = ruf.find(now);
-                    heap[rep] = merge(&mut ns, heap[now], heap[nxt]);
+                    heap[rep] = skew_heap.merge(heap[now], heap[nxt]);
                     now = rep;
-                    nxt = ruf.find(ns[edge[nxt].unwrap()].from);
+                    nxt = ruf.find(skew_heap.get_node(edge[nxt].unwrap()).val.from);
                 }
                 cycles.push((edge[now].unwrap(), t));
 
@@ -130,8 +71,8 @@ where
                         Some(x) => x,
                         None => break,
                     };
-                    if ruf.same(ns[idx].from, now) {
-                        pop(&mut ns, &mut heap, now);
+                    if ruf.same(skew_heap.get_node(idx).val.from, now) {
+                        skew_heap.pop(&mut heap[now]);
                     } else {
                         break;
                     }
@@ -141,19 +82,19 @@ where
 
         /* expand cycles */
         for &(e, t) in cycles.iter().rev() {
-            let vr = ruf.find(ns[e].to);
+            let vr = ruf.find(skew_heap.get_node(e).val.to);
             ruf.rollback(t);
-            let vin = ruf.find(ns[edge[vr].unwrap()].to);
+            let vin = ruf.find(skew_heap.get_node(edge[vr].unwrap()).val.to);
             let old = std::mem::replace(&mut edge[vr], Some(e));
             edge[vin] = old;
         }
 
-        let mut idx_vec = Vec::with_capacity(self.num_nodes - 1);
-        for u in 0..self.num_nodes {
+        let mut arborescence = Vec::with_capacity(num_nodes - 1);
+        for u in 0..num_nodes {
             if u != root {
-                idx_vec.push(ns[edge[u].unwrap()].orig);
+                arborescence.push(skew_heap.get_node(edge[u].unwrap()).val.id);
             }
         }
-        Some((cost, idx_vec))
+        Some((total_cost, arborescence))
     }
 }

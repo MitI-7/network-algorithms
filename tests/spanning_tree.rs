@@ -33,7 +33,7 @@ fn directed_spanning_tree(#[files("tests/spanning_tree/*/*.txt")] f: PathBuf) {
             let mut total = 0;
             let mut used = vec![false; nodes.len()];
             for edge_id in tree {
-                let edge = graph.get_edge(EdgeId(edge_id));
+                let edge = graph.get_edge(edge_id);
                 assert!(!used[edge.v.index()]);
                 used[edge.v.index()] = true;
                 total += edge.data.weight;
