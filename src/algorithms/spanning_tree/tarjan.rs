@@ -106,12 +106,12 @@ where
                     return None;
                 }
 
-                let mut mini_edge_heap = come[now].take().unwrap();
-                from[now] = uf.find(edges[mini_edge_heap.peek_id()].from);
-                from_cost[now] = mini_edge_heap.peek_key();
-                come[now] = mini_edge_heap.pop();
+                let mut h = come[now].take().unwrap();
+                from[now] = uf.find(edges[h.peek_id()].from);
+                from_cost[now] = h.peek_key();
+                come[now] = h.pop();
 
-                // self loops
+                // self loop
                 if from[now] == now {
                     continue;
                 }
