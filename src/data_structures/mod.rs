@@ -3,6 +3,7 @@ pub mod radix_heap;
 pub mod simple_queue;
 pub mod union_find;
 pub mod skew_heap;
+pub mod rollback_union_find;
 
 pub use self::bit_vector::BitVector;
 pub use self::radix_heap::RadixHeap;

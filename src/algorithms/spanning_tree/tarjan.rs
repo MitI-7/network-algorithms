@@ -1,59 +1,9 @@
 use crate::data_structures::UnionFind;
+use crate::data_structures::rollback_union_find::RollbackUnionFind;
 use crate::edge::weight::WeightEdge;
 use crate::prelude::{Directed, EdgeId, Graph};
 use crate::traits::{Bounded, IntNum, Zero};
 use std::marker::PhantomData;
-
-/// ---------- Rollback-DSU ----------
-#[derive(Clone)]
-struct RollbackDsu {
-    p: Vec<i32>,
-    hist: Vec<(usize, i32)>,
-}
-
-impl RollbackDsu {
-    fn new(n: usize) -> Self {
-        Self { p: vec![-1; n], hist: vec![] }
-    }
-
-    fn find(&self, mut v: usize) -> usize {
-        while self.p[v] >= 0 {
-            v = self.p[v] as usize
-        }
-        v
-    }
-
-    fn same(&self, a: usize, b: usize) -> bool {
-        self.find(a) == self.find(b)
-    }
-
-    fn time(&self) -> usize {
-        self.hist.len()
-    }
-
-    fn join(&mut self, a: usize, b: usize) -> bool {
-        let (mut x, mut y) = (self.find(a), self.find(b));
-        if x == y {
-            return false;
-        }
-        if self.p[x] > self.p[y] {
-            std::mem::swap(&mut x, &mut y);
-        }
-        self.hist.push((y, self.p[y]));
-        self.p[x] += self.p[y];
-        self.p[y] = x as i32;
-        true
-    }
-
-    fn rollback(&mut self, t: usize) {
-        while self.hist.len() > t {
-            let (v, old) = self.hist.pop().unwrap();
-            let p = self.p[v] as usize;
-            self.p[p] -= old;
-            self.p[v] = old;
-        }
-    }
-}
 
 #[derive(Clone)]
 struct Node<W> {
@@ -143,8 +93,8 @@ where
         let mut cost = W::zero();
         let mut edge = vec![None::<usize>; self.num_nodes];
         let mut cycles = Vec::<(usize, usize)>::new();
-        let mut dsu_c = UnionFind::new(self.num_nodes);
-        let mut dsu_r = RollbackDsu::new(self.num_nodes);
+        let mut uf = UnionFind::new(self.num_nodes);
+        let mut ruf = RollbackUnionFind::new(self.num_nodes);
 
         for u in 0..self.num_nodes {
             if u == root {
@@ -158,19 +108,19 @@ where
                 cost += w;
                 apply(&mut ns, e, w);
 
-                let fr = dsu_r.find(ns[e].from);
-                if dsu_c.unite(now, fr) {
+                let fr = ruf.find(ns[e].from);
+                if uf.unite(now, fr) {
                     break;
                 }
 
                 /* contract new cycle */
-                let t = dsu_r.time();
+                let t = ruf.time();
                 let mut nxt = fr;
-                while dsu_r.join(now, nxt) {
-                    let rep = dsu_r.find(now);
+                while ruf.join(now, nxt) {
+                    let rep = ruf.find(now);
                     heap[rep] = merge(&mut ns, heap[now], heap[nxt]);
                     now = rep;
-                    nxt = dsu_r.find(ns[edge[nxt].unwrap()].from);
+                    nxt = ruf.find(ns[edge[nxt].unwrap()].from);
                 }
                 cycles.push((edge[now].unwrap(), t));
 
@@ -180,7 +130,7 @@ where
                         Some(x) => x,
                         None => break,
                     };
-                    if dsu_r.same(ns[idx].from, now) {
+                    if ruf.same(ns[idx].from, now) {
                         pop(&mut ns, &mut heap, now);
                     } else {
                         break;
@@ -191,9 +141,9 @@ where
 
         /* expand cycles */
         for &(e, t) in cycles.iter().rev() {
-            let vr = dsu_r.find(ns[e].to);
-            dsu_r.rollback(t);
-            let vin = dsu_r.find(ns[edge[vr].unwrap()].to);
+            let vr = ruf.find(ns[e].to);
+            ruf.rollback(t);
+            let vin = ruf.find(ns[edge[vr].unwrap()].to);
             let old = std::mem::replace(&mut edge[vr], Some(e));
             edge[vin] = old;
         }
