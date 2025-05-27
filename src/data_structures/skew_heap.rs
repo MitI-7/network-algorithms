@@ -28,23 +28,23 @@ where
         self.nodes.len() - 1
     }
 
-    pub fn apply(&mut self, i: usize, d: K) {
-        self.nodes[i].key -= d;
-        self.nodes[i].lazy += d;
-    }
-
     pub fn push(&mut self, i: usize) {
         let lz = self.nodes[i].lazy;
         if lz != K::default() {
             let (l, r) = (self.nodes[i].left, self.nodes[i].right);
             self.nodes[i].lazy = K::default();
             if let Some(c) = l {
-                self.apply(c, lz);
+                self.add(c, lz);
             }
             if let Some(c) = r {
-                self.apply(c, lz);
+                self.add(c, lz);
             }
         }
+    }
+
+    pub fn add(&mut self, i: usize, d: K) {
+        self.nodes[i].key -= d;
+        self.nodes[i].lazy += d;
     }
 
     pub fn merge(&mut self, a: Option<usize>, b: Option<usize>) -> Option<usize> {

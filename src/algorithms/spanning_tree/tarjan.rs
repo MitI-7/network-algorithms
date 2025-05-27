@@ -24,11 +24,11 @@ where
 
         let num_nodes = graph.num_nodes();
         let mut skew_heap = SkewHeap::<W, Edge>::with_capacity(graph.num_edges());
-        let mut heap = vec![None; num_nodes];
+        let mut heap_node_id = vec![None; num_nodes];
 
         for (idx, edge) in graph.edges.iter().enumerate() {
             let id = skew_heap.add_node(edge.data.weight, Edge {id: EdgeId(idx), from: edge.u.index(), to: edge.v.index()});
-            heap[edge.v.index()] = skew_heap.merge(heap[edge.v.index()], Some(id));
+            heap_node_id[edge.v.index()] = skew_heap.merge(heap_node_id[edge.v.index()], Some(id));
         }
 
         let mut total_cost = W::zero();
@@ -43,36 +43,36 @@ where
             }
             let mut now = u;
             loop {
-                let e = heap[now]?; // 到達不能
-                edge[now] = Some(e);
-                let w = skew_heap.get_node(e).key;
+                let mini_edge = heap_node_id[now]?; // 到達不能
+                edge[now] = Some(mini_edge);
+                let w = skew_heap.get_node(mini_edge).key;
                 total_cost += w;
-                skew_heap.apply(e, w);
+                skew_heap.add(mini_edge, w);
 
-                let fr = ruf.find(skew_heap.get_node(e).val.from);
+                let fr = ruf.find(skew_heap.get_node(mini_edge).val.from);
                 if uf.unite(now, fr) {
                     break;
                 }
 
-                /* contract new cycle */
-                let t = ruf.time();
+                // contract new cycle
+                let time_stamp = ruf.time();
                 let mut nxt = fr;
                 while ruf.join(now, nxt) {
                     let rep = ruf.find(now);
-                    heap[rep] = skew_heap.merge(heap[now], heap[nxt]);
+                    heap_node_id[rep] = skew_heap.merge(heap_node_id[now], heap_node_id[nxt]);
                     now = rep;
                     nxt = ruf.find(skew_heap.get_node(edge[nxt].unwrap()).val.from);
                 }
-                cycles.push((edge[now].unwrap(), t));
+                cycles.push((edge[now].unwrap(), time_stamp));
 
-                /* remove self-loops */
+                // remove self-loops
                 loop {
-                    let idx = match heap[now] {
+                    let idx = match heap_node_id[now] {
                         Some(x) => x,
                         None => break,
                     };
                     if ruf.same(skew_heap.get_node(idx).val.from, now) {
-                        skew_heap.pop(&mut heap[now]);
+                        skew_heap.pop(&mut heap_node_id[now]);
                     } else {
                         break;
                     }
@@ -80,7 +80,7 @@ where
             }
         }
 
-        /* expand cycles */
+        // expand cycles
         for &(e, t) in cycles.iter().rev() {
             let vr = ruf.find(skew_heap.get_node(e).val.to);
             ruf.rollback(t);
