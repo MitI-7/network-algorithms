@@ -1,6 +1,6 @@
 #[derive(Clone)]
 pub struct SkewHeap<K> {
-    id: usize,
+    id: usize, // Index in the 'edges' Vec from 'msa'
     lazy: K,
     key: K,
     left: Option<Box<SkewHeap<K>>>,
@@ -9,7 +9,7 @@ pub struct SkewHeap<K> {
 
 impl<K> SkewHeap<K>
 where
-    K: Copy + Default + std::ops::Add<Output =K> + std::ops::AddAssign + PartialOrd,
+    K: Copy + Default + std::ops::Add<Output = K> + std::ops::AddAssign + PartialOrd,
 {
     pub fn new(v: K, id: usize) -> Box<SkewHeap<K>> {
         Box::new(SkewHeap { id, lazy: K::default(), key: v, left: None, right: None })
@@ -21,6 +21,7 @@ where
     }
 
     pub fn peek_id(&mut self) -> usize {
+        // Renamed from peek_id to avoid confusion if an EdgeId field were added
         self.id
     }
 
