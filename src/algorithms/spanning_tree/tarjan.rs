@@ -61,7 +61,7 @@ pub struct Tarjan<W> {
 
 impl<W> Tarjan<W>
 where
-    W: IntNum + Zero + Bounded,
+    W: IntNum + Zero + Bounded + std::ops::Neg<Output = W> + Default,
 {
     pub fn solve(&mut self, graph: &Graph<Directed, (), WeightEdge<W>>, root: usize) -> Option<(W, Vec<EdgeId>)> {
         self.num_nodes = graph.num_nodes();
@@ -79,13 +79,12 @@ where
 
     fn msa(&self, edges: &[Edge<W>], r: usize) -> Option<W> {
         let mut uf = UnionFind::new(self.num_nodes);
-        let mut come: Vec<Option<Box<SkewHeap<W>>>> = vec![None; self.num_nodes]; // （圧縮されたグラフ上で）その点に入ってくる辺をコストの小さい順に管理するヒープです。
+        let mut come: Vec<Option<Box<SkewHeap<W>>>> = vec![None; self.num_nodes];
         let mut status = vec![State::Unvisited; self.num_nodes];
-        let mut from = vec![0; self.num_nodes]; // 作っている木においてその点に入ってくる辺の（圧縮されたグラフ上の）コストです。
-        let mut from_cost = vec![W::zero(); self.num_nodes]; // 作っている木においてその点に入ってくる辺の（圧縮されたグラフ上の） from です。
+        let mut from = vec![0; self.num_nodes];
+        let mut from_cost = vec![W::zero(); self.num_nodes];
         status[r] = State::Done;
-
-        // build initial heaps
+        
         for (i, edge) in edges.iter().enumerate() {
             let node = SkewHeap::new(edge.cost, i);
             come[edge.to] = SkewHeap::meld(come[edge.to].take(), Some(node));
@@ -108,12 +107,11 @@ where
                 }
 
                 let mut mini_edge_heap = come[now].take().unwrap();
-                mini_edge_heap.push_lazy();
-                from[now] = uf.find(edges[mini_edge_heap.id].from);
-                from_cost[now] = mini_edge_heap.v;
+                from[now] = uf.find(edges[mini_edge_heap.peek_id()].from);
+                from_cost[now] = mini_edge_heap.peek_key();
                 come[now] = mini_edge_heap.pop();
 
-                // ignore self loops
+                // self loops
                 if from[now] == now {
                     continue;
                 }
@@ -124,7 +122,7 @@ where
                     let mut p = now;
                     loop {
                         if let Some(ref mut h) = come[p] {
-                            h.add -= from_cost[p];
+                            h.add_all(-from_cost[p]);
                         }
                         if p != now {
                             uf.unite(p, now);
