@@ -6,8 +6,8 @@ use crate::core::direction::Undirected;
 #[derive(Copy, Clone, Debug, PartialEq)]
 enum NodeType {
     Unvisited,
-    Even, // the number of edges in the unique path from the root node to node i in the alternating tree is even
-    Odd,  // the number of edges in the unique path from the root node to node i in the alternating tree is odd
+    Even, // the number of edges in the unique path from the root node to node u in the alternating tree is even
+    Odd,  // the number of edges in the unique path from the root node to node u in the alternating tree is odd
 }
 
 #[derive(Default)]
@@ -104,8 +104,8 @@ impl Blossom {
                         match self.mate[v] {
                             Some(w) => {
                                 self.labels[w] = NodeType::Even;
-                                self.parent[w] = v; // u -> v -> w
-                                if !self.in_queue[w] {
+                                self.parent[w] = v; // u(even) -> v(odd) -> w(even)
+                                if !self.in_queue[w] {  // TODO
                                     self.even_nodes.push_back(w);
                                     self.in_queue[w] = true;
                                 }

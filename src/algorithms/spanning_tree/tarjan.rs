@@ -34,8 +34,8 @@ where
         let mut total_cost = W::zero();
         let mut edge = vec![None::<usize>; num_nodes];
         let mut cycles = Vec::<(usize, usize)>::new();
-        let mut uf = UnionFind::new(num_nodes);
-        let mut ruf = RollbackUnionFind::new(num_nodes);
+        let mut uf_wcc = UnionFind::new(num_nodes);
+        let mut uf_scc = RollbackUnionFind::new(num_nodes);
 
         for u in 0..num_nodes {
             if u == root {
@@ -45,23 +45,23 @@ where
             loop {
                 let mini_edge = heap_node_id[now]?; // 到達不能
                 edge[now] = Some(mini_edge);
-                let w = skew_heap.get_node(mini_edge).key;
-                total_cost += w;
-                skew_heap.add(mini_edge, w);
+                let mini_cost = skew_heap.get_node(mini_edge).key;
+                total_cost += mini_cost;
+                skew_heap.add(mini_edge, mini_cost);
 
-                let fr = ruf.find(skew_heap.get_node(mini_edge).val.from);
-                if uf.unite(now, fr) {
+                let from = uf_scc.find(skew_heap.get_node(mini_edge).val.from);
+                if uf_wcc.unite(now, from) {
                     break;
                 }
 
-                // contract new cycle
-                let time_stamp = ruf.time();
-                let mut nxt = fr;
-                while ruf.join(now, nxt) {
-                    let rep = ruf.find(now);
+                // contract cycle
+                let time_stamp = uf_scc.time();
+                let mut nxt = from;
+                while uf_scc.join(now, nxt) {
+                    let rep = uf_scc.find(now);
                     heap_node_id[rep] = skew_heap.merge(heap_node_id[now], heap_node_id[nxt]);
                     now = rep;
-                    nxt = ruf.find(skew_heap.get_node(edge[nxt].unwrap()).val.from);
+                    nxt = uf_scc.find(skew_heap.get_node(edge[nxt].unwrap()).val.from);
                 }
                 cycles.push((edge[now].unwrap(), time_stamp));
 
@@ -71,7 +71,7 @@ where
                         Some(x) => x,
                         None => break,
                     };
-                    if ruf.same(skew_heap.get_node(idx).val.from, now) {
+                    if uf_scc.same(skew_heap.get_node(idx).val.from, now) {
                         skew_heap.pop(&mut heap_node_id[now]);
                     } else {
                         break;
@@ -82,9 +82,9 @@ where
 
         // expand cycles
         for &(e, t) in cycles.iter().rev() {
-            let vr = ruf.find(skew_heap.get_node(e).val.to);
-            ruf.rollback(t);
-            let vin = ruf.find(skew_heap.get_node(edge[vr].unwrap()).val.to);
+            let vr = uf_scc.find(skew_heap.get_node(e).val.to);
+            uf_scc.rollback(t);
+            let vin = uf_scc.find(skew_heap.get_node(edge[vr].unwrap()).val.to);
             let old = std::mem::replace(&mut edge[vr], Some(e));
             edge[vin] = old;
         }
