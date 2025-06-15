@@ -1,13 +1,12 @@
-use std::fs::read_to_string;
 use network_algorithms::algorithms::branching::edmonds::Edmonds;
-use network_algorithms::prelude::*;
-use network_algorithms::edge::weight::WeightEdge;
-use std::path::Path;
 use network_algorithms::data_structures::UnionFind;
+use network_algorithms::edge::weight::WeightEdge;
+use network_algorithms::prelude::*;
+use std::fs::read_to_string;
+use std::path::Path;
 
 fn test_solve() {
     let mut graph: Graph<Directed, (), WeightEdge<i128>> = Graph::new_directed();
-
 
     let (mut num_nodes, mut num_edges) = (0, 0);
     let mut nodes = Vec::new();
@@ -25,19 +24,18 @@ fn test_solve() {
         }
     });
 
-    let (cost, branch) = Edmonds::default().solve(&graph);
-    println!("{cost}");
+    let (cost, branching) = Edmonds::default().solve(&graph);
     assert_eq!(cost, expected);
 
-    let mut uf = UnionFind::new(graph.num_nodes());
     let mut total = 0;
-    let mut used = vec![false; nodes.len()];
-    for edge_id in branch {
+    let mut uf = UnionFind::new(graph.num_nodes());
+    let mut indegree = vec![0; nodes.len()];
+    for edge_id in branching {
         let edge = graph.get_edge(edge_id);
-        assert!(uf.unite(edge.u.index(), edge.v.index()));  // no cycle
-        assert!(!used[edge.v.index()]);
-        used[edge.v.index()] = true;
+        indegree[edge.v.index()] += 1;
         total += edge.data.weight;
+        assert!(uf.unite(edge.u.index(), edge.v.index())); // no cycle
+        assert!(indegree[edge.v.index()] <= 1); // in-degree of each node is at most 1
     }
     assert_eq!(total, expected);
 }

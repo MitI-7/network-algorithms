@@ -33,18 +33,16 @@ fn directed_spanning_tree(#[files("tests/branching/*/*.txt")] f: PathBuf) {
     });
 
     let (cost, branching) = Edmonds::default().solve(&graph);
-
-    assert_eq!(cost, expected);
-
-    let mut uf = UnionFind::new(graph.num_nodes());
     let mut total = 0;
-    let mut used = vec![false; nodes.len()];
+    let mut uf = UnionFind::new(graph.num_nodes());
+    let mut indegree = vec![0; nodes.len()];
     for edge_id in branching {
         let edge = graph.get_edge(edge_id);
-        assert!(uf.unite(edge.u.index(), edge.v.index())); // no cycle
-        assert!(!used[edge.v.index()]);
-        used[edge.v.index()] = true;
+        indegree[edge.v.index()] += 1;
         total += edge.data.weight;
+        assert!(uf.unite(edge.u.index(), edge.v.index())); // no cycle
+        assert!(indegree[edge.v.index()] <= 1); // in-degree of each node is at most 1
     }
+    assert_eq!(cost, expected);
     assert_eq!(total, expected);
 }

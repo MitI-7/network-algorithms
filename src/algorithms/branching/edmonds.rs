@@ -28,40 +28,37 @@ where
     pub fn solve(&mut self, graph: &Graph<Directed, (), WeightEdge<W>>) -> (W, Vec<EdgeId>) {
         self.num_edges = graph.num_edges();
         let mut edges = Vec::with_capacity(graph.num_edges());
-        for (i, edge) in graph.edges.iter().enumerate() {
-            if edge.data.weight <= W::zero() {
-                continue;
-            }
-            edges.push(Edge { id: EdgeId(i), from: edge.u.index(), to: edge.v.index(), cost: edge.data.weight });
+        for (id, edge) in graph.edges.iter().enumerate() {
+            edges.push(Edge { id: EdgeId(id), from: edge.u.index(), to: edge.v.index(), cost: edge.data.weight });
         }
 
         self.maximum_branching(graph.num_nodes(), &edges)
     }
 
     fn maximum_branching(&self, num_nodes: usize, edges: &Vec<Edge<W>>) -> (W, Vec<EdgeId>) {
-        let mini = -W::max_value();
-
-        let mut in_cost = vec![mini; num_nodes];
+        let mut critical_in_edge_cost = vec![W::zero(); num_nodes];
+        let mut critical_in_edge_id = vec![None; num_nodes];
         let mut parent = vec![usize::MAX; num_nodes];
-        let mut in_edge_id = vec![None; num_nodes];
         let mut edge_id_to_node = vec![None; self.num_edges];
         for &Edge { id, from, to, cost } in edges.iter() {
             if from == to || cost <= W::zero() {
                 continue;
             }
 
-            if from != to && cost > in_cost[to] {
-                in_cost[to] = cost;
+            if cost > critical_in_edge_cost[to] {
+                critical_in_edge_cost[to] = cost;
+                critical_in_edge_id[to] = Some(id);
                 parent[to] = from;
-                in_edge_id[to] = Some(id);
             }
             edge_id_to_node[id.index()] = Some(to);
         }
 
-        let mut is_critical = vec![false; self.num_edges];
-        for s in in_edge_id.iter() {
+        let mut total_cost = W::zero();
+        let mut is_critical_edge = vec![false; self.num_edges];
+        for (u, s) in critical_in_edge_id.iter().enumerate() {
             if s.is_some() {
-                is_critical[s.unwrap().index()] = true;
+                is_critical_edge[s.unwrap().index()] = true;
+                total_cost += critical_in_edge_cost[u];
             }
         }
 
@@ -91,15 +88,7 @@ where
 
             // no cycle
             if scc_cnt == 0 {
-                // ① 根でない頂点 (= parent[u] が存在する頂点) の in_cost をすべて加算
-                let mut cost = W::zero();
-                for (u, &p) in parent.iter().enumerate() {
-                    if p != usize::MAX {
-                        cost += in_cost[u];
-                    }
-                }
-
-                return (cost, in_edge_id.iter().filter_map(|&edge| edge).collect());
+                return (total_cost, critical_in_edge_id.iter().filter_map(|&edge| edge).collect());
             }
 
             for u in 0..num_nodes {
@@ -119,7 +108,7 @@ where
         let mut mini_cost_in_cycle = vec![W::max_value(); scc_cnt];
         let mut mini_cost_id_in_cycle = vec![usize::MAX; scc_cnt];
         for &Edge { id, from, to, cost } in edges.iter() {
-            if is_critical[id.index()] {
+            if is_critical_edge[id.index()] {
                 // サイクル
                 if ids[from] == ids[to] {
                     let cycle_no = ids[to];
@@ -133,13 +122,11 @@ where
 
         let mut total_cost = W::zero();
         for u in 0..num_nodes {
-            // サイクル（サイズ > 1）の頂点だけを対象
             if num_components[ids[u]] > 1 && parent[u] != usize::MAX {
-                total_cost += in_cost[u];
+                total_cost += critical_in_edge_cost[u];
             }
         }
 
-        // ③ サイクルごとに最小 in_cost を 1 本だけ引く（ここは現行のままで OK）
         for (cid, &min_in_cycle) in mini_cost_in_cycle.iter().enumerate() {
             if num_components[cid] > 1 && min_in_cycle != W::max_value() {
                 total_cost -= min_in_cycle;
@@ -149,50 +136,50 @@ where
         // contraction
         let mut next_edges = Vec::with_capacity(edges.len());
         for &Edge { id, from, to, cost } in edges.iter() {
-            // edge is in cycle
+            // edge in cycle is ignored
             if ids[from] == ids[to] {
                 continue;
             }
 
             // to cycle
             if num_components[ids[to]] > 1 {
-                next_edges.push(Edge { id, from: ids[from], to: ids[to], cost: cost - in_cost[to] + mini_cost_in_cycle[ids[to]] });
+                next_edges.push(Edge { id, from: ids[from], to: ids[to], cost: cost - critical_in_edge_cost[to] + mini_cost_in_cycle[ids[to]] });
             } else {
                 next_edges.push(Edge { id, from: ids[from], to: ids[to], cost });
             }
         }
 
         assert!(scc_cnt < num_nodes);
-        let (cost, mut arborescence) = self.maximum_branching(scc_cnt, &next_edges);
+        let (cost, mut branching) = self.maximum_branching(scc_cnt, &next_edges);
 
         let mut node_has_entry_edge = vec![false; num_nodes];
         let mut cycle_has_entry_edge = vec![false; scc_cnt];
-        for &edge_id in arborescence.iter() {
+        for &edge_id in branching.iter() {
             if let Some(to) = edge_id_to_node[edge_id.index()] {
                 node_has_entry_edge[to] = true;
                 cycle_has_entry_edge[ids[to]] = true;
             }
         }
 
-        for (u, edge_id) in in_edge_id.iter().enumerate() {
+        for (u, edge_id) in critical_in_edge_id.iter().enumerate() {
             if parent[u] == usize::MAX {
                 continue;
             }
 
-            // サイクルを展開
+            // expand cycle
             if ids[u] == ids[parent[u]] {
                 // サイクルに入る辺がある場合は，サイクルに入る辺と同じ行き先をもつ辺以外を採用
                 if cycle_has_entry_edge[ids[u]] && !node_has_entry_edge[u] {
-                    arborescence.push(edge_id.unwrap());
+                    branching.push(edge_id.unwrap());
                 }
 
                 // サイクルに入る辺がない場合は，最小以外の辺を採用
                 if !cycle_has_entry_edge[ids[u]] && edge_id.unwrap().index() != mini_cost_id_in_cycle[ids[u]] {
-                    arborescence.push(edge_id.unwrap());
+                    branching.push(edge_id.unwrap());
                 }
             }
         }
-        (cost + total_cost, arborescence)
+        (cost + total_cost, branching)
     }
 }
 
