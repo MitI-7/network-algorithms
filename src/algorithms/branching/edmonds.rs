@@ -1,3 +1,4 @@
+use crate::data_structures::UnionFind;
 use crate::core::direction::Directed;
 use crate::core::graph::Graph;
 use crate::edge::weight::WeightEdge;
@@ -53,18 +54,14 @@ where
             edge_id_to_node[id.index()] = Some(to);
         }
 
-        let mut total_cost = W::zero();
         let mut is_critical_edge = vec![false; self.num_edges];
-        for (u, s) in critical_in_edge_id.iter().enumerate() {
-            if s.is_some() {
-                is_critical_edge[s.unwrap().index()] = true;
-                total_cost += critical_in_edge_cost[u];
-            }
+        for id in critical_in_edge_id.iter().filter_map(|&e| e) {
+            is_critical_edge[id.index()] = true;
         }
 
         // decomposition of strongly connected components
         let mut ids = vec![usize::MAX; num_nodes];
-        let mut scc_cnt = 0;
+        let mut num_scc = 0;
         {
             let mut stamp = vec![usize::MAX; num_nodes];
             for u in 0..num_nodes {
@@ -77,37 +74,36 @@ where
                 // find cycle
                 if v != usize::MAX && ids[v] == usize::MAX {
                     let mut w = parent[v];
-                    ids[v] = scc_cnt;
+                    ids[v] = num_scc;
                     while w != v {
-                        ids[w] = scc_cnt;
+                        ids[w] = num_scc;
                         w = parent[w];
                     }
-                    scc_cnt += 1;
+                    num_scc += 1;
                 }
             }
 
             // no cycle
-            if scc_cnt == 0 {
-                println!("no cycle");
-                return (total_cost, critical_in_edge_id.iter().filter_map(|&edge| edge).collect());
+            if num_scc == 0 {
+                return (critical_in_edge_cost.iter().fold(W::zero(), |t, c| t + *c), critical_in_edge_id.iter().filter_map(|&edge| edge).collect());
             }
 
             for u in 0..num_nodes {
                 if ids[u] == usize::MAX {
-                    ids[u] = scc_cnt;
-                    scc_cnt += 1;
+                    ids[u] = num_scc;
+                    num_scc += 1;
                 }
             }
         }
 
-        let mut num_components = vec![0; scc_cnt];
+        let mut num_components = vec![0; num_scc];
         for u in 0..num_nodes {
             num_components[ids[u]] += 1;
         }
 
         let mut total_cost = W::zero();
-        let mut mini_cost_in_cycle = vec![W::max_value(); scc_cnt];
-        let mut mini_cost_id_in_cycle = vec![usize::MAX; scc_cnt];
+        let mut mini_cost_in_cycle = vec![W::max_value(); num_scc];
+        let mut mini_cost_id_in_cycle = vec![usize::MAX; num_scc];
         for &Edge { id, from, to, cost } in edges.iter() {
             if is_critical_edge[id.index()] && ids[from] == ids[to] {
                 let cycle_no = ids[to];
@@ -119,7 +115,7 @@ where
             }
         }
 
-        for c in 0..scc_cnt {
+        for c in 0..num_scc {
             if mini_cost_in_cycle[c] != W::max_value() {
                 total_cost -= mini_cost_in_cycle[c];
             }
@@ -149,11 +145,11 @@ where
             println!("{}->{}", u, ids[u]);
         }
 
-        assert!(scc_cnt < num_nodes);
-        let (cost, mut branching) = self.maximum_branching(scc_cnt, &next_edges);
+        assert!(num_scc < num_nodes);
+        let (cost, mut branching) = self.maximum_branching(num_scc, &next_edges);
 
         let mut node_has_entry_edge = vec![false; num_nodes];
-        let mut cycle_has_entry_edge = vec![false; scc_cnt];
+        let mut cycle_has_entry_edge = vec![false; num_scc];
         for &edge_id in branching.iter() {
             if let Some(to) = edge_id_to_node[edge_id.index()] {
                 node_has_entry_edge[to] = true;
