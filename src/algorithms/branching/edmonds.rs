@@ -6,7 +6,7 @@ use crate::traits::{IntNum, Zero};
 use std::marker::PhantomData;
 use std::ops::Neg;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 struct Edge<W> {
     id: EdgeId,
     from: usize,
@@ -23,7 +23,7 @@ pub struct Edmonds<W> {
 
 impl<W> Edmonds<W>
 where
-    W: IntNum + Zero + Neg<Output = W> + Copy,
+    W: IntNum + Zero + Neg<Output = W> + Copy + std::fmt::Debug,
 {
     pub fn solve(&mut self, graph: &Graph<Directed, (), WeightEdge<W>>) -> (W, Vec<EdgeId>) {
         self.num_edges = graph.num_edges();
@@ -88,6 +88,7 @@ where
 
             // no cycle
             if scc_cnt == 0 {
+                println!("no cycle");
                 return (total_cost, critical_in_edge_id.iter().filter_map(|&edge| edge).collect());
             }
 
@@ -104,32 +105,23 @@ where
             num_components[ids[u]] += 1;
         }
 
-        // サイクル最小の重み
+        let mut total_cost = W::zero();
         let mut mini_cost_in_cycle = vec![W::max_value(); scc_cnt];
         let mut mini_cost_id_in_cycle = vec![usize::MAX; scc_cnt];
         for &Edge { id, from, to, cost } in edges.iter() {
-            if is_critical_edge[id.index()] {
-                // サイクル
-                if ids[from] == ids[to] {
-                    let cycle_no = ids[to];
-                    if cost < mini_cost_in_cycle[cycle_no] {
-                        mini_cost_in_cycle[cycle_no] = cost;
-                        mini_cost_id_in_cycle[cycle_no] = id.index();
-                    }
+            if is_critical_edge[id.index()] && ids[from] == ids[to] {
+                let cycle_no = ids[to];
+                if cost < mini_cost_in_cycle[cycle_no] {
+                    mini_cost_in_cycle[cycle_no] = cost;
+                    mini_cost_id_in_cycle[cycle_no] = id.index();
                 }
+                total_cost += cost;
             }
         }
 
-        let mut total_cost = W::zero();
-        for u in 0..num_nodes {
-            if num_components[ids[u]] > 1 && parent[u] != usize::MAX {
-                total_cost += critical_in_edge_cost[u];
-            }
-        }
-
-        for (cid, &min_in_cycle) in mini_cost_in_cycle.iter().enumerate() {
-            if num_components[cid] > 1 && min_in_cycle != W::max_value() {
-                total_cost -= min_in_cycle;
+        for c in 0..scc_cnt {
+            if mini_cost_in_cycle[c] != W::max_value() {
+                total_cost -= mini_cost_in_cycle[c];
             }
         }
 
@@ -141,12 +133,20 @@ where
                 continue;
             }
 
-            // to cycle
+            // edge is into cycle
             if num_components[ids[to]] > 1 {
                 next_edges.push(Edge { id, from: ids[from], to: ids[to], cost: cost - critical_in_edge_cost[to] + mini_cost_in_cycle[ids[to]] });
             } else {
                 next_edges.push(Edge { id, from: ids[from], to: ids[to], cost });
             }
+        }
+
+        println!("next");
+        for e in  next_edges.iter() {
+            println!("{:?}", e);
+        }
+        for u in 0..num_nodes {
+            println!("{}->{}", u, ids[u]);
         }
 
         assert!(scc_cnt < num_nodes);
@@ -189,18 +189,23 @@ mod tests {
     #[test]
     fn test_solve() {
         let mut g: Graph<Directed, (), WeightEdge<i64>> = Graph::new_directed();
-        let nodes = g.add_nodes(4);
-        g.add_directed_edge(nodes[0], nodes[1], 3);
-        g.add_directed_edge(nodes[0], nodes[2], 2);
-        g.add_directed_edge(nodes[2], nodes[0], 1);
-        g.add_directed_edge(nodes[2], nodes[3], 1);
-        g.add_directed_edge(nodes[3], nodes[0], 1);
-        g.add_directed_edge(nodes[3], nodes[1], 5);
+        let nodes = g.add_nodes(6);
+        g.add_directed_edge(nodes[0], nodes[2], 5);
+        g.add_directed_edge(nodes[1], nodes[0], 4);
+        g.add_directed_edge(nodes[1], nodes[3], 3);
+        g.add_directed_edge(nodes[2], nodes[1], 5);
+        g.add_directed_edge(nodes[2], nodes[5], 1);
+        g.add_directed_edge(nodes[3], nodes[4], 1);
+        g.add_directed_edge(nodes[4], nodes[2], 2);
+        g.add_directed_edge(nodes[4], nodes[3], 1);
+        g.add_directed_edge(nodes[5], nodes[4], 2);
+
 
         let (cost, arborescence) = Edmonds::default().solve(&g);
         println!("cost:{}", cost);
         for e in arborescence {
             println!("{:?}", g.get_edge(e));
         }
+        // assert_eq!(cost, 21);
     }
 }
