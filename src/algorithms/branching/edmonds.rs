@@ -1,6 +1,6 @@
-use crate::data_structures::UnionFind;
 use crate::core::direction::Directed;
 use crate::core::graph::Graph;
+use crate::data_structures::UnionFind;
 use crate::edge::weight::WeightEdge;
 use crate::prelude::EdgeId;
 use crate::traits::{IntNum, Zero};
@@ -37,26 +37,17 @@ where
     }
 
     fn maximum_branching(&self, num_nodes: usize, edges: &Vec<Edge<W>>) -> (W, Vec<EdgeId>) {
-        let mut critical_in_edge_cost = vec![W::zero(); num_nodes];
-        let mut critical_in_edge_id = vec![None; num_nodes];
-        let mut parent = vec![usize::MAX; num_nodes];
+        let mut critical_edge = vec![(usize::MAX, W::zero(), EdgeId(0)); num_nodes]; // from, cost, id
         let mut edge_id_to_node = vec![None; self.num_edges];
         for &Edge { id, from, to, cost } in edges.iter() {
             if from == to || cost <= W::zero() {
                 continue;
             }
 
-            if cost > critical_in_edge_cost[to] {
-                critical_in_edge_cost[to] = cost;
-                critical_in_edge_id[to] = Some(id);
-                parent[to] = from;
+            if cost > critical_edge[to].1 {
+                critical_edge[to] = (from, cost, id);
             }
             edge_id_to_node[id.index()] = Some(to);
-        }
-
-        let mut is_critical_edge = vec![false; self.num_edges];
-        for id in critical_in_edge_id.iter().filter_map(|&e| e) {
-            is_critical_edge[id.index()] = true;
         }
 
         // decomposition of strongly connected components
@@ -69,15 +60,15 @@ where
 
                 while v != usize::MAX && stamp[v] != u && ids[v] == usize::MAX {
                     stamp[v] = u;
-                    v = parent[v];
+                    v = critical_edge[v].0;
                 }
                 // find cycle
                 if v != usize::MAX && ids[v] == usize::MAX {
-                    let mut w = parent[v];
+                    let mut w = critical_edge[v].0;
                     ids[v] = num_scc;
                     while w != v {
                         ids[w] = num_scc;
-                        w = parent[w];
+                        w = critical_edge[w].0;
                     }
                     num_scc += 1;
                 }
@@ -85,7 +76,12 @@ where
 
             // no cycle
             if num_scc == 0 {
-                return (critical_in_edge_cost.iter().fold(W::zero(), |t, c| t + *c), critical_in_edge_id.iter().filter_map(|&edge| edge).collect());
+                let total_cost = critical_edge.iter().fold(W::zero(), |t, (_, c, _)| t + *c);
+                let edge_ids: Vec<EdgeId> = critical_edge
+                    .iter()
+                    .filter_map(|&(from, _, id)| if from != usize::MAX { Some(id) } else { None })
+                    .collect();
+                return (total_cost, edge_ids);
             }
 
             for u in 0..num_nodes {
@@ -104,8 +100,8 @@ where
         let mut total_cost = W::zero();
         let mut mini_cost_in_cycle = vec![W::max_value(); num_scc];
         let mut mini_cost_id_in_cycle = vec![usize::MAX; num_scc];
-        for &Edge { id, from, to, cost } in edges.iter() {
-            if is_critical_edge[id.index()] && ids[from] == ids[to] {
+        for (to, &(from, cost, id)) in critical_edge.iter().enumerate() {
+            if from != usize::MAX && ids[from] == ids[to] {
                 let cycle_no = ids[to];
                 if cost < mini_cost_in_cycle[cycle_no] {
                     mini_cost_in_cycle[cycle_no] = cost;
@@ -131,14 +127,14 @@ where
 
             // edge is into cycle
             if num_components[ids[to]] > 1 {
-                next_edges.push(Edge { id, from: ids[from], to: ids[to], cost: cost - critical_in_edge_cost[to] + mini_cost_in_cycle[ids[to]] });
+                next_edges.push(Edge { id, from: ids[from], to: ids[to], cost: cost - critical_edge[to].1 + mini_cost_in_cycle[ids[to]] });
             } else {
                 next_edges.push(Edge { id, from: ids[from], to: ids[to], cost });
             }
         }
 
         println!("next");
-        for e in  next_edges.iter() {
+        for e in next_edges.iter() {
             println!("{:?}", e);
         }
         for u in 0..num_nodes {
@@ -157,21 +153,21 @@ where
             }
         }
 
-        for (u, edge_id) in critical_in_edge_id.iter().enumerate() {
-            if parent[u] == usize::MAX {
+        for (to, &(_from, _cost, edge_id)) in critical_edge.iter().enumerate() {
+            if critical_edge[to].0 == usize::MAX {
                 continue;
             }
 
             // expand cycle
-            if ids[u] == ids[parent[u]] {
+            if ids[to] == ids[critical_edge[to].0] {
                 // サイクルに入る辺がある場合は，サイクルに入る辺と同じ行き先をもつ辺以外を採用
-                if cycle_has_entry_edge[ids[u]] && !node_has_entry_edge[u] {
-                    branching.push(edge_id.unwrap());
+                if cycle_has_entry_edge[ids[to]] && !node_has_entry_edge[to] {
+                    branching.push(edge_id);
                 }
 
                 // サイクルに入る辺がない場合は，最小以外の辺を採用
-                if !cycle_has_entry_edge[ids[u]] && edge_id.unwrap().index() != mini_cost_id_in_cycle[ids[u]] {
-                    branching.push(edge_id.unwrap());
+                if !cycle_has_entry_edge[ids[to]] && edge_id.index() != mini_cost_id_in_cycle[ids[to]] {
+                    branching.push(edge_id);
                 }
             }
         }
@@ -195,7 +191,6 @@ mod tests {
         g.add_directed_edge(nodes[4], nodes[2], 2);
         g.add_directed_edge(nodes[4], nodes[3], 1);
         g.add_directed_edge(nodes[5], nodes[4], 2);
-
 
         let (cost, arborescence) = Edmonds::default().solve(&g);
         println!("cost:{}", cost);
