@@ -1,6 +1,5 @@
 use crate::core::direction::Directed;
 use crate::core::graph::Graph;
-use crate::data_structures::UnionFind;
 use crate::edge::weight::WeightEdge;
 use crate::prelude::EdgeId;
 use crate::traits::{IntNum, Zero};
@@ -133,14 +132,6 @@ where
             }
         }
 
-        println!("next");
-        for e in next_edges.iter() {
-            println!("{:?}", e);
-        }
-        for u in 0..num_nodes {
-            println!("{}->{}", u, ids[u]);
-        }
-
         assert!(num_scc < num_nodes);
         let (cost, mut branching) = self.maximum_branching(num_scc, &next_edges);
 
@@ -172,31 +163,5 @@ where
             }
         }
         (cost + total_cost, branching)
-    }
-}
-
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_solve() {
-        let mut g: Graph<Directed, (), WeightEdge<i64>> = Graph::new_directed();
-        let nodes = g.add_nodes(6);
-        g.add_directed_edge(nodes[0], nodes[2], 5);
-        g.add_directed_edge(nodes[1], nodes[0], 4);
-        g.add_directed_edge(nodes[1], nodes[3], 3);
-        g.add_directed_edge(nodes[2], nodes[1], 5);
-        g.add_directed_edge(nodes[2], nodes[5], 1);
-        g.add_directed_edge(nodes[3], nodes[4], 1);
-        g.add_directed_edge(nodes[4], nodes[2], 2);
-        g.add_directed_edge(nodes[4], nodes[3], 1);
-        g.add_directed_edge(nodes[5], nodes[4], 2);
-
-        let (cost, arborescence) = Edmonds::default().solve(&g);
-        println!("cost:{}", cost);
-        for e in arborescence {
-            println!("{:?}", g.get_edge(e));
-        }
-        // assert_eq!(cost, 21);
     }
 }

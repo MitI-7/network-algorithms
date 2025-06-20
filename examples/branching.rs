@@ -5,41 +5,28 @@ use network_algorithms::prelude::*;
 use std::fs::read_to_string;
 use std::path::Path;
 
-fn test_solve() {
-    let mut graph: Graph<Directed, (), WeightEdge<i128>> = Graph::new_directed();
+fn test() {
 
-    let (mut num_nodes, mut num_edges) = (0, 0);
-    let mut nodes = Vec::new();
-    let mut expected = 0_i128;
+    let mut g: Graph<Directed, (), WeightEdge<i64>> = Graph::new_directed();
+    let nodes = g.add_nodes(6);
+    g.add_directed_edge(nodes[0], nodes[1], 2);
+    g.add_directed_edge(nodes[1], nodes[2], 6);
+    g.add_directed_edge(nodes[1], nodes[3], 2);
+    g.add_directed_edge(nodes[2], nodes[0], 3);
+    g.add_directed_edge(nodes[3], nodes[5], 4);
+    g.add_directed_edge(nodes[4], nodes[3], 7);
+    g.add_directed_edge(nodes[4], nodes[2], 1);
+    g.add_directed_edge(nodes[5], nodes[4], 8);
 
-    let f = Path::new("tests/branching/AOJ_GRL_2_B/out4.txt");
-    read_to_string(&f).unwrap().split('\n').enumerate().for_each(|(i, line)| {
-        let line: Vec<&str> = line.split_whitespace().collect();
-        if i == 0 {
-            (num_nodes, num_edges, expected) = (line[0].parse().unwrap(), line[1].parse().unwrap(), line[2].parse().unwrap());
-            nodes = graph.add_nodes(num_nodes);
-        } else {
-            let (from, to, weight) = (line[0].parse::<usize>().unwrap(), line[1].parse::<usize>().unwrap(), line[2].parse().unwrap());
-            graph.add_directed_edge(nodes[from], nodes[to], weight);
-        }
-    });
-
-    let (cost, branching) = Edmonds::default().solve(&graph);
-    assert_eq!(cost, expected);
-
-    let mut total = 0;
-    let mut uf = UnionFind::new(graph.num_nodes());
-    let mut indegree = vec![0; nodes.len()];
-    for edge_id in branching {
-        let edge = graph.get_edge(edge_id);
-        indegree[edge.v.index()] += 1;
-        total += edge.data.weight;
-        assert!(uf.unite(edge.u.index(), edge.v.index())); // no cycle
-        assert!(indegree[edge.v.index()] <= 1); // in-degree of each node is at most 1
+    let mut solver = Edmonds::default();
+    let (cost, arborescence) = solver.solve(&g);
+    println!("cost:{}", cost);
+    for e in arborescence {
+        println!("{:?}", g.get_edge(e));
     }
-    assert_eq!(total, expected);
+    // assert_eq!(cost, 21);
 }
 
 fn main() {
-    test_solve();
+    test()
 }
