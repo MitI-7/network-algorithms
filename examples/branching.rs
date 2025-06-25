@@ -2,11 +2,57 @@ use network_algorithms::branching::{Edmonds, Tarjan};
 use network_algorithms::data_structures::UnionFind;
 use network_algorithms::edge::weight::WeightEdge;
 use network_algorithms::prelude::*;
-use std::fs::read_to_string;
-use std::path::Path;
+use rand::rngs::SmallRng;
+use rand::{Rng, SeedableRng}; // ← モジュール名は適宜
+
+/// 頂点数 `n` (1..=10) と最大重み `wmax` (0..=20) を受け取り、
+/// 重みを [-wmax, wmax] から一様ランダムに選ぶ完全自由グラフを返す。
+pub fn random_weighted_graph(rng: &mut impl Rng, n: usize, wmax: i32) -> Graph<Directed, (), WeightEdge<i32>> {
+    assert!((1..=10).contains(&n));
+    assert!((0..=20).contains(&wmax));
+
+    // ノードだけ先に確保
+    let mut g: Graph<Directed, (), WeightEdge<i32>> = Graph::default();
+    let nodes = g.add_nodes(n);
+
+    // 各有向ペア (u, v) について確率 0.3 で辺を張る
+    for u in 0..n {
+        for v in 0..n {
+            if u == v || !rng.gen_bool(0.2) {
+                continue;
+            }
+            let w = rng.gen_range(-wmax..=wmax);
+            g.add_edge(nodes[u], nodes[v], WeightEdge { weight: w });
+        }
+    }
+    g
+}
+
+
+fn tarjan_matches_edmonds_on_random_graphs() {
+    let mut rng = SmallRng::from_os_rng();
+
+    // 1000 回ランダムに生成して突き合わせ
+    for _ in 0..1000000 {
+        // let n = rng.gen_range(1..=10);
+        let n = 5;
+        let g = random_weighted_graph(&mut rng, n, 20);
+
+        let (c_tarjan, _) = Tarjan::<i32>::default().solve(&g);
+        let (c_edmonds, _) = Edmonds::<i32>::default().solve(&g);
+        println!("{c_tarjan},  {c_edmonds}");
+        if c_tarjan != c_edmonds {
+            println!("error");
+            for e in g.edges {
+                println!("{:?}", e);
+            }
+        }
+        
+        assert_eq!(c_tarjan, c_edmonds, "cost mismatch on graph with {} nodes", n);
+    }
+}
 
 fn test() {
-
     let mut g: Graph<Directed, (), WeightEdge<i32>> = Graph::new_directed();
     let nodes = g.add_nodes(10);
     g.add_directed_edge(nodes[0], nodes[2], 1175);
@@ -37,5 +83,6 @@ fn test() {
 }
 
 fn main() {
-    test()
+    // test()
+    tarjan_matches_edmonds_on_random_graphs();
 }

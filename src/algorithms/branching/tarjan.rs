@@ -6,6 +6,7 @@ use crate::traits::{Bounded, IntNum, Zero};
 use std::collections::HashSet;
 use std::marker::PhantomData;
 use std::mem;
+use std::ops::Index;
 
 #[derive(Default)]
 pub struct Tarjan<W> {
@@ -88,7 +89,7 @@ where
                     }
                     cur = uf_scc.leader(par);
                 }
-                
+
                 assert_eq!(
                     nodes.len(),
                     {
@@ -101,15 +102,16 @@ where
 
                 // adjust weight
                 in_edges[v].add_all(minimum_weight_in_cycle - maximum_weight);
-                for w in &nodes {
-                    assert_ne!(parent[*w].1, W::max_value());
-                    in_edges[*w].add_all(minimum_weight_in_cycle - parent[*w].1);
+                for &w in nodes.iter() {
+                    assert_ne!(parent[w].1, W::max_value());
+                    in_edges[w].add_all(minimum_weight_in_cycle - parent[w].1);
                 }
 
                 // construct
                 let mut scc = v;
                 for &u in nodes.iter() {
                     uf_scc.unite(u, scc);
+                    uf_wcc.unite(u, scc);
                     let a = uf_scc.leader(scc);
                     let b = u ^ scc ^ a;
                     if b != a {
@@ -120,7 +122,12 @@ where
                 }
 
                 min[scc] = min[vertex];
-                parent[scc] = mem::replace(&mut parent[u], (usize::MAX, W::max_value()));
+
+                for &u in nodes.iter() {
+                    parent[u] = (usize::MAX, W::max_value());
+                }
+                parent[v] = (usize::MAX, W::max_value());
+
                 roots.push(scc);
             }
         }
@@ -146,6 +153,21 @@ where
                     }
                 }
             }
+            // use std::collections::VecDeque;
+            // let mut queue = VecDeque::from(vec![r]);
+            // while let Some(u) = queue.pop_front() {           // FIFO
+            //     visited[u] = true;
+            //     for &edge_id in &h[u] {
+            //         let edge = &graph.edges[edge_id.index()];
+            //         let v = edge.v.index();
+            //         if !visited[v] {
+            //             visited[v] = true;
+            //             arborescence.push(edge_id);
+            //             total_cost += edge.data.weight;
+            //             queue.push_back(v);                   // 次を末尾に
+            //         }
+            //     }
+            // }
         }
 
         (total_cost, arborescence)
@@ -326,5 +348,29 @@ mod tests {
             used[g.get_edge(edge_id).v.index()] = true;
         }
         assert_eq!(cost, 60633);
+    }
+
+    #[test]
+    fn test8() {
+        let mut g: Graph<Directed, (), WeightEdge<i32>> = Graph::new_directed();
+        let nodes = g.add_nodes(4);
+        g.add_directed_edge(nodes[0], nodes[1], 18);
+        g.add_directed_edge(nodes[0], nodes[3], 13);
+        g.add_directed_edge(nodes[1], nodes[2], 15);
+        g.add_directed_edge(nodes[2], nodes[0], 4);
+        g.add_directed_edge(nodes[3], nodes[1], 8);
+        g.add_directed_edge(nodes[3], nodes[2], 13);
+
+
+        let mut solver = Tarjan::default();
+        // let mut solver = Edmonds::default();
+        let (cost, arborescence) = solver.solve(&g);
+        let mut used = vec![false; g.num_nodes()];
+        for edge_id in arborescence {
+            println!("{:?}", g.get_edge(edge_id));
+            assert!(!used[g.get_edge(edge_id).v.index()]);
+            used[g.get_edge(edge_id).v.index()] = true;
+        }
+        assert_eq!(cost, 46);
     }
 }

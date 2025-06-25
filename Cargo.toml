@@ -6,6 +6,7 @@ repository = "https://github.com/MitI-7/network-algorithms"
 
 [dependencies]
 rstest = "0.25"
+rand = "0.9.1"
 
 [dev-dependencies]
 criterion = "0.5.1"
