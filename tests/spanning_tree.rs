@@ -1,5 +1,5 @@
 use network_algorithms::algorithms::spanning_tree::edmonds::Edmonds;
-use network_algorithms::algorithms::spanning_tree::tarjan::Tarjan;
+// use network_algorithms::algorithms::spanning_tree::tarjan::Tarjan;
 use network_algorithms::edge::weight::WeightEdge;
 use network_algorithms::prelude::*;
 use rstest::rstest;
@@ -26,7 +26,7 @@ fn directed_spanning_tree(#[files("tests/spanning_tree/*/*.txt")] f: PathBuf) {
         }
     });
 
-    match Tarjan::default().solve(&graph, root.index()) {
+    match Edmonds::default().solve(&graph, root.index()) {
         Some((cost, tree)) => {
             assert_eq!(cost, expected);
             assert_eq!(tree.len(), num_nodes - 1);

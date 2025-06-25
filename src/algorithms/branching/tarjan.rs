@@ -1,0 +1,243 @@
+use std::collections::HashSet;
+use crate::data_structures::skew_heap::SkewHeap;
+use crate::data_structures::UnionFind;
+use crate::edge::weight::WeightEdge;
+use crate::prelude::{Directed, EdgeId, Graph};
+use crate::traits::{Bounded, IntNum, Zero};
+use std::marker::PhantomData;
+use std::mem;
+
+#[derive(Default)]
+pub struct Tarjan<W> {
+    phantom_data: PhantomData<W>,
+}
+
+impl<W> Tarjan<W>
+where
+    W: IntNum + Zero + Bounded + std::ops::Neg<Output = W> + Default + std::fmt::Debug,
+{
+    pub fn solve(&mut self, graph: &Graph<Directed, (), WeightEdge<W>>) -> (W, Vec<EdgeId>) {
+        #[derive(Clone, Debug, Default)]
+        struct Edge {
+            id: EdgeId,
+            from: usize,
+            to: usize,
+        }
+
+        let num_nodes = graph.num_nodes();
+
+        let mut uf_wcc = UnionFind::new(num_nodes);
+        let mut uf_scc = UnionFind::new(num_nodes);
+        let mut parent = vec![(usize::MAX, W::max_value()); num_nodes];
+        let mut in_edges = vec![SkewHeap::<W, Edge>::default(); num_nodes];
+        let mut rset = Vec::new();
+        let mut min: Vec<usize> = (0..num_nodes).collect();
+        let mut h = vec![Vec::new(); num_nodes];
+
+        for (idx, edge) in graph.edges.iter().enumerate() {
+            in_edges[edge.v.index()].push(edge.data.weight, Edge { id: EdgeId(idx), from: edge.u.index(), to: edge.v.index() });
+        }
+
+        let mut roots: Vec<usize> = (0..num_nodes).collect();
+        roots.reverse();
+
+        while let Some(k) = roots.pop() {
+            let v = k;
+
+            let (maximum_weight, edge) = in_edges[v].pop().unwrap_or((W::zero(), Edge::default()));
+            // no incoming edge to v
+            if maximum_weight <= W::zero() {
+                println!("->{k} is negative {:?}, edge:{:?}", maximum_weight, edge);
+                rset.push(v);
+                continue;
+            }
+
+            let u = edge.from;
+            println!("{u}->{v}({:?})", maximum_weight);
+
+            if uf_scc.same_set(u, v) {
+                println!("same scc");
+                roots.push(k);
+                continue;  // u and v are in the same scc
+            }
+
+            h[u].push(edge);
+            if uf_wcc.unite(u, v) {
+                println!("different wcc, parent {u} is {v}");
+                parent[v] = (u, maximum_weight);
+
+                continue;  // u and v are not in the same wcc
+            }
+
+            // contract cycle
+            println!("cycle");
+            {
+                let mut nodes = vec![u];
+                let mut a = u;
+                let mut w = W::zero();
+                let mut minimum_weight_in_cycle = maximum_weight;
+                let mut vertex = uf_scc.leader(u);
+                println!("start :{a}");
+                while a != v {
+                    (a, w) = parent[uf_scc.leader(a)];
+                    println!("{a}");
+                    nodes.push(a);
+                    if w < minimum_weight_in_cycle {
+                        minimum_weight_in_cycle = w;
+                        vertex = uf_scc.leader(a);
+                    }
+                }
+                println!("nodes:{:?}", nodes);
+
+                // adjust weight
+                for w in &nodes {
+                    in_edges[*w].add_all(-parent[*w].1 + minimum_weight_in_cycle);
+                }
+
+                // construct
+                let mut scc = v;
+                for &u in nodes.iter() {
+                    uf_scc.unite(u, scc);
+                    let a = uf_scc.leader(scc);
+                    let b = u ^ scc ^ a;
+                    let other = mem::take(&mut in_edges[b]);
+                    in_edges[a].merge_with(other);
+                    scc = a;
+                }
+
+                min[scc] = min[vertex];
+                parent[scc] = parent[u];
+                println!("scc:{scc}, parent:{}", parent[u].0);
+                parent[u] = (usize::MAX, W::max_value());
+                roots.push(scc);
+            }
+        }
+
+        // println!("rset:{:?}", rset);
+        println!("graph");
+        for u in 0..num_nodes {
+            println!("{:?}", h[u]);
+        }
+        let mut total_cost = W::zero();
+        let mut arborescence = Vec::with_capacity(num_nodes - 1);
+        let mut visited = vec![false; num_nodes];
+        let mut s = HashSet::new();
+        println!("rset:{:?}", rset);
+        println!("min:{:?}", min);
+        for r in rset {
+            // s.insert(min[r]);
+            s.insert(r);
+        }
+        println!("s:{:?}", s);
+        for r in s {
+            let mut stack = vec![r];
+            while let Some(u) = stack.pop() {
+                visited[u] = true;
+                for e in h[u].iter() {
+                    if !visited[e.to] {
+                        arborescence.push(e.id);
+                        total_cost += graph.edges[e.id.index()].data.weight;
+                        stack.push(e.to);
+                    }
+                }
+            }
+        }
+
+        (total_cost, arborescence)
+    }
+}
+
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test1() {
+        let mut g: Graph<Directed, (), WeightEdge<i32>> = Graph::new_directed();
+        let nodes = g.add_nodes(4);
+        g.add_directed_edge(nodes[0], nodes[1], 10);
+        g.add_directed_edge(nodes[1], nodes[2], 9);
+        g.add_directed_edge(nodes[2], nodes[0], 8);
+        g.add_directed_edge(nodes[3], nodes[1], 7);
+
+        let mut solver = Tarjan::default();
+        let (cost, arborescence) = solver.solve(&g);
+        for edge_id in arborescence {
+            println!("{:?}", g.get_edge(edge_id));
+        }
+        assert_eq!(cost, 24);
+    }
+
+    #[test]
+    fn test2() {
+        let mut g: Graph<Directed, (), WeightEdge<i32>> = Graph::new_directed();
+        let nodes = g.add_nodes(4);
+        g.add_directed_edge(nodes[0], nodes[1], 3);
+        g.add_directed_edge(nodes[0], nodes[2], 2);
+        g.add_directed_edge(nodes[2], nodes[0], 1);
+        g.add_directed_edge(nodes[2], nodes[3], 1);
+        g.add_directed_edge(nodes[3], nodes[0], 1);
+        g.add_directed_edge(nodes[3], nodes[1], 5);
+
+        let mut solver = Tarjan::default();
+        let (cost, arborescence) = solver.solve(&g);
+        for edge_id in arborescence {
+            println!("{:?}", g.get_edge(edge_id));
+        }
+        assert_eq!(cost, 8);
+    }
+
+
+    #[test]
+    fn test3() {
+        let mut g: Graph<Directed, (), WeightEdge<i32>> = Graph::new_directed();
+        let nodes = g.add_nodes(6);
+        g.add_directed_edge(nodes[0], nodes[2], 7);
+        g.add_directed_edge(nodes[0], nodes[1], 1);
+        g.add_directed_edge(nodes[0], nodes[3], 5);
+        g.add_directed_edge(nodes[1], nodes[4], 9);
+        g.add_directed_edge(nodes[2], nodes[1], 6);
+        g.add_directed_edge(nodes[1], nodes[3], 2);
+        g.add_directed_edge(nodes[3], nodes[4], 3);
+        g.add_directed_edge(nodes[4], nodes[2], 2);
+        g.add_directed_edge(nodes[2], nodes[5], 8);
+        g.add_directed_edge(nodes[3], nodes[5], 3);
+        
+        let mut solver = Tarjan::default();
+        let (cost, arborescence) = solver.solve(&g);
+        for edge_id in arborescence {
+            println!("{:?}", g.get_edge(edge_id));
+        }
+        assert_eq!(cost, 35);
+    }
+
+    #[test]
+    fn test4() {
+        let mut g: Graph<Directed, (), WeightEdge<i32>> = Graph::new_directed();
+        let nodes = g.add_nodes(10);
+        g.add_directed_edge(nodes[9], nodes[0], 7227);
+        g.add_directed_edge(nodes[0], nodes[3], 1292);
+        g.add_directed_edge(nodes[3], nodes[5], 2718);
+        g.add_directed_edge(nodes[5], nodes[8], 7842);
+        g.add_directed_edge(nodes[8], nodes[1], 7668);
+        g.add_directed_edge(nodes[5], nodes[7], 453);
+        g.add_directed_edge(nodes[5], nodes[2], 2870);
+        g.add_directed_edge(nodes[6], nodes[7], 2643);
+        g.add_directed_edge(nodes[4], nodes[0], 1649);
+        g.add_directed_edge(nodes[7], nodes[0], 2818);
+        g.add_directed_edge(nodes[6], nodes[0], 6617);
+        g.add_directed_edge(nodes[9], nodes[4], 4584);
+        g.add_directed_edge(nodes[6], nodes[5], 7242);
+        g.add_directed_edge(nodes[2], nodes[6], 1267);
+        g.add_directed_edge(nodes[2], nodes[7], 4877);
+        
+        let mut solver = Tarjan::default();
+        let (cost, arborescence) = solver.solve(&g);
+        let mut used = vec![false; g.num_nodes()];
+        for edge_id in arborescence {
+            println!("{:?}", g.get_edge(edge_id));
+            assert!(!used[g.get_edge(edge_id).v.index()]);
+            used[g.get_edge(edge_id).v.index()] = true;
+        }
+        assert_eq!(cost, 43602);
+    }
+}

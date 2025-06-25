@@ -6,6 +6,10 @@ pub mod node;
 pub mod prelude;
 pub mod traits;
 
+pub mod branching {
+    pub use crate::algorithms::branching::*;
+}
+
 pub mod maximum_bipartite_matching {
     pub use crate::algorithms::maximum_bipartite_matching::*;
 }

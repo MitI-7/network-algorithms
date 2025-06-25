@@ -1,4 +1,4 @@
-use network_algorithms::algorithms::branching::edmonds::Edmonds;
+use network_algorithms::branching::{Edmonds, Tarjan};
 use network_algorithms::data_structures::union_find::UnionFind;
 use network_algorithms::edge::weight::WeightEdge;
 use network_algorithms::prelude::*;
@@ -32,7 +32,8 @@ fn directed_spanning_tree(#[files("tests/branching/*/*.txt")] f: PathBuf) {
         }
     });
 
-    let (cost, branching) = Edmonds::default().solve(&graph);
+    // let (cost, branching) = Edmonds::default().solve(&graph);
+    let (cost, branching) = Tarjan::default().solve(&graph);
     let mut total = 0;
     let mut uf = UnionFind::new(graph.num_nodes());
     let mut indegree = vec![0; nodes.len()];
