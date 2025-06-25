@@ -61,7 +61,8 @@ where
                 continue; // u and v are in the same scc
             }
 
-            h[u].push(edge);
+            // h[u].push(edge);
+            h[edge.from].push(edge.id);
             if uf_wcc.unite(u, v) {
                 // println!("different wcc, parent[{v}] = {u}");
                 parent[v] = (u, maximum_weight);
@@ -149,11 +150,13 @@ where
             let mut stack = vec![r];
             while let Some(u) = stack.pop() {
                 visited[u] = true;
-                for e in h[u].iter() {
-                    if !visited[e.to] {
-                        arborescence.push(e.id);
-                        total_cost += graph.edges[e.id.index()].data.weight;
-                        stack.push(e.to);
+                for edge_id in h[u].iter() {
+                    let edge = &graph.edges[edge_id.index()];
+                    if !visited[edge.v.index()] {
+                        visited[edge.v.index()] = true;
+                        arborescence.push(*edge_id);
+                        total_cost += edge.data.weight;
+                        stack.push(edge.v.index());
                     }
                 }
             }
