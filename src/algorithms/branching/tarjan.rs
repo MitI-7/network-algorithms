@@ -21,7 +21,6 @@ where
         struct Edge {
             id: EdgeId,
             from: usize,
-            to: usize,
         }
 
         let num_nodes = graph.num_nodes();
@@ -35,7 +34,7 @@ where
         let mut h = vec![Vec::new(); num_nodes];
 
         for (idx, edge) in graph.edges.iter().enumerate() {
-            in_edges[edge.v.index()].push(edge.data.weight, Edge { id: EdgeId(idx), from: edge.u.index(), to: edge.v.index() });
+            in_edges[edge.v.index()].push(edge.data.weight, Edge { id: EdgeId(idx), from: edge.u.index() });
         }
 
         let mut roots: Vec<usize> = (0..num_nodes).collect();
@@ -47,28 +46,25 @@ where
             let (maximum_weight, edge) = in_edges[v].pop().unwrap_or((W::zero(), Edge::default()));
             // No positive-weight incoming edge to v
             if maximum_weight <= W::zero() {
-                // println!("->{k} is negative {:?}, edge:{:?}", maximum_weight, edge);
                 rset.push(v);
                 continue;
             }
 
             let u = uf_scc.leader(edge.from);
-            // println!("{u}->{v}({:?})", maximum_weight);
 
+            // u and v are in the same scc
             if uf_scc.same_set(u, v) {
-                // println!("same scc");
                 roots.push(k);
-                continue; // u and v are in the same scc
+                continue;
             }
 
-            // h[u].push(edge);
             h[edge.from].push(edge.id);
+
+            // u and v are not in the same wcc
             if uf_wcc.unite(u, v) {
-                // println!("different wcc, parent[{v}] = {u}");
                 parent[v] = (u, maximum_weight);
                 assert_ne!(parent[v].0, v);
-
-                continue; // u and v are not in the same wcc
+                continue;
             }
 
             // contract cycle
@@ -79,8 +75,6 @@ where
                 let mut vertex = uf_scc.leader(v);
                 let mut cur = uf_scc.leader(u);
                 loop {
-                    // println!("check:{cur}, u:{u}, v:{v}");
-                    // println!("{:?}", parent[cur]);
                     nodes.push(cur);
 
                     let (par, w) = parent[cur];
@@ -95,8 +89,9 @@ where
                     cur = uf_scc.leader(par);
                 }
                 // println!("nodes:{:?}", nodes);
-                debug_assert!(
-                    nodes.len() == {
+                assert_eq!(
+                    nodes.len(),
+                    {
                         let mut hs: HashSet<usize> = HashSet::new();
                         hs.extend(nodes.iter());
                         hs.len()
@@ -126,26 +121,17 @@ where
 
                 min[scc] = min[vertex];
                 parent[scc] = mem::replace(&mut parent[u], (usize::MAX, W::max_value()));
-                // assert_ne!(parent[scc].0, scc);
-                // parent[scc] = mem::replace(&mut parent[vertex],(usize::MAX, W::max_value()));
                 roots.push(scc);
             }
         }
 
-        // println!("rset:{:?}", rset);
-        // println!("graph");
-        // for u in 0..num_nodes {
-        //     println!("{:?}", h[u]);
-        // }
         let mut total_cost = W::zero();
         let mut arborescence = Vec::with_capacity(num_nodes - 1);
         let mut visited = vec![false; num_nodes];
         let mut s = HashSet::new();
-        println!("rset:{:?}", rset);
         for r in rset {
             s.insert(min[r]);
         }
-        println!("s:{:?}", s);
         for r in s {
             let mut stack = vec![r];
             while let Some(u) = stack.pop() {
