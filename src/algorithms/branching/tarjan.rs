@@ -1,9 +1,9 @@
-use std::collections::HashSet;
 use crate::data_structures::skew_heap::SkewHeap;
 use crate::data_structures::UnionFind;
 use crate::edge::weight::WeightEdge;
 use crate::prelude::{Directed, EdgeId, Graph};
 use crate::traits::{Bounded, IntNum, Zero};
+use std::collections::HashSet;
 use std::marker::PhantomData;
 use std::mem;
 
@@ -14,7 +14,7 @@ pub struct Tarjan<W> {
 
 impl<W> Tarjan<W>
 where
-    W: IntNum + Zero + Bounded + std::ops::Neg<Output = W> + Default + std::fmt::Debug,
+    W: IntNum + Zero + Bounded + std::ops::Neg<Output = W> + Default + std::fmt::Debug + std::fmt::Display,
 {
     pub fn solve(&mut self, graph: &Graph<Directed, (), WeightEdge<W>>) -> (W, Vec<EdgeId>) {
         #[derive(Clone, Debug, Default)]
@@ -45,50 +45,55 @@ where
             let v = uf_scc.leader(k);
 
             let (maximum_weight, edge) = in_edges[v].pop().unwrap_or((W::zero(), Edge::default()));
-            // no incoming edge to v
+            // No positive-weight incoming edge to v
             if maximum_weight <= W::zero() {
-                println!("->{k} is negative {:?}, edge:{:?}", maximum_weight, edge);
+                // println!("->{k} is negative {:?}, edge:{:?}", maximum_weight, edge);
                 rset.push(v);
                 continue;
             }
 
-            let u = edge.from;
-            println!("{u}->{v}({:?})", maximum_weight);
+            let u = uf_scc.leader(edge.from);
+            // println!("{u}->{v}({:?})", maximum_weight);
 
             if uf_scc.same_set(u, v) {
-                println!("same scc");
+                // println!("same scc");
                 roots.push(k);
-                continue;  // u and v are in the same scc
+                continue; // u and v are in the same scc
             }
 
             h[u].push(edge);
             if uf_wcc.unite(u, v) {
-                println!("different wcc, parent {u} is {v}");
+                // println!("different wcc, parent[{v}] = {u}");
                 parent[v] = (u, maximum_weight);
+                assert_ne!(parent[v].0, v);
 
-                continue;  // u and v are not in the same wcc
+                continue; // u and v are not in the same wcc
             }
 
             // contract cycle
-            println!("cycle");
+            // println!("cycle");
             {
                 let mut nodes = Vec::new();
                 let mut minimum_weight_in_cycle = maximum_weight;
                 let mut vertex = uf_scc.leader(v);
-                let mut cur = u;
+                let mut cur = uf_scc.leader(u);
                 loop {
+                    // println!("check:{cur}, u:{u}, v:{v}");
+                    // println!("{:?}", parent[cur]);
                     nodes.push(cur);
 
-                    let (par, w) = parent[uf_scc.leader(cur)];   // par = 親, w = cur に入る辺の重み
+                    let (par, w) = parent[cur];
+                    let par = uf_scc.leader(par);
                     if w < minimum_weight_in_cycle {
                         minimum_weight_in_cycle = w;
                         vertex = uf_scc.leader(cur);
                     }
-                    if par == v { break; }
-                    cur = par;
+                    if par == v {
+                        break;
+                    }
+                    cur = uf_scc.leader(par);
                 }
-                nodes.push(v);
-                println!("nodes:{:?}", nodes);
+                // println!("nodes:{:?}", nodes);
                 debug_assert!(
                     nodes.len() == {
                         let mut hs: HashSet<usize> = HashSet::new();
@@ -99,8 +104,10 @@ where
                 );
 
                 // adjust weight
+                in_edges[v].add_all(minimum_weight_in_cycle - maximum_weight);
                 for w in &nodes {
-                    in_edges[*w].add_all(-parent[*w].1 + minimum_weight_in_cycle);
+                    assert_ne!(parent[*w].1, W::max_value());
+                    in_edges[*w].add_all(minimum_weight_in_cycle - parent[*w].1);
                 }
 
                 // construct
@@ -109,31 +116,31 @@ where
                     uf_scc.unite(u, scc);
                     let a = uf_scc.leader(scc);
                     let b = u ^ scc ^ a;
-                    if b != a { 
-                       let other = mem::take(&mut in_edges[b]);
-                       in_edges[a].merge_with(other);
+                    if b != a {
+                        let other = mem::take(&mut in_edges[b]);
+                        in_edges[a].merge_with(other);
                     }
                     scc = a;
                 }
 
                 min[scc] = min[vertex];
                 parent[scc] = mem::replace(&mut parent[u], (usize::MAX, W::max_value()));
+                // assert_ne!(parent[scc].0, scc);
                 // parent[scc] = mem::replace(&mut parent[vertex],(usize::MAX, W::max_value()));
                 roots.push(scc);
             }
         }
 
         // println!("rset:{:?}", rset);
-        println!("graph");
-        for u in 0..num_nodes {
-            println!("{:?}", h[u]);
-        }
+        // println!("graph");
+        // for u in 0..num_nodes {
+        //     println!("{:?}", h[u]);
+        // }
         let mut total_cost = W::zero();
         let mut arborescence = Vec::with_capacity(num_nodes - 1);
         let mut visited = vec![false; num_nodes];
         let mut s = HashSet::new();
         println!("rset:{:?}", rset);
-        println!("min:{:?}", min);
         for r in rset {
             s.insert(min[r]);
         }
@@ -195,7 +202,6 @@ mod tests {
         }
         assert_eq!(cost, 8);
     }
-
 
     #[test]
     fn test3() {
@@ -288,7 +294,7 @@ mod tests {
         g.add_directed_edge(nodes[7], nodes[5], 823);
         g.add_directed_edge(nodes[0], nodes[8], 8252);
         g.add_directed_edge(nodes[6], nodes[7], 1343);
-        g.add_directed_edge(nodes[3], nodes[2],8365);
+        g.add_directed_edge(nodes[3], nodes[2], 8365);
         g.add_directed_edge(nodes[9], nodes[6], 4996);
 
         let mut solver = Tarjan::default();
@@ -316,10 +322,10 @@ mod tests {
         g.add_directed_edge(nodes[6], nodes[9], 8824);
         g.add_directed_edge(nodes[4], nodes[0], 2157);
         g.add_directed_edge(nodes[2], nodes[0], 1910);
-        g.add_directed_edge(nodes[5], nodes[1],3118);
-        g.add_directed_edge(nodes[2], nodes[6],7772);
-        g.add_directed_edge(nodes[9], nodes[1],4795);
-        g.add_directed_edge(nodes[1], nodes[8],8995);
+        g.add_directed_edge(nodes[5], nodes[1], 3118);
+        g.add_directed_edge(nodes[2], nodes[6], 7772);
+        g.add_directed_edge(nodes[9], nodes[1], 4795);
+        g.add_directed_edge(nodes[1], nodes[8], 8995);
         g.add_directed_edge(nodes[9], nodes[8], 3411);
 
         let mut solver = Tarjan::default();
