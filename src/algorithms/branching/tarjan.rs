@@ -29,7 +29,7 @@ where
         let mut uf_wcc = UnionFind::new(num_nodes);
         let mut uf_scc = UnionFind::new(num_nodes);
         let mut parent = vec![(usize::MAX, W::max_value()); num_nodes];
-        let mut in_edges = vec![SkewHeap::<W, Edge>::default(); num_nodes];
+        let mut in_edges = vec![SkewHeap::<W, Edge>::default(); num_nodes]; // in_edges[v] = all incoming edges of v
         let mut rset = Vec::new();
         let mut min: Vec<usize> = (0..num_nodes).collect();
         let mut h = vec![Vec::new(); num_nodes];
@@ -38,14 +38,14 @@ where
             in_edges[edge.v.index()].push(edge.data.weight, Edge { id: EdgeId(idx), from: edge.u.index() });
         }
 
-        let mut roots: Vec<usize> = (0..num_nodes).collect();
+        let mut roots: Vec<usize> = (0..num_nodes).collect();   // array of root components
         roots.reverse();
 
         while let Some(k) = roots.pop() {
             let v = uf_scc.leader(k);
 
             let (maximum_weight, edge) = in_edges[v].pop().unwrap_or((W::zero(), Edge::default()));
-            // No positive-weight incoming edge to v
+            // no positive weight incoming edge of v
             if maximum_weight <= W::zero() {
                 rset.push(v);
                 continue;
@@ -153,21 +153,6 @@ where
                     }
                 }
             }
-            // use std::collections::VecDeque;
-            // let mut queue = VecDeque::from(vec![r]);
-            // while let Some(u) = queue.pop_front() {           // FIFO
-            //     visited[u] = true;
-            //     for &edge_id in &h[u] {
-            //         let edge = &graph.edges[edge_id.index()];
-            //         let v = edge.v.index();
-            //         if !visited[v] {
-            //             visited[v] = true;
-            //             arborescence.push(edge_id);
-            //             total_cost += edge.data.weight;
-            //             queue.push_back(v);                   // 次を末尾に
-            //         }
-            //     }
-            // }
         }
 
         (total_cost, arborescence)
