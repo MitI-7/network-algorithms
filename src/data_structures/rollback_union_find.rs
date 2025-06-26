@@ -1,17 +1,17 @@
 #[derive(Clone)]
 pub struct RollbackUnionFind {
-    p: Vec<i32>,
-    hist: Vec<(usize, i32)>,
+    parent: Vec<isize>,
+    history: Vec<(usize, isize)>,
 }
 
 impl RollbackUnionFind {
     pub fn new(num_nodes: usize) -> Self {
-        Self { p: vec![-1; num_nodes], hist: vec![] }
+        Self { parent: vec![-1; num_nodes], history: vec![] }
     }
 
     pub fn find(&self, mut v: usize) -> usize {
-        while self.p[v] >= 0 {
-            v = self.p[v] as usize
+        while self.parent[v] >= 0 {
+            v = self.parent[v] as usize
         }
         v
     }
@@ -21,29 +21,29 @@ impl RollbackUnionFind {
     }
 
     pub fn time(&self) -> usize {
-        self.hist.len()
+        self.history.len()
     }
 
-    pub fn join(&mut self, a: usize, b: usize) -> bool {
+    pub fn union(&mut self, a: usize, b: usize) -> bool {
         let (mut x, mut y) = (self.find(a), self.find(b));
         if x == y {
             return false;
         }
-        if self.p[x] > self.p[y] {
-            std::mem::swap(&mut x, &mut y);
-        }
-        self.hist.push((y, self.p[y]));
-        self.p[x] += self.p[y];
-        self.p[y] = x as i32;
+        // if self.parent[x] > self.parent[y] {
+        //     std::mem::swap(&mut x, &mut y);
+        // }
+        self.history.push((y, self.parent[y]));
+        self.parent[x] += self.parent[y];
+        self.parent[y] = x as isize;
         true
     }
 
     pub fn rollback(&mut self, t: usize) {
-        while self.hist.len() > t {
-            let (v, old) = self.hist.pop().unwrap();
-            let p = self.p[v] as usize;
-            self.p[p] -= old;
-            self.p[v] = old;
+        while self.history.len() > t {
+            let (v, old) = self.history.pop().unwrap();
+            let p = self.parent[v] as usize;
+            self.parent[p] -= old;
+            self.parent[v] = old;
         }
     }
 }

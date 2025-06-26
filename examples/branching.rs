@@ -36,7 +36,7 @@ fn tarjan_matches_edmonds_on_random_graphs() {
     for _ in 0..1000000 {
         // let n = rng.gen_range(1..=10);
         let n = 5;
-        let g = random_weighted_graph(&mut rng, n, 20);
+        let g = random_weighted_graph(&mut rng, n, 10);
 
         let (c_tarjan, _) = Tarjan::<i32>::default().solve(&g);
         let (c_edmonds, _) = Edmonds::<i32>::default().solve(&g);

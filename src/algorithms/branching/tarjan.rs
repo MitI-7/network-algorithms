@@ -1,3 +1,4 @@
+use crate::data_structures::rollback_union_find::RollbackUnionFind;
 use crate::data_structures::skew_heap::SkewHeap;
 use crate::data_structures::UnionFind;
 use crate::edge::weight::WeightEdge;
@@ -6,7 +7,6 @@ use crate::traits::{Bounded, IntNum, Zero};
 use std::collections::HashSet;
 use std::marker::PhantomData;
 use std::mem;
-use std::ops::Index;
 
 #[derive(Default)]
 pub struct Tarjan<W> {
@@ -27,22 +27,22 @@ where
         let num_nodes = graph.num_nodes();
 
         let mut uf_wcc = UnionFind::new(num_nodes);
-        let mut uf_scc = UnionFind::new(num_nodes);
-        let mut parent = vec![(usize::MAX, W::max_value()); num_nodes];
+        let mut uf_scc = RollbackUnionFind::new(num_nodes);
+        let mut enter = vec![(usize::MAX, W::max_value(), EdgeId(usize::MAX)); num_nodes];
         let mut in_edges = vec![SkewHeap::<W, Edge>::default(); num_nodes]; // in_edges[v] = all incoming edges of v
         let mut rset = Vec::new();
         let mut min: Vec<usize> = (0..num_nodes).collect();
-        let mut h = vec![Vec::new(); num_nodes];
+        let mut cycles = Vec::<(usize, (usize, W, EdgeId), usize)>::new();
 
         for (idx, edge) in graph.edges.iter().enumerate() {
             in_edges[edge.v.index()].push(edge.data.weight, Edge { id: EdgeId(idx), from: edge.u.index() });
         }
 
-        let mut roots: Vec<usize> = (0..num_nodes).collect();   // array of root components
+        let mut roots: Vec<usize> = (0..num_nodes).collect(); // array of root components
         roots.reverse();
 
         while let Some(k) = roots.pop() {
-            let v = uf_scc.leader(k);
+            let v = uf_scc.find(k);
 
             let (maximum_weight, edge) = in_edges[v].pop().unwrap_or((W::zero(), Edge::default()));
             // no positive weight incoming edge of v
@@ -51,43 +51,44 @@ where
                 continue;
             }
 
-            let u = uf_scc.leader(edge.from);
+            let u = uf_scc.find(edge.from);
 
             // u and v are in the same scc
-            if uf_scc.same_set(u, v) {
+            if uf_scc.same(u, v) {
                 roots.push(k);
                 continue;
             }
 
-            h[edge.from].push(edge.id);
+            enter[v] = (u, maximum_weight, edge.id);
+            assert_ne!(enter[v].0, v);
 
             // u and v are not in the same wcc
             if uf_wcc.unite(u, v) {
-                parent[v] = (u, maximum_weight);
-                assert_ne!(parent[v].0, v);
                 continue;
             }
 
             // contract cycle
             // println!("cycle");
             {
+                let time_stamp = uf_scc.time();
+
                 let mut nodes = Vec::new();
                 let mut minimum_weight_in_cycle = maximum_weight;
-                let mut vertex = uf_scc.leader(v);
-                let mut cur = uf_scc.leader(u);
+                let mut vertex = uf_scc.find(v);
+                let mut cur = uf_scc.find(u);
                 loop {
                     nodes.push(cur);
 
-                    let (par, w) = parent[cur];
-                    let par = uf_scc.leader(par);
+                    let (par, w, _) = enter[cur];
+                    let par = uf_scc.find(par);
                     if w < minimum_weight_in_cycle {
                         minimum_weight_in_cycle = w;
-                        vertex = uf_scc.leader(cur);
+                        vertex = uf_scc.find(cur);
                     }
                     if par == v {
                         break;
                     }
-                    cur = uf_scc.leader(par);
+                    cur = uf_scc.find(par);
                 }
 
                 assert_eq!(
@@ -103,16 +104,17 @@ where
                 // adjust weight
                 in_edges[v].add_all(minimum_weight_in_cycle - maximum_weight);
                 for &w in nodes.iter() {
-                    assert_ne!(parent[w].1, W::max_value());
-                    in_edges[w].add_all(minimum_weight_in_cycle - parent[w].1);
+                    assert_ne!(enter[w].1, W::max_value());
+                    in_edges[w].add_all(minimum_weight_in_cycle - enter[w].1);
                 }
 
                 // construct
-                let mut scc = v;
+                let mut scc = vertex;
                 for &u in nodes.iter() {
-                    uf_scc.unite(u, scc);
-                    uf_wcc.unite(u, scc);
-                    let a = uf_scc.leader(scc);
+                    uf_scc.union(scc, u);
+                    assert_eq!(uf_scc.find(u), scc);
+                    uf_wcc.unite(scc, u);
+                    let a = uf_scc.find(scc);
                     let b = u ^ scc ^ a;
                     if b != a {
                         let other = mem::take(&mut in_edges[b]);
@@ -120,48 +122,74 @@ where
                     }
                     scc = a;
                 }
-
+                cycles.push((scc, enter[scc], time_stamp));
                 min[scc] = min[vertex];
+                println!("cycle");
+                println!("nodes:{:?}, scc:{}", nodes, scc);
 
-                for &u in nodes.iter() {
-                    parent[u] = (usize::MAX, W::max_value());
-                }
-                parent[v] = (usize::MAX, W::max_value());
+                // for &u in nodes.iter() {
+                //     enter[u] = (usize::MAX, W::max_value(), EdgeId(usize::MAX));
+                // }
+                // enter[v] = (usize::MAX, W::max_value(), EdgeId(usize::MAX));
 
                 roots.push(scc);
             }
         }
+        println!("num_cycle:{}", cycles.len());
 
-        let mut total_cost = W::zero();
-        let mut arborescence = Vec::with_capacity(num_nodes - 1);
-        let mut visited = vec![false; num_nodes];
-        let mut s = HashSet::new();
-        for r in rset {
-            s.insert(min[r]);
+        println!("enter(最初)");
+        for u in 0..num_nodes {
+            println!("{u}: {:?}", enter[u]);
         }
-        for r in s {
-            let mut stack = vec![r];
-            while let Some(u) = stack.pop() {
-                visited[u] = true;
-                for edge_id in h[u].iter() {
-                    let edge = &graph.edges[edge_id.index()];
-                    if !visited[edge.v.index()] {
-                        visited[edge.v.index()] = true;
-                        arborescence.push(*edge_id);
-                        total_cost += edge.data.weight;
-                        stack.push(edge.v.index());
-                    }
-                }
+
+        // expand cycles
+        for &(scc, pre_enter, time_stamp) in cycles.iter().rev() {
+            let (u, _, edge_id) = enter[scc]; // sccに外部から入る辺
+            let v = graph.edges[edge_id.index()].v.index();
+
+            assert_eq!(scc, uf_scc.find(v));
+            uf_scc.rollback(time_stamp); // expand
+
+            let super_v = uf_scc.find(v); // 展開後の超頂点
+            if super_v == scc {
+                continue;
+            }
+            // enter[super_v] = enter[scc];
+            // enter[scc] = pre_enter;
+            enter[super_v] = pre_enter;
+
+            println!("展開");
+            println!("super_v:{:?}", super_v);
+            println!("scc:{scc}, pre_enter:{:?}", pre_enter);
+            println!("enter");
+            for u in 0..num_nodes {
+                println!("{u}: {:?}", enter[u]);
             }
         }
 
-        (total_cost, arborescence)
+        let mut rs = HashSet::new();
+        for r in rset {
+            rs.insert(min[r]);
+        }
+
+        println!("rs:{:?}", rs);
+
+        let mut total_cost = W::zero();
+        let mut branchings = Vec::with_capacity(num_nodes - 1);
+        for u in 0..num_nodes {
+            if !rs.contains(&u) {
+                let (_, _, edge_id) = enter[u];
+                branchings.push(edge_id);
+                total_cost += graph.edges[edge_id.index()].data.weight;
+            }
+        }
+        (total_cost, branchings)
     }
 }
 
 mod tests {
     use super::*;
-    use crate::algorithms::branching::Edmonds;
+    // use crate::algorithms::branching::Edmonds;
 
     #[test]
     fn test1() {
@@ -343,16 +371,19 @@ mod tests {
         g.add_directed_edge(nodes[0], nodes[3], 13);
         g.add_directed_edge(nodes[1], nodes[2], 15);
         g.add_directed_edge(nodes[2], nodes[0], 4);
-        g.add_directed_edge(nodes[3], nodes[1], 8);
         g.add_directed_edge(nodes[3], nodes[2], 13);
-
 
         let mut solver = Tarjan::default();
         // let mut solver = Edmonds::default();
         let (cost, arborescence) = solver.solve(&g);
         let mut used = vec![false; g.num_nodes()];
-        for edge_id in arborescence {
+
+        println!("graph");
+        for &edge_id in arborescence.iter() {
             println!("{:?}", g.get_edge(edge_id));
+        }
+
+        for edge_id in arborescence {
             assert!(!used[g.get_edge(edge_id).v.index()]);
             used[g.get_edge(edge_id).v.index()] = true;
         }
