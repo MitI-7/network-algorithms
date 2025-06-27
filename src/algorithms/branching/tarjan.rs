@@ -1,5 +1,6 @@
 use crate::data_structures::skew_heap::SkewHeap;
 use crate::data_structures::UnionFind;
+use crate::data_structures::bit_vector::BitVector;
 use crate::edge::weight::WeightEdge;
 use crate::prelude::{Directed, EdgeId, Graph};
 use crate::traits::{Bounded, IntNum, Zero};
@@ -15,7 +16,7 @@ struct Edge {
 struct Forest {
     parent: Box<[usize]>,
     children: Box<[Vec<usize>]>,
-    is_root: Box<[bool]>,
+    is_root: BitVector,
     lambda: Box<[usize]>,   // Leaf edge in Forest headed by v; usize::MAX if none.
 }
 
@@ -26,11 +27,11 @@ impl Forest {
         let mut edge_id = self.lambda[u];
         let mut pre_edge_id = usize::MAX;
         while edge_id != usize::MAX {
-            self.is_root[edge_id] = false;
+            self.is_root.set(edge_id, false);
             for &child_edge_id in self.children[edge_id].iter() {
                 if child_edge_id != pre_edge_id {
                     self.parent[child_edge_id] = usize::MAX;
-                    self.is_root[child_edge_id] = true;
+                    self.is_root.set(child_edge_id, true);
                     new_root.push(child_edge_id);
                 }
             }
@@ -70,7 +71,7 @@ where
         let mut forest = Forest {
             parent: vec![usize::MAX; graph.num_edges()].into_boxed_slice(),
             children: vec![Vec::new(); graph.num_edges()].into_boxed_slice(),
-            is_root: vec![false; graph.num_edges()].into_boxed_slice(),
+            is_root: BitVector::new(graph.num_edges()),
             lambda: vec![usize::MAX; num_nodes].into_boxed_slice(),
         };
 
@@ -105,7 +106,7 @@ where
             }
 
             enter[v] = (u, maximum_weight, edge.id);
-            forest.is_root[edge.id.index()] = true;
+            forest.is_root.set(edge.id.index(), true);
 
             if cycles[v].is_empty() {
                 forest.lambda[v] = edge.id.index();
@@ -114,7 +115,7 @@ where
             for cycle_edge_id in cycles[v].drain(..) {
                 forest.parent[cycle_edge_id.index()] = edge.id.index();
                 forest.children[edge.id.index()].push(cycle_edge_id.index());
-                forest.is_root[cycle_edge_id.index()] = false;
+                forest.is_root.set(cycle_edge_id.index(), false);
             }
 
             // u and v are not in the same wcc
@@ -173,7 +174,7 @@ where
         let mut total_cost = W::zero();
         let mut branchings = Vec::with_capacity(graph.num_nodes() - 1);
 
-        let mut forest_roots: Vec<usize> = (0..graph.num_edges()).filter(|&e| forest.is_root[e]).collect();
+        let mut forest_roots: Vec<usize> = (0..graph.num_edges()).filter(|&e| forest.is_root.get(e)).collect();
         while let Some(edge_id) = forest_roots.pop() {
             branchings.push(EdgeId(edge_id));
             total_cost += graph.edges[edge_id].data.weight;
