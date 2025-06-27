@@ -6,17 +6,17 @@ use crate::traits::{Bounded, IntNum, Zero};
 use std::marker::PhantomData;
 use std::mem;
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Default)]
 struct Edge {
     id: EdgeId,
     from: usize,
 }
 
 struct Forest {
-    parent: Vec<usize>,
-    children: Vec<Vec<usize>>,
-    is_root: Vec<bool>,
-    lambda: Vec<usize>,
+    parent: Box<[usize]>,
+    children: Box<[Vec<usize>]>,
+    is_root: Box<[bool]>,
+    lambda: Box<[usize]>,   // Leaf edge in Forest headed by v; usize::MAX if none.
 }
 
 impl Forest {
@@ -42,10 +42,9 @@ impl Forest {
     }
 }
 
-
 #[derive(Default)]
 pub struct Tarjan<W> {
-    phantom_data: PhantomData<W>,
+    _marker: PhantomData<W>,
 }
 
 impl<W> Tarjan<W>
@@ -69,10 +68,10 @@ where
         let mut cycles: Vec<Vec<EdgeId>> = vec![Vec::new(); num_nodes];
 
         let mut forest = Forest {
-            parent: vec![usize::MAX; graph.num_edges()],
-            children: vec![Vec::new(); graph.num_edges()],
-            is_root: vec![false; graph.num_edges()],
-            lambda: vec![usize::MAX; num_nodes],
+            parent: vec![usize::MAX; graph.num_edges()].into_boxed_slice(),
+            children: vec![Vec::new(); graph.num_edges()].into_boxed_slice(),
+            is_root: vec![false; graph.num_edges()].into_boxed_slice(),
+            lambda: vec![usize::MAX; num_nodes].into_boxed_slice(),
         };
 
         for (idx, edge) in graph.edges.iter().enumerate() {
@@ -80,9 +79,16 @@ where
         }
 
         let mut roots: Vec<usize> = (0..num_nodes).collect(); // array of root components
-        while let Some(k) = roots.pop() {
-            let v = uf_scc.find(k);
-            let (maximum_weight, edge) = enter_edges[v].pop().unwrap_or((W::zero(), Edge::default()));
+        while let Some(r) = roots.pop() {
+            let v = uf_scc.find(r);
+
+            let (maximum_weight, edge) = match enter_edges[v].pop() {
+                Some((maximum_weight, edge))=> (maximum_weight, edge),
+                None => {
+                    rset.push(v);
+                    continue;
+                }
+            };
 
             // no positive weight incoming edge of v
             if maximum_weight <= W::zero() {
@@ -94,7 +100,7 @@ where
 
             // u and v are in the same scc
             if uf_scc.same(u, v) {
-                roots.push(k);
+                roots.push(r);
                 continue;
             }
 
@@ -164,16 +170,10 @@ where
             forest.delete_path(r);
         }
 
-        let mut forest_roots = Vec::new();
-        for edge_id in 0..graph.num_edges() {
-            if forest.is_root[edge_id] {
-                forest_roots.push(edge_id);
-            }
-        }
-
         let mut total_cost = W::zero();
         let mut branchings = Vec::with_capacity(graph.num_nodes() - 1);
 
+        let mut forest_roots: Vec<usize> = (0..graph.num_edges()).filter(|&e| forest.is_root[e]).collect();
         while let Some(edge_id) = forest_roots.pop() {
             branchings.push(EdgeId(edge_id));
             total_cost += graph.edges[edge_id].data.weight;
