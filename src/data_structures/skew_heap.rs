@@ -46,11 +46,7 @@ where
     fn add_assign(&mut self, rhs: K) { self.0 += rhs; }
 }
 
-//──────────────────────────────────────────────────────────────────────────────
-// Core data structures
-//──────────────────────────────────────────────────────────────────────────────
-
-#[derive(Debug, Clone, Default)]
+#[derive(Clone, Default)]
 pub struct SkewHeap<K, V>
 where
     K: Ord + Copy + Add<Output=K> + AddAssign + Default,
@@ -69,7 +65,7 @@ where
     val: V,
     left: Option<Box<Node<K, V>>>,
     right: Option<Box<Node<K, V>>>,
-    lazy: K, // pending Δ to add to *all keys* in this subtree
+    lazy: K, // pending delta to add to all keys in this subtree
 }
 
 impl<K, V> Node<K, V>
@@ -82,7 +78,6 @@ where
         Self { key, val, left: None, right: None, lazy: K::default() }
     }
 
-    /// Push down any pending Δ, making `key` current.
     #[inline]
     fn propagate(&mut self) {
         if self.lazy != K::default() {
