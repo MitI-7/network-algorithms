@@ -123,23 +123,23 @@ where
             self.delete_path(lambda[min[root]], &mut parent, &children, &mut is_root_in_f);
         }
 
-        let mut stack = Vec::new();
+        let mut root_in_f = Vec::new();
         for edge_id in 0..graph.num_edges() {
             if is_root_in_f[edge_id] {
-                stack.push(edge_id);
+                root_in_f.push(edge_id);
             }
         }
 
         let mut total_cost = W::zero();
         let mut branchings = Vec::with_capacity(num_nodes - 1);
 
-        while let Some(edge_id) = stack.pop() {
+        while let Some(edge_id) = root_in_f.pop() {
             branchings.push(EdgeId(edge_id));
             total_cost += graph.edges[edge_id].data.weight;
 
             let v = graph.edges[edge_id].v.index();
-            let ve = self.delete_path(lambda[v], &mut parent, &children, &mut is_root_in_f);
-            stack.extend(ve);
+            let new_root = self.delete_path(lambda[v], &mut parent, &children, &mut is_root_in_f);
+            root_in_f.extend(new_root);
         }
 
         (total_cost, branchings)
