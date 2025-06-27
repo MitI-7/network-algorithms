@@ -6,6 +6,43 @@ use crate::traits::{Bounded, IntNum, Zero};
 use std::marker::PhantomData;
 use std::mem;
 
+#[derive(Clone, Debug, Default)]
+struct Edge {
+    id: EdgeId,
+    from: usize,
+}
+
+struct Forest {
+    parent: Vec<usize>,
+    children: Vec<Vec<usize>>,
+    is_root: Vec<bool>,
+    lambda: Vec<usize>,
+}
+
+impl Forest {
+    fn delete_path(&mut self, u: usize) -> Vec<usize> {
+        let mut new_root = Vec::new();
+
+        let mut edge_id = self.lambda[u];
+        let mut pre_edge_id = usize::MAX;
+        while edge_id != usize::MAX {
+            self.is_root[edge_id] = false;
+            for &child_edge_id in self.children[edge_id].iter() {
+                if child_edge_id != pre_edge_id {
+                    self.parent[child_edge_id] = usize::MAX;
+                    self.is_root[child_edge_id] = true;
+                    new_root.push(child_edge_id);
+                }
+            }
+            pre_edge_id = edge_id;
+            edge_id = self.parent[edge_id];
+        }
+
+        new_root
+    }
+}
+
+
 #[derive(Default)]
 pub struct Tarjan<W> {
     phantom_data: PhantomData<W>,
@@ -16,12 +53,11 @@ where
     W: IntNum + Zero + Bounded + std::ops::Neg<Output = W> + Default,
 {
     pub fn solve(&mut self, graph: &Graph<Directed, (), WeightEdge<W>>) -> (W, Vec<EdgeId>) {
-        #[derive(Clone, Debug, Default)]
-        struct Edge {
-            id: EdgeId,
-            from: usize,
-        }
+        let (branching_roots, forest) = self.construct_forest(graph);
+        self.construct_branching(branching_roots, forest, graph)
+    }
 
+    fn construct_forest(&self, graph: &Graph<Directed, (), WeightEdge<W>>) -> (Vec<usize>, Forest) {
         let num_nodes = graph.num_nodes();
 
         let mut uf_wcc = UnionFind::new(num_nodes);
@@ -32,11 +68,12 @@ where
         let mut min: Vec<usize> = (0..num_nodes).collect();
         let mut cycles: Vec<Vec<EdgeId>> = vec![Vec::new(); num_nodes];
 
-        // forest F
-        let mut lambda = vec![usize::MAX; num_nodes];
-        let mut parent = vec![usize::MAX; graph.num_edges()];
-        let mut children = vec![Vec::new(); graph.num_edges()];
-        let mut is_root_in_f = vec![false; graph.num_edges()];
+        let mut forest = Forest {
+            parent: vec![usize::MAX; graph.num_edges()],
+            children: vec![Vec::new(); graph.num_edges()],
+            is_root: vec![false; graph.num_edges()],
+            lambda: vec![usize::MAX; num_nodes],
+        };
 
         for (idx, edge) in graph.edges.iter().enumerate() {
             enter_edges[edge.v.index()].push(edge.data.weight, Edge { id: EdgeId(idx), from: edge.u.index() });
@@ -62,16 +99,16 @@ where
             }
 
             enter[v] = (u, maximum_weight, edge.id);
-            is_root_in_f[edge.id.index()] = true;
+            forest.is_root[edge.id.index()] = true;
 
             if cycles[v].is_empty() {
-                lambda[v] = edge.id.index();
+                forest.lambda[v] = edge.id.index();
             }
 
             for cycle_edge_id in cycles[v].drain(..) {
-                parent[cycle_edge_id.index()] = edge.id.index();
-                children[edge.id.index()].push(cycle_edge_id.index());
-                is_root_in_f[cycle_edge_id.index()] = false;
+                forest.parent[cycle_edge_id.index()] = edge.id.index();
+                forest.children[edge.id.index()].push(cycle_edge_id.index());
+                forest.is_root[cycle_edge_id.index()] = false;
             }
 
             // u and v are not in the same wcc
@@ -118,49 +155,34 @@ where
             roots.push(scc);
         }
 
-        // construct branching
-        for root in rset {
-            self.delete_path(lambda[min[root]], &mut parent, &children, &mut is_root_in_f);
+        let branching_roots: Vec<usize> = rset.iter().map(|r| min[*r]).collect();
+        (branching_roots, forest)
+    }
+
+    fn construct_branching(&self, branching_roots: Vec<usize>, mut forest: Forest, graph: &Graph<Directed, (), WeightEdge<W>>) -> (W, Vec<EdgeId>) {
+        for r in branching_roots {
+            forest.delete_path(r);
         }
 
-        let mut root_in_f = Vec::new();
+        let mut forest_roots = Vec::new();
         for edge_id in 0..graph.num_edges() {
-            if is_root_in_f[edge_id] {
-                root_in_f.push(edge_id);
+            if forest.is_root[edge_id] {
+                forest_roots.push(edge_id);
             }
         }
 
         let mut total_cost = W::zero();
-        let mut branchings = Vec::with_capacity(num_nodes - 1);
+        let mut branchings = Vec::with_capacity(graph.num_nodes() - 1);
 
-        while let Some(edge_id) = root_in_f.pop() {
+        while let Some(edge_id) = forest_roots.pop() {
             branchings.push(EdgeId(edge_id));
             total_cost += graph.edges[edge_id].data.weight;
 
             let v = graph.edges[edge_id].v.index();
-            let new_root = self.delete_path(lambda[v], &mut parent, &children, &mut is_root_in_f);
-            root_in_f.extend(new_root);
+            let new_roots = forest.delete_path(v);
+            forest_roots.extend(new_roots);
         }
 
         (total_cost, branchings)
-    }
-
-    fn delete_path(&self, mut edge_id: usize, parent: &mut Vec<usize>, children: &Vec<Vec<usize>>,  is_root_in_f: &mut Vec<bool>) -> Vec<usize> {
-        let mut new_root = Vec::new();
-        let mut pre_edge_id = usize::MAX;
-        while edge_id != usize::MAX {
-            is_root_in_f[edge_id] = false;
-            for &child_edge_id in children[edge_id].iter() {
-                if child_edge_id != pre_edge_id {
-                    parent[child_edge_id] = usize::MAX;
-                    is_root_in_f[child_edge_id] = true;
-                    new_root.push(child_edge_id);
-                }
-            }
-            pre_edge_id = edge_id;
-            edge_id = parent[edge_id];
-        }
-
-        new_root
     }
 }
