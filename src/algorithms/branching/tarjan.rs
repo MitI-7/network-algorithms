@@ -3,7 +3,6 @@ use crate::data_structures::UnionFind;
 use crate::edge::weight::WeightEdge;
 use crate::prelude::{Directed, EdgeId, Graph};
 use crate::traits::{Bounded, IntNum, Zero};
-use std::collections::HashSet;
 use std::marker::PhantomData;
 use std::mem;
 
@@ -87,73 +86,55 @@ where
             }
 
             // contract cycle
-            // println!("cycle");
-            {
-                let mut cycle_edges = vec![edge.id];
-                let mut nodes = Vec::new();
-                let mut minimum_weight_in_cycle = maximum_weight;
-                let mut vertex = uf_scc.find(v);
-                let mut cur = uf_scc.find(u);
-                loop {
-                    nodes.push(cur);
+            let mut cycle_edges = vec![edge.id];
+            let mut nodes = Vec::new();
+            let mut minimum_weight_in_cycle = maximum_weight;
+            let mut vertex = uf_scc.find(v);
+            let mut cur = uf_scc.find(u);
+            loop {
+                nodes.push(cur);
 
-                    let (par, w, edge_id) = enter[cur];
-                    cycle_edges.push(edge_id);
-                    let par = uf_scc.find(par);
-                    if w < minimum_weight_in_cycle {
-                        minimum_weight_in_cycle = w;
-                        vertex = uf_scc.find(cur);
-                    }
-                    if par == v {
-                        break;
-                    }
-                    cur = uf_scc.find(par);
+                let (par, w, edge_id) = enter[cur];
+                cycle_edges.push(edge_id);
+                let par = uf_scc.find(par);
+                if w < minimum_weight_in_cycle {
+                    minimum_weight_in_cycle = w;
+                    vertex = uf_scc.find(cur);
                 }
-
-                assert_eq!(
-                    nodes.len(),
-                    {
-                        let mut hs: HashSet<usize> = HashSet::new();
-                        hs.extend(nodes.iter());
-                        hs.len()
-                    },
-                    "nodes に重複頂点が含まれています"
-                );
-
-                // adjust weight
-                enter_edges[v].add_all(minimum_weight_in_cycle - maximum_weight);
-                for &w in nodes.iter() {
-                    assert_ne!(enter[w].1, W::max_value());
-                    enter_edges[w].add_all(minimum_weight_in_cycle - enter[w].1);
+                if par == v {
+                    break;
                 }
-
-                // construct
-                let mut scc = v;
-                for &u in nodes.iter() {
-                    uf_scc.union(scc, u);
-                    uf_wcc.union(scc, u);
-                    let a = uf_scc.find(scc);
-                    let b = u ^ scc ^ a;
-                    if b != a {
-                        let other = mem::take(&mut enter_edges[b]);
-                        enter_edges[a].merge_with(other);
-                    }
-                    scc = a;
-                }
-                cycles[scc] = cycle_edges;
-                min[scc] = min[vertex];
-                println!("cycle");
-                println!("nodes:{:?}, scc:{}", nodes, scc);
-
-                roots.push(scc);
+                cur = uf_scc.find(par);
             }
+
+            // adjust weight
+            enter_edges[v].add_all(minimum_weight_in_cycle - maximum_weight);
+            for &w in nodes.iter() {
+                assert_ne!(enter[w].1, W::max_value());
+                enter_edges[w].add_all(minimum_weight_in_cycle - enter[w].1);
+            }
+
+            // construct
+            let mut scc = v;
+            for &u in nodes.iter() {
+                uf_scc.union(scc, u);
+                uf_wcc.union(scc, u);
+                let a = uf_scc.find(scc);
+                let b = u ^ scc ^ a;
+                if b != a {
+                    let other = mem::take(&mut enter_edges[b]);
+                    enter_edges[a].merge_with(other);
+                }
+                scc = a;
+            }
+            cycles[scc] = cycle_edges;
+            min[scc] = min[vertex];
+            roots.push(scc);
         }
 
         let mut delete = vec![false; graph.num_edges()];
-        // パスを消す
         for root in rset {
             let root = min[root];
-            println!("delete first {root}");
             let mut edge_id = lambda[root];
             while edge_id != usize::MAX {
                 delete[edge_id] = true;
@@ -175,13 +156,10 @@ where
         let mut total_cost = W::zero();
         let mut branchings = Vec::with_capacity(num_nodes - 1);
 
-        println!("stack:{:?}", stack);
         while let Some(edge_id) = stack.pop() {
-            println!("root edge_id: {:?}", edge_id);
             assert!(!delete[edge_id]);
             branchings.push(EdgeId(edge_id));
             total_cost += graph.edges[edge_id].data.weight;
-
 
             let v = graph.edges[edge_id].v.index();
             let mut edge_id = lambda[v];
@@ -205,7 +183,6 @@ where
 
 mod tests {
     use super::*;
-    // use crate::algorithms::branching::Edmonds;
 
     #[test]
     fn test1() {
@@ -242,7 +219,6 @@ mod tests {
         }
         assert_eq!(cost, 8);
     }
-
 
     #[test]
     fn test5() {
