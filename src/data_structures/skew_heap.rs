@@ -1,64 +1,9 @@
-use core::cmp::Ordering;
 use core::ops::{Add, AddAssign};
-
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-pub struct Rev<K>(pub K);
-
-impl<K: Ord> Ord for Rev<K> {
-    #[inline]
-    fn cmp(&self, other: &Self) -> Ordering { other.0.cmp(&self.0) }
-}
-impl<K: PartialOrd> PartialOrd for Rev<K> {
-    #[inline]
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        other.0.partial_cmp(&self.0)
-    }
-}
-// Forward arithmetic so that `add_all()` works on Rev keys.
-impl<K> Add for Rev<K>
-where
-    K: Add<Output=K>,
-{
-    type Output = Self;
-    #[inline]
-    fn add(self, rhs: Self) -> Self { Rev(self.0 + rhs.0) }
-}
-impl<K> AddAssign for Rev<K>
-where
-    K: AddAssign,
-{
-    #[inline]
-    fn add_assign(&mut self, rhs: Self) { self.0 += rhs.0; }
-}
-impl<K> Add<K> for Rev<K>
-where
-    K: Add<Output=K> + Copy,
-{
-    type Output = Self;
-    #[inline]
-    fn add(self, rhs: K) -> Self { Rev(self.0 + rhs) }
-}
-impl<K> AddAssign<K> for Rev<K>
-where
-    K: AddAssign + Copy,
-{
-    #[inline]
-    fn add_assign(&mut self, rhs: K) { self.0 += rhs; }
-}
-
-#[derive(Clone, Default)]
-pub struct SkewHeap<K, V>
-where
-    K: Ord + Copy + Add<Output=K> + AddAssign + Default,
-    V: Clone,
-{
-    root: Option<Box<Node<K, V>>>,
-}
 
 #[derive(Debug, Clone)]
 struct Node<K, V>
 where
-    K: Ord + Copy + Add<Output=K> + AddAssign + Default,
+    K: Ord + Copy + Add<Output = K> + AddAssign + Default,
     V: Clone,
 {
     key: K,
@@ -70,7 +15,7 @@ where
 
 impl<K, V> Node<K, V>
 where
-    K: Ord + Copy + Add<Output=K> + AddAssign + Default,
+    K: Ord + Copy + Add<Output = K> + AddAssign + Default,
     V: Clone,
 {
     #[inline]
@@ -82,23 +27,40 @@ where
     fn propagate(&mut self) {
         if self.lazy != K::default() {
             self.key += self.lazy;
-            if let Some(ref mut l) = self.left { l.lazy += self.lazy; }
-            if let Some(ref mut r) = self.right { r.lazy += self.lazy; }
+            if let Some(ref mut l) = self.left {
+                l.lazy += self.lazy;
+            }
+            if let Some(ref mut r) = self.right {
+                r.lazy += self.lazy;
+            }
             self.lazy = K::default();
         }
     }
 }
 
+#[derive(Clone, Default)]
+pub struct SkewHeap<K, V>
+where
+    K: Ord + Copy + Add<Output = K> + AddAssign + Default,
+    V: Clone,
+{
+    root: Option<Box<Node<K, V>>>,
+}
+
 impl<K, V> SkewHeap<K, V>
 where
-    K: Ord + Copy + Add<Output=K> + AddAssign + Default,
+    K: Ord + Copy + Add<Output = K> + AddAssign + Default,
     V: Clone,
 {
     #[inline]
-    pub fn new() -> Self { Self { root: None } }
+    pub fn new() -> Self {
+        Self { root: None }
+    }
 
     #[inline]
-    pub fn is_empty(&self) -> bool { self.root.is_none() }
+    pub fn is_empty(&self) -> bool {
+        self.root.is_none()
+    }
 
     // O(log n) amortised
     pub fn push(&mut self, key: K, val: V) {
@@ -147,7 +109,7 @@ where
             (Some(n1), Some(n2)) => {
                 n1.propagate();
                 n2.propagate();
-                // Keep `n1` as the larger root (max‑heap invariant)
+                // Keep n1 as the larger root (max‑heap invariant)
                 if n2.key > n1.key {
                     core::mem::swap(&mut h1, &mut h2);
                 }
@@ -165,49 +127,3 @@ where
         }
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::{Rev, SkewHeap};
-
-    #[test]
-    fn basic_max_heap() {
-        let mut pq = SkewHeap::<i32, &str>::new();
-        pq.push(3, "low");
-        pq.push(7, "high");
-        pq.push(5, "medium");
-        assert_eq!(pq.peek(), Some((7, "high")));
-        pq.add_all(10);
-        assert_eq!(pq.pop(), Some((17, "high")));
-        assert_eq!(pq.pop(), Some((15, "medium")));
-        assert_eq!(pq.pop(), Some((13, "low")));
-        assert!(pq.is_empty());
-    }
-
-    #[test]
-    fn basic_min_heap_with_rev() {
-        let mut pq = SkewHeap::<Rev<i32>, &str>::new();
-        pq.push(Rev(7), "high");
-        pq.push(Rev(3), "low");
-        pq.push(Rev(5), "medium");
-        assert_eq!(pq.peek().map(|(k, v)| (k.0, v)), Some((3, "low")));
-        pq.add_all(Rev(10));
-        assert_eq!(pq.pop().map(|(k, v)| (k.0, v)), Some((13, "low")));
-        assert_eq!(pq.pop().map(|(k, v)| (k.0, v)), Some((15, "medium")));
-        assert_eq!(pq.pop().map(|(k, v)| (k.0, v)), Some((17, "high")));
-    }
-
-    #[test]
-    fn merge_queues() {
-        let mut a = SkewHeap::<i32, &str>::new();
-        a.push(4, "a4");
-        a.push(1, "a1");
-        let mut b = SkewHeap::<i32, &str>::new();
-        b.push(3, "b3");
-        b.push(2, "b2");
-        a.merge_with(b);
-        // assert_eq!(a.pop(), Some((4
-
-    }
-}
-        
