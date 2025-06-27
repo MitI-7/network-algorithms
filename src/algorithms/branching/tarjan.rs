@@ -126,7 +126,7 @@ where
             let mut cycle_edges = vec![edge.id];
             let mut cycle_nodes = vec![(v, enter[v].1)];
             let mut minimum_weight_in_cycle = maximum_weight;
-            let mut vertex = uf_scc.find(v);
+            let mut minimum_weight_incoming_node = uf_scc.find(v);
             let mut now = uf_scc.find(u);
             while now != v {
                 let (prev, weight, edge_id) = enter[now];
@@ -135,7 +135,7 @@ where
 
                 if weight < minimum_weight_in_cycle {
                     minimum_weight_in_cycle = weight;
-                    vertex = now;
+                    minimum_weight_incoming_node = now;
                 }
                 now = uf_scc.find(prev);
             }
@@ -157,7 +157,7 @@ where
             }
             enter_edges[scc].merge_with(stock);
             cycles[scc] = cycle_edges;
-            min[scc] = min[vertex];
+            min[scc] = min[minimum_weight_incoming_node];
             roots.push(scc);
         }
 
