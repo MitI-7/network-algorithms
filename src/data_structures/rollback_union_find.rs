@@ -25,7 +25,7 @@ impl RollbackUnionFind {
     }
 
     pub fn union(&mut self, a: usize, b: usize) -> bool {
-        let (mut x, mut y) = (self.find(a), self.find(b));
+        let (x, y) = (self.find(a), self.find(b));
         if x == y {
             return false;
         }
