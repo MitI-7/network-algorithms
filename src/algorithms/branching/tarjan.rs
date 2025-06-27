@@ -13,7 +13,7 @@ pub struct Tarjan<W> {
 
 impl<W> Tarjan<W>
 where
-    W: IntNum + Zero + Bounded + std::ops::Neg<Output = W> + Default + std::fmt::Debug + std::fmt::Display,
+    W: IntNum + Zero + Bounded + std::ops::Neg<Output = W> + Default,
 {
     pub fn solve(&mut self, graph: &Graph<Directed, (), WeightEdge<W>>) -> (W, Vec<EdgeId>) {
         #[derive(Clone, Debug, Default)]
@@ -44,7 +44,6 @@ where
         }
 
         let mut roots: Vec<usize> = (0..num_nodes).collect(); // array of root components
-
         while let Some(k) = roots.pop() {
             let v = uf_scc.find(k);
             let (maximum_weight, edge) = enter_edges[v].pop().unwrap_or((W::zero(), Edge::default()));
@@ -87,19 +86,14 @@ where
             let mut minimum_weight_in_cycle = maximum_weight;
             let mut vertex = uf_scc.find(v);
             let mut now = uf_scc.find(u);
-            loop {
+            while now != v {
                 let (prev, weight, edge_id) = enter[now];
                 cycle_nodes.push(now);
                 cycle_edges.push(edge_id);
 
                 if weight < minimum_weight_in_cycle {
                     minimum_weight_in_cycle = weight;
-                    vertex = uf_scc.find(now);
-                }
-
-                let prev = uf_scc.find(prev);
-                if prev == v {
-                    break;
+                    vertex = now;
                 }
                 now = uf_scc.find(prev);
             }
@@ -108,7 +102,7 @@ where
             for &now in cycle_nodes.iter() {
                 // adjust weight
                 enter_edges[now].add_all(minimum_weight_in_cycle - enter[now].1);
-                assert_ne!(enter[now].1, W::max_value());
+                assert!(enter[now].1 != W::max_value());
 
                 uf_scc.union(scc, now);
                 uf_wcc.union(scc, now);
@@ -127,21 +121,12 @@ where
             roots.push(scc);
         }
 
+        // construct branching
         let mut delete = vec![false; graph.num_edges()];
         for root in rset {
-            let root = min[root];
-            let mut edge_id = lambda[root];
-            while edge_id != usize::MAX {
-                delete[edge_id] = true;
-                for &c in children[edge_id].iter() {
-                    parent[c] = usize::MAX;
-                    indegree[c] -= 1;
-                }
-                edge_id = parent[edge_id];
-            }
+            self.delete_path(min[root], &mut lambda, &mut parent, &children, &mut indegree, &mut delete);
         }
 
-        // construct branching
         let mut stack = Vec::new();
         for edge_id in 0..graph.num_edges() {
             if indegree[edge_id] == 0 && !delete[edge_id] && aru[edge_id] {
@@ -158,22 +143,29 @@ where
             total_cost += graph.edges[edge_id].data.weight;
 
             let v = graph.edges[edge_id].v.index();
-            let mut edge_id = lambda[v];
-
-            while edge_id != usize::MAX {
-                delete[edge_id] = true;
-                for &c in children[edge_id].iter() {
-                    parent[c] = usize::MAX;
-                    indegree[c] -= 1;
-                    if indegree[c] == 0 && !delete[c] {
-                        stack.push(c);
-                    }
-                }
-                edge_id = parent[edge_id];
-            }
+            let ve = self.delete_path(v, &mut lambda, &mut parent, &children, &mut indegree, &mut delete);
+            stack.extend(ve);
         }
 
         (total_cost, branchings)
+    }
+
+    fn delete_path(&self, u: usize, lambda: &Vec<usize>, parent: &mut Vec<usize>, children: &Vec<Vec<usize>>, indegree: &mut Vec<usize>, delete: &mut Vec<bool>) -> Vec<usize> {
+        let mut ve = Vec::new();
+        let mut edge_id = lambda[u];
+        while edge_id != usize::MAX {
+            delete[edge_id] = true;
+            for &c in children[edge_id].iter() {
+                parent[c] = usize::MAX;
+                indegree[c] -= 1;
+                if indegree[c] == 0 && !delete[c] {
+                    ve.push(c);
+                }
+            }
+            edge_id = parent[edge_id];
+        }
+
+        ve
     }
 }
 
