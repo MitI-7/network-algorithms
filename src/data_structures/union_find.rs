@@ -20,6 +20,7 @@ impl UnionFind {
         }
     }
 
+    #[inline]
     pub fn same(&mut self, u: usize, v: usize) -> bool {
         assert!(u < self.num_nodes && v < self.num_nodes);
         self.find_root(u) == self.find_root(v)
@@ -46,11 +47,13 @@ impl UnionFind {
         true
     }
 
+    #[inline]
     pub fn size(&mut self, u: usize) -> usize {
         let p = self.find_root(u);
         (-self.parent[p]) as usize
     }
 
+    #[inline]
     pub fn find(&mut self, u: usize) -> usize {
         self.find_root(u)
     }
@@ -65,6 +68,7 @@ impl UnionFind {
         group
     }
 
+    #[inline]
     fn find_root(&mut self, u: usize) -> usize {
         if self.parent[u] < 0 {
             u
@@ -75,4 +79,3 @@ impl UnionFind {
         }
     }
 }
-

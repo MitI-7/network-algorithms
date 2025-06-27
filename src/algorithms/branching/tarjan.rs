@@ -21,6 +21,13 @@ struct Forest {
 }
 
 impl Forest {
+    #[inline]
+    fn add_child(&mut self, parent: usize, child: usize) {
+        self.parent[child] = parent;
+        self.children[parent].push(child);
+        self.is_root.set(child, false);
+    }
+
     fn delete_path(&mut self, u: usize) -> Vec<usize> {
         let mut new_root = Vec::new();
 
@@ -113,9 +120,7 @@ where
             }
 
             for cycle_edge_id in cycles[v].drain(..) {
-                forest.parent[cycle_edge_id.index()] = edge.id.index();
-                forest.children[edge.id.index()].push(cycle_edge_id.index());
-                forest.is_root.set(cycle_edge_id.index(), false);
+                forest.add_child(edge.id.index(), cycle_edge_id.index());
             }
 
             // u and v are not in the same wcc
