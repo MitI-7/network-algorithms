@@ -119,9 +119,8 @@ where
         }
 
         // construct branching
-        let mut delete = vec![false; graph.num_edges()];
         for root in rset {
-            self.delete_path(lambda[min[root]], &mut parent, &children, &mut delete, &mut is_root_in_f);
+            self.delete_path(lambda[min[root]], &mut parent, &children, &mut is_root_in_f);
         }
 
         let mut stack = Vec::new();
@@ -135,30 +134,30 @@ where
         let mut branchings = Vec::with_capacity(num_nodes - 1);
 
         while let Some(edge_id) = stack.pop() {
-            assert!(!delete[edge_id]);
             branchings.push(EdgeId(edge_id));
             total_cost += graph.edges[edge_id].data.weight;
 
             let v = graph.edges[edge_id].v.index();
-            let ve = self.delete_path(lambda[v], &mut parent, &children, &mut delete, &mut is_root_in_f);
+            let ve = self.delete_path(lambda[v], &mut parent, &children, &mut is_root_in_f);
             stack.extend(ve);
         }
 
         (total_cost, branchings)
     }
 
-    fn delete_path(&self, mut edge_id: usize, parent: &mut Vec<usize>, children: &Vec<Vec<usize>>, delete: &mut Vec<bool>, is_root_in_f: &mut Vec<bool>) -> Vec<usize> {
+    fn delete_path(&self, mut edge_id: usize, parent: &mut Vec<usize>, children: &Vec<Vec<usize>>,  is_root_in_f: &mut Vec<bool>) -> Vec<usize> {
         let mut new_root = Vec::new();
+        let mut pre_edge_id = usize::MAX;
         while edge_id != usize::MAX {
-            delete[edge_id] = true;
             is_root_in_f[edge_id] = false;
-            for &c in children[edge_id].iter() {
-                parent[c] = usize::MAX;
-                if !delete[c] {
-                    is_root_in_f[c] = true;
-                    new_root.push(c);
+            for &child_edge_id in children[edge_id].iter() {
+                if child_edge_id != pre_edge_id {
+                    parent[child_edge_id] = usize::MAX;
+                    is_root_in_f[child_edge_id] = true;
+                    new_root.push(child_edge_id);
                 }
             }
+            pre_edge_id = edge_id;
             edge_id = parent[edge_id];
         }
 
