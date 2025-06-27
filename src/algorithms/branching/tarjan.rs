@@ -36,8 +36,7 @@ where
         let mut lambda = vec![usize::MAX; num_nodes];
         let mut parent = vec![usize::MAX; graph.num_edges()];
         let mut children = vec![Vec::new(); graph.num_edges()];
-        let mut indegree = vec![0; graph.num_edges()];
-        let mut aru = vec![false; graph.num_edges()];
+        let mut is_root_in_f = vec![false; graph.num_edges()];
 
         for (idx, edge) in graph.edges.iter().enumerate() {
             enter_edges[edge.v.index()].push(edge.data.weight, Edge { id: EdgeId(idx), from: edge.u.index() });
@@ -63,7 +62,7 @@ where
             }
 
             enter[v] = (u, maximum_weight, edge.id);
-            aru[edge.id.index()] = true;
+            is_root_in_f[edge.id.index()] = true;
 
             if cycles[v].is_empty() {
                 lambda[v] = edge.id.index();
@@ -72,7 +71,7 @@ where
             for cycle_edge_id in cycles[v].drain(..) {
                 parent[cycle_edge_id.index()] = edge.id.index();
                 children[edge.id.index()].push(cycle_edge_id.index());
-                indegree[cycle_edge_id.index()] += 1;
+                is_root_in_f[cycle_edge_id.index()] = false;
             }
 
             // u and v are not in the same wcc
@@ -82,13 +81,13 @@ where
 
             // contract cycle
             let mut cycle_edges = vec![edge.id];
-            let mut cycle_nodes = vec![v];
+            let mut cycle_nodes = vec![(v, enter[v].1)];
             let mut minimum_weight_in_cycle = maximum_weight;
             let mut vertex = uf_scc.find(v);
             let mut now = uf_scc.find(u);
             while now != v {
                 let (prev, weight, edge_id) = enter[now];
-                cycle_nodes.push(now);
+                cycle_nodes.push((now, weight));
                 cycle_edges.push(edge_id);
 
                 if weight < minimum_weight_in_cycle {
@@ -100,10 +99,10 @@ where
 
             let mut scc = v;
             let mut stock = SkewHeap::<W, Edge>::default();
-            for now in cycle_nodes {
+            for (now, weight) in cycle_nodes {
                 // adjust weight
-                enter_edges[now].add_all(minimum_weight_in_cycle - enter[now].1);
-                debug_assert!(enter[now].1 != W::max_value());
+                enter_edges[now].add_all(minimum_weight_in_cycle - weight);
+                debug_assert!(weight != W::max_value());
 
                 // contraction
                 uf_scc.union(scc, now);
@@ -122,12 +121,12 @@ where
         // construct branching
         let mut delete = vec![false; graph.num_edges()];
         for root in rset {
-            self.delete_path(min[root], &mut lambda, &mut parent, &children, &mut indegree, &mut delete);
+            self.delete_path(lambda[min[root]], &mut parent, &children, &mut delete, &mut is_root_in_f);
         }
 
         let mut stack = Vec::new();
         for edge_id in 0..graph.num_edges() {
-            if indegree[edge_id] == 0 && !delete[edge_id] && aru[edge_id] {
+            if is_root_in_f[edge_id] {
                 stack.push(edge_id);
             }
         }
@@ -141,30 +140,22 @@ where
             total_cost += graph.edges[edge_id].data.weight;
 
             let v = graph.edges[edge_id].v.index();
-            let ve = self.delete_path(v, &mut lambda, &mut parent, &children, &mut indegree, &mut delete);
+            let ve = self.delete_path(lambda[v], &mut parent, &children, &mut delete, &mut is_root_in_f);
             stack.extend(ve);
         }
 
         (total_cost, branchings)
     }
 
-    fn delete_path(
-        &self,
-        u: usize,
-        lambda: &Vec<usize>,
-        parent: &mut Vec<usize>,
-        children: &Vec<Vec<usize>>,
-        indegree: &mut Vec<usize>,
-        delete: &mut Vec<bool>,
-    ) -> Vec<usize> {
+    fn delete_path(&self, mut edge_id: usize, parent: &mut Vec<usize>, children: &Vec<Vec<usize>>, delete: &mut Vec<bool>, is_root_in_f: &mut Vec<bool>) -> Vec<usize> {
         let mut new_root = Vec::new();
-        let mut edge_id = lambda[u];
         while edge_id != usize::MAX {
             delete[edge_id] = true;
+            is_root_in_f[edge_id] = false;
             for &c in children[edge_id].iter() {
                 parent[c] = usize::MAX;
-                indegree[c] -= 1;
-                if indegree[c] == 0 && !delete[c] {
+                if !delete[c] {
+                    is_root_in_f[c] = true;
                     new_root.push(c);
                 }
             }
