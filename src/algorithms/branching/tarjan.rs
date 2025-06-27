@@ -1,6 +1,13 @@
+//! Tarjan’s optimum branching algorithm
+//!
+//! # References
+//! [1] R. E. Tarjan, “Finding optimum branchings,” Networks, vol. 7, no. 1, pp. 25–35, Mar. 1977, doi: 10.1002/net.3230070103.
+//! [2] P. M. Camerini, L. Fratta, and F. Maffioli, “A note on finding optimum branchings,” Networks, vol. 9, no. 4, pp. 309–312, Dec. 1979, doi: 10.1002/net.3230090403.
+//! [3] A. Tofigh, “Optimum Branchings and Spanning Aborescences”, PDF: https://cw.fel.cvut.cz/old/_media/courses/a4m33pal/cviceni/algorithm-description.pdf
+
+use crate::data_structures::bit_vector::BitVector;
 use crate::data_structures::skew_heap::SkewHeap;
 use crate::data_structures::UnionFind;
-use crate::data_structures::bit_vector::BitVector;
 use crate::edge::weight::WeightEdge;
 use crate::prelude::{Directed, EdgeId, Graph};
 use crate::traits::{Bounded, IntNum, Zero};
@@ -17,7 +24,7 @@ struct Forest {
     parent: Box<[usize]>,
     children: Box<[Vec<usize>]>,
     is_root: BitVector,
-    lambda: Box<[usize]>,   // Leaf edge in Forest headed by v; usize::MAX if none.
+    lambda: Box<[usize]>, // Leaf edge in Forest headed by v; usize::MAX if none.
 }
 
 impl Forest {
@@ -91,7 +98,7 @@ where
             let v = uf_scc.find(r);
 
             let (maximum_weight, edge) = match enter_edges[v].pop() {
-                Some((maximum_weight, edge))=> (maximum_weight, edge),
+                Some((maximum_weight, edge)) => (maximum_weight, edge),
                 None => {
                     rset.push(v);
                     continue;
