@@ -44,12 +44,11 @@ where
         }
 
         let mut roots: Vec<usize> = (0..num_nodes).collect(); // array of root components
-        roots.reverse();
 
         while let Some(k) = roots.pop() {
             let v = uf_scc.find(k);
-
             let (maximum_weight, edge) = enter_edges[v].pop().unwrap_or((W::zero(), Edge::default()));
+
             // no positive weight incoming edge of v
             if maximum_weight <= W::zero() {
                 rset.push(v);
@@ -64,12 +63,9 @@ where
                 continue;
             }
 
-            enter[v] = (u, maximum_weight, edge.id); // これどこにいれよ？
-            assert_ne!(enter[v].0, v);
+            enter[v] = (u, maximum_weight, edge.id);
             aru[edge.id.index()] = true;
 
-            // (u, v)を森にいれる
-            // もし，
             if cycles[v].is_empty() {
                 lambda[v] = edge.id.index();
             } else {
@@ -87,45 +83,44 @@ where
 
             // contract cycle
             let mut cycle_edges = vec![edge.id];
-            let mut nodes = Vec::new();
+            let mut cycle_nodes = vec![v];
             let mut minimum_weight_in_cycle = maximum_weight;
             let mut vertex = uf_scc.find(v);
-            let mut cur = uf_scc.find(u);
+            let mut now = uf_scc.find(u);
             loop {
-                nodes.push(cur);
-
-                let (par, w, edge_id) = enter[cur];
+                let (prev, weight, edge_id) = enter[now];
+                cycle_nodes.push(now);
                 cycle_edges.push(edge_id);
-                let par = uf_scc.find(par);
-                if w < minimum_weight_in_cycle {
-                    minimum_weight_in_cycle = w;
-                    vertex = uf_scc.find(cur);
+
+                if weight < minimum_weight_in_cycle {
+                    minimum_weight_in_cycle = weight;
+                    vertex = uf_scc.find(now);
                 }
-                if par == v {
+
+                let prev = uf_scc.find(prev);
+                if prev == v {
                     break;
                 }
-                cur = uf_scc.find(par);
+                now = uf_scc.find(prev);
             }
 
-            // adjust weight
-            enter_edges[v].add_all(minimum_weight_in_cycle - maximum_weight);
-            for &w in nodes.iter() {
-                assert_ne!(enter[w].1, W::max_value());
-                enter_edges[w].add_all(minimum_weight_in_cycle - enter[w].1);
-            }
-
-            // construct
             let mut scc = v;
-            for &u in nodes.iter() {
-                uf_scc.union(scc, u);
-                uf_wcc.union(scc, u);
-                let a = uf_scc.find(scc);
-                let b = u ^ scc ^ a;
-                if b != a {
-                    let other = mem::take(&mut enter_edges[b]);
-                    enter_edges[a].merge_with(other);
-                }
-                scc = a;
+            for &now in cycle_nodes.iter() {
+                // adjust weight
+                enter_edges[now].add_all(minimum_weight_in_cycle - enter[now].1);
+                assert_ne!(enter[now].1, W::max_value());
+
+                uf_scc.union(scc, now);
+                uf_wcc.union(scc, now);
+                let new_scc = uf_scc.find(scc);
+
+                // move edges to new scc
+                let other = mem::take(&mut enter_edges[now]);
+                enter_edges[new_scc].merge_with(other);
+                let other = mem::take(&mut enter_edges[scc]);
+                enter_edges[new_scc].merge_with(other);
+
+                scc = new_scc;
             }
             cycles[scc] = cycle_edges;
             min[scc] = min[vertex];
@@ -146,6 +141,7 @@ where
             }
         }
 
+        // construct branching
         let mut stack = Vec::new();
         for edge_id in 0..graph.num_edges() {
             if indegree[edge_id] == 0 && !delete[edge_id] && aru[edge_id] {
