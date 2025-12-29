@@ -1,0 +1,5 @@
+[package]
+name = "network-algorithms"
+version = "0.1.0"
+edition = "2024"
+repository = "https://github.com/MitI-7/network-algorithms"
