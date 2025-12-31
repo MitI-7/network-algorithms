@@ -1,4 +1,4 @@
-#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
 pub struct NodeId(pub usize);
 
 impl From<NodeId> for usize {
@@ -15,10 +15,20 @@ impl NodeId {
     }
 }
 
-#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
 pub struct EdgeId(pub usize);
 
 impl EdgeId {
+    #[inline]
+    pub fn index(self) -> usize {
+        self.0
+    }
+}
+
+#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
+pub struct ArcId(pub usize);
+
+impl ArcId {
     #[inline]
     pub fn index(self) -> usize {
         self.0
