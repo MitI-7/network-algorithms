@@ -1,21 +1,14 @@
 use core::ops::{Div, DivAssign, Mul, MulAssign};
-use network_algorithms::graph::ids::NodeId;
-use network_algorithms::algorithms::maximum_flow::{
-    edge::MaximumFlowEdge,
-    FordFulkerson, MaximumFlowSolver,
-    status::Status,
+use network_algorithms::{
+    algorithms::maximum_flow::{
+        FordFulkerson, MaximumFlowSolver, edge::MaximumFlowEdge,
+    },
+    core::numeric::FlowNum,
+    graph::{direction::Directed, graph::Graph, ids::NodeId},
 };
-// use network_algorithms::traits::One;
-// use network_algorithms::traits::Zero;
+use num_traits::{One, Zero};
 use rstest::rstest;
-use std::fmt::Debug;
-use std::fs::read_to_string;
-use std::path::PathBuf;
-use std::str::FromStr;
-use network_algorithms::graph::graph::Graph;
-use network_algorithms::core::numeric::FlowNum;
-use num_traits::{Zero, One};
-use network_algorithms::graph::direction::Directed;
+use std::{fmt::Debug, fs::read_to_string, path::PathBuf, str::FromStr};
 
 enum Solver {
     // CapacityScaling,
@@ -27,29 +20,49 @@ enum Solver {
     // ShortestAugmentingPath,
 }
 
-
-
-fn load_graph<F: Copy + Zero + FromStr + Default>(input_file_path: &PathBuf) -> (usize, usize, NodeId, NodeId, F, Graph<Directed, (), MaximumFlowEdge<i64>>)
+fn load_graph<F: Copy + Zero + FromStr + Default>(
+    input_file_path: &PathBuf,
+) -> (
+    usize,
+    usize,
+    NodeId,
+    NodeId,
+    F,
+    Graph<Directed, (), MaximumFlowEdge<i64>>,
+)
 where
     <F as FromStr>::Err: Debug,
 {
-
     let mut graph = Graph::new_directed();
 
-    let (mut num_nodes, mut num_edges, mut source, mut sink, mut expected) = (0, 0, NodeId(0), NodeId(0), F::zero());
+    let (mut num_nodes, mut num_edges, mut source, mut sink, mut expected) =
+        (0, 0, NodeId(0), NodeId(0), F::zero());
     let mut nodes = Vec::new();
 
-    read_to_string(&input_file_path).unwrap().split('\n').enumerate().for_each(|(i, line)| {
-        let line: Vec<&str> = line.split_whitespace().collect();
-        if i == 0 {
-            (num_nodes, num_edges, source, sink, expected) =
-                (line[0].parse().unwrap(), line[1].parse().unwrap(), NodeId(line[2].parse().unwrap()), NodeId(line[3].parse().unwrap()), line[4].parse().unwrap());
-            nodes = graph.add_nodes(num_nodes);
-        } else {
-            let (from, to, upper) = (line[0].parse::<usize>().unwrap(), line[1].parse::<usize>().unwrap(), line[2].parse::<i64>().unwrap());
-            graph.add_edge(nodes[from], nodes[to], MaximumFlowEdge{capacity: upper});
-        }
-    });
+    read_to_string(&input_file_path)
+        .unwrap()
+        .split('\n')
+        .enumerate()
+        .for_each(|(i, line)| {
+            let line: Vec<&str> = line.split_whitespace().collect();
+            if i == 0 {
+                (num_nodes, num_edges, source, sink, expected) = (
+                    line[0].parse().unwrap(),
+                    line[1].parse().unwrap(),
+                    NodeId(line[2].parse().unwrap()),
+                    NodeId(line[3].parse().unwrap()),
+                    line[4].parse().unwrap(),
+                );
+                nodes = graph.add_nodes(num_nodes);
+            } else {
+                let (from, to, upper) = (
+                    line[0].parse::<usize>().unwrap(),
+                    line[1].parse::<usize>().unwrap(),
+                    line[2].parse::<i64>().unwrap(),
+                );
+                graph.add_edge(nodes[from], nodes[to], MaximumFlowEdge { capacity: upper });
+            }
+        });
 
     (num_nodes, num_edges, source, sink, expected, graph)
 }
@@ -61,7 +74,18 @@ impl Solver {
         skip_for_libreoj && path.to_str().map_or(false, |s| s.contains("LibreOJ"))
     }
 
-    pub fn build<Flow: FlowNum + Default + One + Mul<Output = Flow> + MulAssign + Div<Output = Flow> + DivAssign + 'static>(&self) -> Box<dyn MaximumFlowSolver<Flow>> {
+    pub fn build<
+        Flow: FlowNum
+            + Default
+            + One
+            + Mul<Output = Flow>
+            + MulAssign
+            + Div<Output = Flow>
+            + DivAssign
+            + 'static,
+    >(
+        &self,
+    ) -> Box<dyn MaximumFlowSolver<Flow>> {
         match self {
             // Solver::CapacityScaling => Box::new(CapacityScaling::default()),
             // Solver::Dinic => Box::new(Dinic::default()),

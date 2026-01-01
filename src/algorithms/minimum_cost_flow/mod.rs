@@ -8,7 +8,7 @@ pub mod status;
 pub mod successive_shortest_path;
 
 pub use self::status::Status;
-use crate::core::numeric::CostNum;
+// use crate::core::numeric::CostNum;
 use num_traits::{One, Zero};
 use std::fmt::Debug;
 use std::ops::{Add, AddAssign, Mul, Neg, Sub, SubAssign};

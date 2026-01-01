@@ -28,10 +28,10 @@ where
 
     fn minimum_cut(
         &mut self,
-        graph: &Graph<Directed, (), MaximumFlowEdge<F>>,
-        source: NodeId,
-        sink: NodeId,
-        upper: Option<F>,
+        _graph: &Graph<Directed, (), MaximumFlowEdge<F>>,
+        _source: NodeId,
+        _sink: NodeId,
+        _upper: Option<F>,
     ) -> Result<MaxFlowResult<F>, Status> {
         todo!()
     }

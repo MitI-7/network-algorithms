@@ -6,7 +6,7 @@ use crate::{
     graph::{
         direction::Directed,
         graph::Graph,
-        ids::{EdgeId, NodeId},
+        ids::NodeId,
     },
 };
 use std::cmp::Reverse;

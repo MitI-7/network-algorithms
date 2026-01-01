@@ -1,5 +1,7 @@
-use network_algorithms::graph::direction::Directed;
-use network_algorithms::graph::graph::Graph;
+use network_algorithms::graph::{
+    direction::Directed,
+    graph::Graph,
+};
 
 fn main() {
     let mut graph: Graph<Directed, (), ()> = Graph::new_directed();
