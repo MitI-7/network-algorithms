@@ -1,15 +1,13 @@
-use crate::algorithms::minimum_cost_flow::validate::{trivial, validate};
+use crate::algorithms::minimum_cost_flow::validate::{
+    trivial_solution_if_any, validate_balance, validate_infeasible,
+};
 use crate::{
     algorithms::minimum_cost_flow::{
         MinimumCostFlowNum, edge::MinimumCostFlowEdge, node::MinimumCostFlowNode,
         normalized_network::NormalizedNetwork, residual_network::ResidualNetwork,
         result::MinimumCostFlowResult, solver::MinimumCostFlowSolver, status::Status,
     },
-    graph::{
-        direction::Directed,
-        graph::Graph,
-        ids::EdgeId,
-    },
+    graph::{direction::Directed, graph::Graph, ids::EdgeId},
 };
 use std::{cmp::Reverse, collections::BinaryHeap};
 
@@ -38,8 +36,10 @@ where
         &mut self,
         graph: &mut Graph<Directed, MinimumCostFlowNode<F>, MinimumCostFlowEdge<F>>,
     ) -> Result<MinimumCostFlowResult<F>, Status> {
-        validate(graph)?;
-        if let Some(res) = trivial(graph) {
+        validate_balance(graph)?;
+        validate_infeasible(graph)?;
+
+        if let Some(res) = trivial_solution_if_any(graph) {
             return res;
         }
 

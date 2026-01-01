@@ -6,7 +6,7 @@ use crate::{
         residual_network::{ResidualNetwork, construct_extend_network_one_supply_one_demand},
         result::MinimumCostFlowResult,
         status::Status,
-        validate::{trivial, validate},
+        validate::{trivial_solution_if_any, validate_infeasible, validate_balance},
         {MinimumCostFlowNum, MinimumCostFlowSolver},
     },
     graph::{
@@ -47,9 +47,10 @@ where
         &mut self,
         graph: &mut Graph<Directed, MinimumCostFlowNode<F>, MinimumCostFlowEdge<F>>,
     ) -> Result<MinimumCostFlowResult<F>, Status> {
-        validate(graph)?;
+        validate_balance(graph)?;
+        validate_infeasible(graph)?;
 
-        if let Some(res) = trivial(graph) {
+        if let Some(res) = trivial_solution_if_any(graph) {
             return res;
         }
 

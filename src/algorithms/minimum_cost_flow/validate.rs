@@ -6,7 +6,7 @@ use crate::{
     graph::{direction::Directed, graph::Graph, ids::NodeId},
 };
 
-pub fn validate<F: MinimumCostFlowNum>(
+pub fn validate_balance<F: MinimumCostFlowNum>(
     graph: &mut Graph<Directed, MinimumCostFlowNode<F>, MinimumCostFlowEdge<F>>,
 ) -> Result<(), Status> {
     if (0..graph.num_nodes())
@@ -16,15 +16,13 @@ pub fn validate<F: MinimumCostFlowNum>(
     {
         return Err(Status::Unbalanced);
     }
+    
+    Ok(())
+}
 
-    let mut t = F::zero();
-    for u in 0..graph.num_nodes() {
-        t += graph.get_node(NodeId(u)).data.b;
-    }
-    if t != F::zero() {
-        return Err(Status::Unbalanced);
-    }
-
+pub fn validate_infeasible<F: MinimumCostFlowNum>(
+    graph: &mut Graph<Directed, MinimumCostFlowNode<F>, MinimumCostFlowEdge<F>>,
+) -> Result<(), Status> {
     if graph.num_edges() == 0 {
         for u in 0..graph.num_nodes() {
             if graph.get_node(NodeId(u)).data.b != F::zero() {
@@ -36,7 +34,7 @@ pub fn validate<F: MinimumCostFlowNum>(
     Ok(())
 }
 
-pub fn trivial<F: MinimumCostFlowNum>(
+pub fn trivial_solution_if_any<F: MinimumCostFlowNum>(
     graph: &mut Graph<Directed, MinimumCostFlowNode<F>, MinimumCostFlowEdge<F>>,
 ) -> Option<Result<MinimumCostFlowResult<F>, Status>> {
     if graph.num_nodes() == 0 {
@@ -47,11 +45,6 @@ pub fn trivial<F: MinimumCostFlowNum>(
     }
 
     if graph.num_edges() == 0 {
-        for u in 0..graph.num_nodes() {
-            if graph.get_node(NodeId(u)).data.b != F::zero() {
-                return Some(Err(Status::Infeasible));
-            }
-        }
         return Some(Ok(MinimumCostFlowResult {
             objective_value: F::zero(),
             flows: vec![F::zero(); graph.num_edges()],
