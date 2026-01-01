@@ -2,11 +2,12 @@ use crate::algorithms::minimum_cost_flow::edge::MinimumCostFlowEdge;
 use crate::algorithms::minimum_cost_flow::node::MinimumCostFlowNode;
 use crate::algorithms::minimum_cost_flow::{
     MinimumCostFlowNum, residual_network::ResidualNetwork, solver::MinimumCostFlowSolver, status::Status,
-    translater::translater,
+    // translater::translater,
 };
 use crate::graph::{direction::Directed, graph::Graph, ids::EdgeId};
 use std::{cmp::Reverse, collections::BinaryHeap};
 use crate::algorithms::minimum_cost_flow::normalized_network::NormalizedNetwork;
+use crate::algorithms::minimum_cost_flow::result::MinimumCostFlowResult;
 // use crate::graph::node::ExcessNode;
 
 #[derive(Default)]
@@ -18,7 +19,19 @@ impl<F> MinimumCostFlowSolver<F> for SuccessiveShortestPath<F>
 where
     F: MinimumCostFlowNum,
 {
-    fn solve(&mut self, graph: &mut Graph<Directed, MinimumCostFlowNode<F>, MinimumCostFlowEdge<F>>) -> Result<F, Status> {
+    fn solve(&mut self, graph: &mut Graph<Directed, MinimumCostFlowNode<F>, MinimumCostFlowEdge<F>>) -> Result<MinimumCostFlowResult<F>, Status> {
+        self.run(graph)
+    }
+}
+
+impl<F> SuccessiveShortestPath<F>
+where
+    F: MinimumCostFlowNum,
+{
+    pub fn run(
+        &mut self,
+        graph: &mut Graph<Directed, MinimumCostFlowNode<F>,MinimumCostFlowEdge<F>>,
+    ) -> Result<MinimumCostFlowResult<F>, Status> {
         if (0..graph.num_nodes())
             .into_iter()
             .fold(F::zero(), |sum, u| sum + graph.nodes[u].data.b)
@@ -27,7 +40,7 @@ where
             return Err(Status::Unbalanced);
         }
 
-        let new_graph = translater(graph);
+        // let new_graph = translater(graph);
         let ne = NormalizedNetwork::new(graph);
         self.csr.build(&ne, None, None);
         // self.csr.excesses = new_graph.b.clone().into_boxed_slice();
@@ -54,25 +67,17 @@ where
         let flows = self.csr.set_flow(graph);
 
         if self.csr.excesses.iter().all(|&e| e == F::zero()) {
-            Ok((0..graph.num_edges()).fold(F::zero(), |cost, edge_id| {
+            let c =(0..graph.num_edges()).fold(F::zero(), |cost, edge_id| {
                 let edge = graph.get_edge(EdgeId(edge_id));
                 cost + edge.data.cost * flows[edge_id]
-            }))
+            }); 
+            Ok(MinimumCostFlowResult {
+                objective_value: c,
+                flows: flows,
+            })
         } else {
             Err(Status::Infeasible)
         }
-    }
-}
-
-impl<F> SuccessiveShortestPath<F>
-where
-    F: MinimumCostFlowNum,
-{
-    pub fn solve(
-        &mut self,
-        graph: &mut Graph<Directed, MinimumCostFlowNode<F>,MinimumCostFlowEdge<F>>,
-    ) -> Result<F, Status> {
-        <Self as MinimumCostFlowSolver<F>>::solve(self, graph)
     }
 
     pub fn calculate_distance(

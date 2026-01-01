@@ -1,6 +1,6 @@
-use network_algorithms::algorithms::maximum_flow::edge::MaximumFlowEdge;
-use network_algorithms::algorithms::maximum_flow::FordFulkerson;
-use network_algorithms::algorithms::minimum_cost_flow::{successive_shortest_path};
+// use network_algorithms::algorithms::maximum_flow::edge::MaximumFlowEdge;
+// use network_algorithms::algorithms::maximum_flow::FordFulkerson;
+// use network_algorithms::algorithms::minimum_cost_flow::{successive_shortest_path};
 use network_algorithms::algorithms::minimum_cost_flow::{
     edge::MinimumCostFlowEdge,
     node::MinimumCostFlowNode,
@@ -8,7 +8,8 @@ use network_algorithms::algorithms::minimum_cost_flow::{
 use network_algorithms::algorithms::minimum_cost_flow::successive_shortest_path::SuccessiveShortestPath;
 use network_algorithms::graph::direction::Directed;
 use network_algorithms::graph::graph::Graph;
-use network_algorithms::graph::ids::EdgeId;
+// use network_algorithms::graph::ids::EdgeId;
+use network_algorithms::algorithms::minimum_cost_flow::solver::MinimumCostFlowSolver;
 
 fn primal_network_simplex() {
     let mut graph: Graph<Directed, MinimumCostFlowNode<i32>, MinimumCostFlowEdge<i32>> = Graph::new_directed();
@@ -29,12 +30,12 @@ fn primal_network_simplex() {
     graph.get_node_mut(nodes[4]).data.b = -15;
 
     match SuccessiveShortestPath::default().solve(&mut graph) {
-        Ok(value) => {
-            println!("minimum cost:{}", value);
+        Ok(result) => {
+            println!("minimum cost:{}", result.objective_value);
             // for edge_id in edges {
             //     println!("{:?}: {}", graph.get_edge(edge_id), flow[edge_id.index()]);
             // }
-            assert_eq!(value, 150);
+            assert_eq!(result.objective_value, 150);
         }
         _ => unreachable!(),
     }

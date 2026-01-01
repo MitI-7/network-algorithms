@@ -107,7 +107,7 @@ fn minimum_cost_flow(#[files("tests/minimum_cost_flow/*/*.txt")] path: PathBuf, 
 
     match actual {
         Ok(actual) => {
-            assert_eq!(actual, expected.parse().unwrap(), "{:?}", path);
+            assert_eq!(actual.objective_value, expected.parse().unwrap(), "{:?}", path);
         }
         _ => assert_eq!("infeasible", expected, "{:?}", path),
     }

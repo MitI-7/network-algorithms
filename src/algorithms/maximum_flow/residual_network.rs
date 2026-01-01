@@ -40,12 +40,12 @@ where
         self.distances_to_sink = vec![self.num_nodes; self.num_nodes].into_boxed_slice();
 
         let mut degree = vec![0; self.num_nodes].into_boxed_slice();
-        
+
         for edge in graph.edges.iter() {
             degree[edge.u.index()] += 1;
             degree[edge.v.index()] += 1;
         }
-        
+
 
         for u in 1..=self.num_nodes {
             self.start[u] += self.start[u - 1] + degree[u - 1];
@@ -76,14 +76,12 @@ where
         }
     }
 
-    pub fn set_flow(&self, graph: &Graph<Directed, (), MaximumFlowEdge<F>>) -> Vec<F>{
-        let mut flows = Vec::new();
-        for edge_id in 0..graph.num_edges() {
-            let inside_edge_id = self.edge_index_to_inside_arc_index[edge_id];
-            // graph.edges[edge_id].data.flow = self.flow[inside_edge_id];
-            flows.push(self.flow[inside_edge_id]);
-        }
-        flows
+    pub fn get_flows(&self) -> Vec<F>{
+        self
+            .edge_index_to_inside_arc_index
+            .iter()
+            .map(|&inside_edge_id| self.flow[inside_edge_id])
+            .collect()
     }
 
     #[inline]

@@ -18,12 +18,12 @@ fn ford_fulkerson_sample() {
     edges.push(graph.add_edge(nodes[4], nodes[5], MaximumFlowEdge{capacity: 3}));
 
     match FordFulkerson::default().solve(&mut graph, nodes[0], nodes[5], None) {
-        Ok((value, flow)) => {
-            println!("maximum flow:{}", value);
+        Ok(result) => {
+            println!("maximum flow:{}", result.objective_value);
             for edge_id in edges {
-                println!("{:?}: {}", graph.get_edge(edge_id), flow[edge_id.index()]);
+                println!("{:?}: {}", graph.get_edge(edge_id), result.flows[edge_id.index()]);
             }
-            assert_eq!(value, 5);
+            assert_eq!(result.objective_value, 5);
         }
         _ => unreachable!(),
     }

@@ -92,7 +92,7 @@ fn maximum_flow(#[files("tests/maximum_flow/*/*.txt")] path: PathBuf, #[case] so
     let actual = solver_impl.solve(&mut graph, source, sink, None);
     assert_eq!(graph.num_nodes(), num_nodes);
     assert_eq!(graph.num_edges(), num_edges);
-    assert_eq!(actual.unwrap().0, expected);
+    assert_eq!(actual.unwrap().objective_value, expected);
 }
 
 // #[rstest]
