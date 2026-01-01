@@ -1,10 +1,8 @@
 use core::ops::{Div, DivAssign, Mul, MulAssign};
 use network_algorithms::{
-    algorithms::maximum_flow::{
-        FordFulkerson, MaximumFlowSolver, edge::MaximumFlowEdge,
-    },
+    algorithms::maximum_flow::{FordFulkerson, MaximumFlowGraph, MaximumFlowSolver},
     core::numeric::FlowNum,
-    graph::{direction::Directed, graph::Graph, ids::NodeId},
+    graph::{ids::NodeId},
 };
 use num_traits::{One, Zero};
 use rstest::rstest;
@@ -22,18 +20,11 @@ enum Solver {
 
 fn load_graph<F: Copy + Zero + FromStr + Default>(
     input_file_path: &PathBuf,
-) -> (
-    usize,
-    usize,
-    NodeId,
-    NodeId,
-    F,
-    Graph<Directed, (), MaximumFlowEdge<i64>>,
-)
+) -> (usize, usize, NodeId, NodeId, F, MaximumFlowGraph<i64>)
 where
     <F as FromStr>::Err: Debug,
 {
-    let mut graph = Graph::new_directed();
+    let mut graph = MaximumFlowGraph::new();
 
     let (mut num_nodes, mut num_edges, mut source, mut sink, mut expected) =
         (0, 0, NodeId(0), NodeId(0), F::zero());
@@ -60,7 +51,7 @@ where
                     line[1].parse::<usize>().unwrap(),
                     line[2].parse::<i64>().unwrap(),
                 );
-                graph.add_edge(nodes[from], nodes[to], MaximumFlowEdge { capacity: upper });
+                graph.add_edge(nodes[from], nodes[to], upper);
             }
         });
 

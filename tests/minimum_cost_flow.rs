@@ -1,9 +1,5 @@
-use network_algorithms::{
-    algorithms::minimum_cost_flow::{
-        MinimumCostFlowNum, edge::MinimumCostFlowEdge, node::MinimumCostFlowNode,
-        solver::MinimumCostFlowSolver, successive_shortest_path::SuccessiveShortestPath,
-    },
-    graph::{direction::Directed, graph::Graph},
+use network_algorithms::algorithms::minimum_cost_flow::{
+    MinimumCostFlowGraph, MinimumCostFlowNum, MinimumCostFlowSolver, SuccessiveShortestPath,
 };
 use rstest::rstest;
 use std::{fmt::Debug, fs::read_to_string, path::PathBuf};
@@ -75,9 +71,7 @@ fn minimum_cost_flow(
     }
 
     let (mut num_nodes, mut num_edges, mut expected) = (0, 0, "dummy".to_string());
-    // let mut graph = MinimumCostFlowGraph::<i128>::default();
-    let mut graph: Graph<Directed, MinimumCostFlowNode<i128>, MinimumCostFlowEdge<i128>> =
-        Graph::new_directed();
+    let mut graph = MinimumCostFlowGraph::<i128>::new();
     let mut nodes = Vec::new();
 
     read_to_string(&path)
@@ -104,11 +98,7 @@ fn minimum_cost_flow(
                     line[3].parse().unwrap(),
                     line[4].parse().unwrap(),
                 );
-                graph.add_edge(
-                    nodes[from],
-                    nodes[to],
-                    MinimumCostFlowEdge { lower, upper, cost },
-                );
+                graph.add_edge(nodes[from], nodes[to], lower, upper, cost);
             }
         });
 

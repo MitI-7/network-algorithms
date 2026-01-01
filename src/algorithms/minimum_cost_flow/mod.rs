@@ -1,4 +1,5 @@
 pub mod edge;
+pub mod graph;
 pub mod node;
 mod normalized_network;
 pub mod residual_network;
@@ -12,6 +13,10 @@ pub use self::status::Status;
 use num_traits::{One, Zero};
 use std::fmt::Debug;
 use std::ops::{Add, AddAssign, Mul, Neg, Sub, SubAssign};
+
+pub use self::successive_shortest_path::SuccessiveShortestPath;
+pub use graph::MinimumCostFlowGraph;
+pub use solver::MinimumCostFlowSolver;
 
 //
 // pub trait FlowNum = Zero + Ord + Add<Output = Self> + Sub<Output = Self> + AddAssign + SubAssign + Copy;

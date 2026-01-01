@@ -1,23 +1,22 @@
-use network_algorithms::{
-    algorithms::maximum_flow::{FordFulkerson, MaximumFlowSolver, edge::MaximumFlowEdge},
-    graph::graph::Graph,
+use network_algorithms::algorithms::maximum_flow::{
+    FordFulkerson, MaximumFlowGraph, MaximumFlowSolver,
 };
 
 fn ford_fulkerson_sample() {
-    let mut graph = Graph::new_directed();
+    let mut graph = MaximumFlowGraph::new();
     let nodes = graph.add_nodes(6);
     assert_eq!(graph.num_nodes(), 6);
     let mut edges = Vec::new();
-    edges.push(graph.add_edge(nodes[0], nodes[1], MaximumFlowEdge { capacity: 3 }));
-    edges.push(graph.add_edge(nodes[0], nodes[2], MaximumFlowEdge { capacity: 3 }));
-    edges.push(graph.add_edge(nodes[1], nodes[2], MaximumFlowEdge { capacity: 2 }));
-    edges.push(graph.add_edge(nodes[1], nodes[3], MaximumFlowEdge { capacity: 3 }));
-    edges.push(graph.add_edge(nodes[2], nodes[4], MaximumFlowEdge { capacity: 2 }));
-    edges.push(graph.add_edge(nodes[3], nodes[4], MaximumFlowEdge { capacity: 4 }));
-    edges.push(graph.add_edge(nodes[3], nodes[5], MaximumFlowEdge { capacity: 2 }));
-    edges.push(graph.add_edge(nodes[4], nodes[5], MaximumFlowEdge { capacity: 3 }));
+    edges.push(graph.add_edge(nodes[0], nodes[1], 3));
+    edges.push(graph.add_edge(nodes[0], nodes[2], 3));
+    edges.push(graph.add_edge(nodes[1], nodes[2], 2));
+    edges.push(graph.add_edge(nodes[1], nodes[3], 3));
+    edges.push(graph.add_edge(nodes[2], nodes[4], 2));
+    edges.push(graph.add_edge(nodes[3], nodes[4], 4));
+    edges.push(graph.add_edge(nodes[3], nodes[5], 2));
+    edges.push(graph.add_edge(nodes[4], nodes[5], 3));
 
-    match FordFulkerson::default().solve(&mut graph, nodes[0], nodes[5], None) {
+    match FordFulkerson::default().solve(&graph, nodes[0], nodes[5], None) {
         Ok(result) => {
             println!("maximum flow:{}", result.objective_value);
             for edge_id in edges {
