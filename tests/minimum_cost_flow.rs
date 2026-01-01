@@ -1,5 +1,6 @@
 use network_algorithms::algorithms::minimum_cost_flow::{
-    MinimumCostFlowGraph, MinimumCostFlowNum, MinimumCostFlowSolver, SuccessiveShortestPath,
+    MinimumCostFlowGraph, MinimumCostFlowNum, MinimumCostFlowSolver, PrimalDual,
+    SuccessiveShortestPath,
 };
 use rstest::rstest;
 use std::{fmt::Debug, fs::read_to_string, path::PathBuf};
@@ -8,7 +9,7 @@ enum Solver {
     // CostScalingPushRelabel,
     // NegativeCostCanceling,
     // OutOfKilter,
-    // PrimalDual,
+    PrimalDual,
     SuccessiveShortestPath,
     // DualNetworkSimplex,
     // ParametricNetworkSimplex,
@@ -21,7 +22,7 @@ impl Solver {
         // let a = skip_for_lib && path.to_str().map_or(false, |s| s.contains("LibraryChecker"));
         let skip_for_anti =
             // matches!(self, Solver::OutOfKilter | Solver::PrimalDual | Solver::SuccessiveShortestPath | Solver::ParametricNetworkSimplex);
-            matches!(self, Solver::SuccessiveShortestPath);
+            matches!(self, Solver::PrimalDual | Solver::SuccessiveShortestPath);
         let b = skip_for_anti && path.to_str().map_or(false, |s| s.contains("anti_ssp_00"));
         // a || b
         b
@@ -44,7 +45,7 @@ impl Solver {
             // Solver::CostScalingPushRelabel => Box::new(CostScalingPushRelabel::default()),
             // Solver::NegativeCostCanceling => Box::new(CycleCanceling::default()),
             // Solver::OutOfKilter => Box::new(OutOfKilter::default()),
-            // Solver::PrimalDual => Box::new(PrimalDual::default()),
+            Solver::PrimalDual => Box::new(PrimalDual::default()),
             Solver::SuccessiveShortestPath => Box::new(SuccessiveShortestPath::default()),
             // Solver::DualNetworkSimplex => Box::new(DualNetworkSimplex::<F, P>::default()),
             // Solver::ParametricNetworkSimplex => Box::new(ParametricNetworkSimplex::default()),
@@ -57,7 +58,7 @@ impl Solver {
 // #[case::cs(Solver::CostScalingPushRelabel)]
 // #[case::nc(Solver::NegativeCostCanceling)]
 // #[case::ok(Solver::OutOfKilter)]
-// #[case::pd(Solver::PrimalDual)]
+#[case::pd(Solver::PrimalDual)]
 #[case::ssp(Solver::SuccessiveShortestPath)]
 // #[case::ns_dual(Solver::DualNetworkSimplex)]
 // #[case::ns_parametric(Solver::ParametricNetworkSimplex)]

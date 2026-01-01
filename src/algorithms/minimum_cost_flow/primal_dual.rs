@@ -1,17 +1,18 @@
+use crate::algorithms::minimum_cost_flow::edge::MinimumCostFlowEdge;
+use crate::algorithms::minimum_cost_flow::node::MinimumCostFlowNode;
+use crate::algorithms::minimum_cost_flow::normalized_network::NormalizedNetwork;
+use crate::algorithms::minimum_cost_flow::residual_network::{ResidualNetwork, construct_extend_network_one_supply_one_demand};
+use crate::algorithms::minimum_cost_flow::result::MinimumCostFlowResult;
+use crate::algorithms::minimum_cost_flow::status::Status;
+use crate::algorithms::minimum_cost_flow::{MinimumCostFlowNum, MinimumCostFlowSolver};
 use crate::graph::direction::Directed;
 use crate::graph::graph::Graph;
-use crate::core::ids::EdgeId;
-use crate::graph::edge::CapCostEdge;
-use crate::algorithms::minimum_cost_flow::csr::{construct_extend_network_one_supply_one_demand, CSR};
-use crate::algorithms::minimum_cost_flow::status::Status;
-use crate::algorithms::minimum_cost_flow::translater::translater;
-use crate::algorithms::minimum_cost_flow::{MinimumCostFlowNum, MinimumCostFlowSolver};
-use crate::graph::node::ExcessNode;
+use crate::graph::ids::{EdgeId, NodeId};
 use std::collections::{BinaryHeap, VecDeque};
 
 #[derive(Default)]
-pub struct PrimalDual<Flow> {
-    csr: CSR<Flow>,
+pub struct PrimalDual<F> {
+    csr: ResidualNetwork<F>,
 
     // maximum flow(dinic)
     que: VecDeque<usize>,
@@ -19,41 +20,64 @@ pub struct PrimalDual<Flow> {
     current_edge: Vec<usize>,
 }
 
-impl<Flow> MinimumCostFlowSolver<Flow> for PrimalDual<Flow>
+impl<F> MinimumCostFlowSolver<F> for PrimalDual<F>
+where
+    F: MinimumCostFlowNum,
+{
+    fn solve(
+        &mut self,
+        graph: &mut Graph<Directed, MinimumCostFlowNode<F>, MinimumCostFlowEdge<F>>,
+    ) -> Result<MinimumCostFlowResult<F>, Status> {
+        self.run(graph)
+    }
+}
+
+impl<Flow> PrimalDual<Flow>
 where
     Flow: MinimumCostFlowNum,
 {
-    fn solve(&mut self, graph: &mut Graph<Directed, ExcessNode<Flow>, CapCostEdge<Flow>>) -> Result<Flow, Status> {
-        if (0..graph.num_nodes()).into_iter().fold(Flow::zero(), |sum, u| sum + graph.nodes[u].data.b) != Flow::zero() {
-            return Err(Status::Unbalanced);
-        }
+    pub fn run(
+        &mut self,
+        graph: &mut Graph<Directed, MinimumCostFlowNode<Flow>, MinimumCostFlowEdge<Flow>>,
+    ) -> Result<MinimumCostFlowResult<Flow>, Status> {
+        // if (0..graph.num_nodes()).into_iter().fold(Flow::zero(), |sum, u| sum + graph.nodes[u].data.b) != Flow::zero() {
+        //     return Err(Status::Unbalanced);
+        // }
 
         let mut t = Flow::zero();
         for u in 0..graph.num_nodes() {
-            t += graph.nodes[u].data.b;
+            t += graph.get_node(NodeId(u)).data.b;
         }
         if t != Flow::zero() {
             return Err(Status::Unbalanced);
         }
 
         if graph.num_nodes() == 0 {
-            return Ok(Flow::zero());
+            return Ok(MinimumCostFlowResult {
+                objective_value: Flow::zero(),
+                flows: vec![Flow::zero(); graph.num_edges()],
+            });
         }
 
         if graph.num_edges() == 0 {
             for u in 0..graph.num_nodes() {
-                if graph.nodes[u].data.b != Flow::zero() {
+                if graph.get_node(NodeId(u)).data.b != Flow::zero() {
                     return Err(Status::Infeasible);
                 }
             }
-            return Ok(Flow::zero());
+            return Ok(MinimumCostFlowResult {
+                objective_value: Flow::zero(),
+                flows: vec![Flow::zero(); graph.num_edges()],
+            });
         }
 
-        let mut new_graph = translater(graph);
+        let nn = NormalizedNetwork::new(graph);
 
         // transforms the minimum cost flow problem into a problem with a single excess node and a single deficit node.
-        let (source, sink, artificial_edges) = construct_extend_network_one_supply_one_demand(&mut new_graph);
-        self.csr.build(&new_graph, Some(&[source, sink]), Some(&artificial_edges));
+        let (source, sink, artificial_edges, excess_fix) =
+            construct_extend_network_one_supply_one_demand(&nn);
+        self.csr
+            .build(&nn, Some(&[source, sink]), Some(&artificial_edges), Some(&excess_fix));
 
         self.distances.resize(self.csr.num_nodes, 0);
         self.current_edge.resize(self.csr.num_nodes, 0);
@@ -65,26 +89,22 @@ where
             self.primal(source.index(), sink.index());
         }
 
-        self.csr.set_flow(graph);
+        let flows = self.csr.get_flow(graph);
 
         // graph.remove_artificial_sub_graph(&artificial_nodes, &artificial_edges);
-        if self.csr.excesses[source.index()] != Flow::zero() || self.csr.excesses[sink.index()] != Flow::zero() {
+        if self.csr.excesses[source.index()] != Flow::zero()
+            || self.csr.excesses[sink.index()] != Flow::zero()
+        {
             return Err(Status::Infeasible);
         }
 
-        Ok((0..graph.num_edges()).fold(Flow::zero(), |cost, edge_id| {
-            let edge = graph.get_edge(EdgeId(edge_id));
-            cost + edge.data.cost * edge.data.flow
-        }))
-    }
-}
-
-impl<Flow> PrimalDual<Flow>
-where
-    Flow: MinimumCostFlowNum,
-{
-    pub fn solve(&mut self, graph: &mut Graph<Directed, ExcessNode<Flow>, CapCostEdge<Flow>>) -> Result<Flow, Status> {
-        <Self as MinimumCostFlowSolver<Flow>>::solve(self, graph)
+        Ok(MinimumCostFlowResult {
+            objective_value: (0..graph.num_edges()).fold(Flow::zero(), |cost, edge_id| {
+                let edge = graph.get_edge(EdgeId(edge_id));
+                cost + edge.data.cost * flows[edge_id]
+            }),
+            flows,
+        })
     }
 
     // update potentials
@@ -113,7 +133,9 @@ where
                         continue;
                     }
                     let to = self.csr.to[edge_index];
-                    if dist[to].is_none() || dist[to].unwrap() > d + self.csr.reduced_cost(u, edge_index) {
+                    if dist[to].is_none()
+                        || dist[to].unwrap() > d + self.csr.reduced_cost(u, edge_index)
+                    {
                         dist[to] = Some(d + self.csr.reduced_cost(u, edge_index));
                         bh.push((-dist[to].unwrap(), to));
                     }
@@ -143,7 +165,10 @@ where
                 break;
             }
 
-            self.current_edge.iter_mut().enumerate().for_each(|(u, e)| *e = self.csr.start[u]);
+            self.current_edge
+                .iter_mut()
+                .enumerate()
+                .for_each(|(u, e)| *e = self.csr.start[u]);
             match self.dfs(source, sink, self.csr.excesses[source]) {
                 Some(delta) => flow += delta,
                 None => break,
@@ -166,7 +191,10 @@ where
             for i in self.csr.neighbors(v) {
                 // e.to -> v
                 let to = self.csr.to[i];
-                if self.csr.flow[i] > Flow::zero() && self.distances[to] == self.csr.num_nodes && self.csr.reduced_cost_rev(v, i) == Flow::zero() {
+                if self.csr.flow[i] > Flow::zero()
+                    && self.distances[to] == self.csr.num_nodes
+                    && self.csr.reduced_cost_rev(v, i) == Flow::zero()
+                {
                     self.distances[to] = self.distances[v] + 1;
                     if to != source {
                         self.que.push_back(to);
@@ -185,7 +213,9 @@ where
         for edge_index in self.current_edge[u]..self.csr.start[u + 1] {
             self.current_edge[u] = edge_index;
 
-            if !self.is_admissible_edge(u, edge_index) || self.csr.reduced_cost(u, edge_index) != Flow::zero() {
+            if !self.is_admissible_edge(u, edge_index)
+                || self.csr.reduced_cost(u, edge_index) != Flow::zero()
+            {
                 continue;
             }
 
@@ -212,47 +242,7 @@ where
 
     #[inline]
     pub fn is_admissible_edge(&self, from: usize, i: usize) -> bool {
-        self.csr.residual_capacity(i) > Flow::zero() && self.distances[from] == self.distances[self.csr.to[i]] + 1
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-    use crate::graph::graph::Graph;
-
-    #[test]
-    fn test() {
-        // let mut g: Graph<Directed, ExcessNode<i32>, CapCostEdge<i32>> = Graph::default();
-        let mut g = Graph::default();
-        let a = g.add_node();
-        g.add_edge(a, a, CapCostEdge { flow: 0, lower: -5, upper: 0, cost: 10 });
-
-        let s = PrimalDual::default().solve(&mut g).unwrap();
-        println!("{}", s);
-
-        // 1 20 77
-        // 0
-        // 0 0 -1 9 0
-        // 0 0 -6 0 -10
-        // 0 0 8 8 0
-        // 0 0 -8 -4 -4
-        // 0 0 -10 0 -3
-        // 0 0 -10 1 -2
-        // 0 0 -8 10 8
-        // 0 0 1 10 2
-        // 0 0 10 10 3
-        // 0 0 -5 5 1
-        // 0 0 -10 -6 -6
-        // 0 0 -3 7 8
-        // 0 0 0 9 0
-        // 0 0 0 0 -6
-        // 0 0 4 8 8
-        // 0 0 0 2 6
-        // 0 0 -10 -3 -6
-        // 0 0 -10 -8 -1
-        // 0 0 -10 0 0
-        // 0 0 -10 -10 -3
-        //
+        self.csr.residual_capacity(i) > Flow::zero()
+            && self.distances[from] == self.distances[self.csr.to[i]] + 1
     }
 }

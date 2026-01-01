@@ -46,7 +46,7 @@ where
         }
 
         let nn = NormalizedNetwork::new(graph);
-        self.rn.build(&nn, None, None);
+        self.rn.build(&nn, None, None, None);
 
         for s in 0..self.rn.num_nodes {
             while self.rn.excesses[s] > F::zero() {

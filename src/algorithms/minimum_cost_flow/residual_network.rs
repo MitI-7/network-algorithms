@@ -1,3 +1,5 @@
+use crate::algorithms::minimum_cost_flow::normalized_network::NormalizedEdge;
+use crate::graph::ids::EdgeId;
 use crate::{
     algorithms::minimum_cost_flow::{
         MinimumCostFlowNum, edge::MinimumCostFlowEdge, node::MinimumCostFlowNode,
@@ -6,7 +8,6 @@ use crate::{
     graph::{direction::Directed, graph::Graph, ids::NodeId},
 };
 use std::{cmp::Reverse, collections::BinaryHeap};
-use crate::graph::ids::EdgeId;
 
 #[derive(Default)]
 pub struct ResidualNetwork<F> {
@@ -35,17 +36,27 @@ where
         &mut self,
         graph: &NormalizedNetwork<'_, F>,
         artificial_nodes: Option<&[NodeId]>,
-        artificial_edges: Option<&[MinimumCostFlowEdge<F>]>,
+        artificial_edges: Option<&[NormalizedEdge<F>]>,
+        fix_excesses: Option<&[F]>,
     ) {
         if graph.num_nodes() == 0 {
             return;
         }
 
-        self.num_nodes = graph.num_nodes(); // + artificial_nodes.unwrap_or(&[]).len();
-        self.num_edges = graph.num_edges(); // + artificial_edges.unwrap_or(&[]).len();
+        self.num_nodes = graph.num_nodes() + artificial_nodes.unwrap_or(&[]).len();
+        self.num_edges = graph.num_edges() + artificial_edges.unwrap_or(&[]).len();
 
         // b は正規化後のものを使う
-        self.excesses = graph.excesses().to_vec().into_boxed_slice();
+        self.excesses = vec![F::zero(); self.num_nodes].into_boxed_slice();
+        for (u, e) in graph.excesses().iter().enumerate() {
+            self.excesses[u] = *e;
+        }
+
+        if fix_excesses.is_some() {
+            for u in 0..self.num_nodes {
+                self.excesses[u] += fix_excesses.unwrap()[u];
+            }
+        }
 
         self.edge_index_to_inside_edge_index = vec![usize::MAX; self.num_edges].into_boxed_slice();
         self.start = vec![0; self.num_nodes + 1].into_boxed_slice();
@@ -63,12 +74,11 @@ where
         &mut self,
         graph: &NormalizedNetwork<'_, F>,
         _artificial_nodes: Option<&[NodeId]>,
-        _artificial_edges: Option<&[MinimumCostFlowEdge<F>]>,
+        artificial_edges: Option<&[NormalizedEdge<F>]>,
     ) {
         let mut degree = vec![0usize; self.num_nodes];
 
-        // 正規化済みの (u->v) を使って次数を数える
-        for ne in graph.iter_edges() {
+        for ne in graph.iter_edges().chain(artificial_edges.into_iter().flatten().copied()) {
             degree[ne.u.index()] += 1;
             degree[ne.v.index()] += 1;
         }
@@ -80,7 +90,7 @@ where
 
         let mut counter = vec![0usize; self.num_nodes];
 
-        for edge in graph.iter_edges() {
+        for edge in graph.iter_edges().chain(artificial_edges.into_iter().flatten().copied()) {
             // ここでは lower は常に 0 扱いなのでチェック不要
             debug_assert!(edge.cost >= F::zero());
             debug_assert!(edge.upper >= F::zero());
@@ -212,36 +222,53 @@ where
         F::zero() <= self.flow[i] && self.flow[i] <= self.upper[i]
     }
 }
-//
-// pub(crate) fn construct_extend_network_one_supply_one_demand<F>(
-//     graph: &mut Graph<Directed, MinimumCostFlowNode<F>, MinimumCostFlowEdge<F>>,
-// ) -> (NodeId, NodeId, Vec<MinimumCostFlowEdge<F>>)
-// where
-//     F: MinimumCostFlowNum,
-// {
-//     let artificial_edges = Vec::new();
-//     let source = graph.add_node();
-//     let sink = graph.add_node();
-//     let mut total_excess = F::zero();
-//
-//     for u in 0..graph.num_nodes() {
-//         if u == source.index() || u == sink.index() {
-//             continue;
-//         }
-//         if graph.nodes[u].data.b > F::zero() {
-//             graph.add_edge(source, NodeId(u), MinimumCostFlowEdge { flow: F::zero(), lower: F::zero(), upper: graph.nodes[u].data.b, cost: F::zero() });
-//             total_excess += graph.nodes[u].data.b;
-//         }
-//         if graph.nodes[u].data.b < F::zero() {
-//             graph.add_edge(NodeId(u), sink, MinimumCostFlowEdge { flow: F::zero(), lower: F::zero(), upper: -graph.nodes[u].data.b, cost: F::zero() });
-//         }
-//         graph.nodes[u].data.b = F::zero();
-//     }
-//     graph.nodes[source.index()].data.b = total_excess;
-//     graph.nodes[sink.index()].data.b = -total_excess;
-//
-//     (source, sink, artificial_edges)
-// }
+
+pub(crate) fn construct_extend_network_one_supply_one_demand<F>(
+    graph: &NormalizedNetwork<'_, F>,
+) -> (NodeId, NodeId, Vec<NormalizedEdge<F>>, Vec<F>)
+where
+    F: MinimumCostFlowNum,
+{
+    let mut edges = Vec::new();
+    let mut excess = vec![F::zero(); graph.num_nodes() + 2];
+    let source = NodeId(graph.num_nodes());
+    let sink = NodeId(source.index() + 1);
+    let mut total_excess = F::zero();
+    let mut edge_index = graph.num_edges();
+
+    for u in 0..graph.num_nodes() {
+        if u == source.index() || u == sink.index() {
+            continue;
+        }
+        if graph.excesses()[u] > F::zero() {
+            edges.push(NormalizedEdge {
+                u: source,
+                v: NodeId(u),
+                upper: graph.excesses()[u],
+                cost: F::zero(),
+                edge_index,
+            });
+            edge_index += 1;
+            total_excess += graph.excesses()[u];
+        }
+        if graph.excesses()[u] < F::zero() {
+            edges.push(
+                NormalizedEdge {
+                    u: NodeId(u),
+                    v: sink,
+                    upper: -graph.excesses()[u],
+                    cost: F::zero(),
+                    edge_index,
+                },
+            );
+        }
+        excess[u] -= graph.excesses()[u];
+    }
+    excess[source.index()] = total_excess;
+    excess[sink.index()] = -total_excess;
+
+    (source, sink, edges, excess)
+}
 //
 // pub(crate) fn construct_extend_network_feasible_solution<F>(graph: &mut Graph<Directed, MinimumCostFlowNode<F>, MinimumCostFlowEdge<F>>) -> (NodeId, Vec<NodeId>, Vec<EdgeId>)
 // where

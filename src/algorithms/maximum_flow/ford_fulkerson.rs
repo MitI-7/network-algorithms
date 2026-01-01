@@ -27,16 +27,6 @@ where
     ) -> Result<MaxFlowResult<F>, Status> {
         self.run(graph, source, sink, upper)
     }
-
-    fn minimum_cut(
-        &mut self,
-        _graph: &Graph<Directed, N, MaximumFlowEdge<F>>,
-        _source: NodeId,
-        _sink: NodeId,
-        _upper: Option<F>,
-    ) -> Result<MaxFlowResult<F>, Status> {
-        todo!()
-    }
 }
 
 impl<N, F> FordFulkerson<N, F>

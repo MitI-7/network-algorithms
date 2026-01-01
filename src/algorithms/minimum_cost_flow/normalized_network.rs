@@ -67,8 +67,7 @@ where
         &self.b
     }
 
-    /// CSR 構築用に「正規化済みの辺」を列挙する
-    pub fn iter_edges(&'a self) -> impl Iterator<Item = NormalizedEdge<F>> + 'a {
+    pub fn iter_edges(&self) -> impl Iterator<Item = NormalizedEdge<F>> + '_ {
         self.base.edges().enumerate().map(|(i, e)| {
             let mut u = e.u;
             let mut v = e.v;

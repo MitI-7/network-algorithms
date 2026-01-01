@@ -7,7 +7,7 @@ pub mod result;
 pub mod solver;
 pub mod status;
 pub mod successive_shortest_path;
-
+pub mod primal_dual;
 pub use self::status::Status;
 // use crate::core::numeric::CostNum;
 use num_traits::{One, Zero};
@@ -15,6 +15,7 @@ use std::fmt::Debug;
 use std::ops::{Add, AddAssign, Mul, Neg, Sub, SubAssign};
 
 pub use self::successive_shortest_path::SuccessiveShortestPath;
+pub use self::primal_dual::PrimalDual;
 pub use graph::MinimumCostFlowGraph;
 pub use solver::MinimumCostFlowSolver;
 

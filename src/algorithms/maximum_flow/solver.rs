@@ -14,12 +14,12 @@ where
         sink: NodeId,
         upper: Option<F>,
     ) -> Result<MaxFlowResult<F>, Status>;
-
-    fn minimum_cut(
-        &mut self,
-        graph: &Graph<Directed, N, MaximumFlowEdge<F>>,
-        source: NodeId,
-        sink: NodeId,
-        upper: Option<F>,
-    ) -> Result<MaxFlowResult<F>, Status>;
+    //
+    // fn minimum_cut(
+    //     &mut self,
+    //     graph: &Graph<Directed, N, MaximumFlowEdge<F>>,
+    //     source: NodeId,
+    //     sink: NodeId,
+    //     upper: Option<F>,
+    // ) -> Result<MaxFlowResult<F>, Status>;
 }
