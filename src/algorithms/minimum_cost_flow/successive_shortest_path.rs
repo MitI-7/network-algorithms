@@ -1,3 +1,4 @@
+use crate::algorithms::minimum_cost_flow::validate::{trivial, validate};
 use crate::{
     algorithms::minimum_cost_flow::{
         MinimumCostFlowNum, edge::MinimumCostFlowEdge, node::MinimumCostFlowNode,
@@ -7,7 +8,7 @@ use crate::{
     graph::{
         direction::Directed,
         graph::Graph,
-        ids::{EdgeId, NodeId},
+        ids::EdgeId,
     },
 };
 use std::{cmp::Reverse, collections::BinaryHeap};
@@ -37,12 +38,9 @@ where
         &mut self,
         graph: &mut Graph<Directed, MinimumCostFlowNode<F>, MinimumCostFlowEdge<F>>,
     ) -> Result<MinimumCostFlowResult<F>, Status> {
-        if (0..graph.num_nodes())
-            .into_iter()
-            .fold(F::zero(), |sum, u| sum + graph.get_node(NodeId(u)).data.b)
-            != F::zero()
-        {
-            return Err(Status::Unbalanced);
+        validate(graph)?;
+        if let Some(res) = trivial(graph) {
+            return res;
         }
 
         let nn = NormalizedNetwork::new(graph);

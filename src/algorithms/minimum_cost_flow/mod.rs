@@ -8,6 +8,8 @@ pub mod solver;
 pub mod status;
 pub mod successive_shortest_path;
 pub mod primal_dual;
+mod validate;
+
 pub use self::status::Status;
 // use crate::core::numeric::CostNum;
 use num_traits::{One, Zero};
