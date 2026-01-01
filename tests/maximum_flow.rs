@@ -76,7 +76,7 @@ impl Solver {
             + 'static,
     >(
         &self,
-    ) -> Box<dyn MaximumFlowSolver<Flow>> {
+    ) -> Box<dyn MaximumFlowSolver<(), Flow>> {
         match self {
             // Solver::CapacityScaling => Box::new(CapacityScaling::default()),
             // Solver::Dinic => Box::new(Dinic::default()),

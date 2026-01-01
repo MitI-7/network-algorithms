@@ -1,3 +1,4 @@
+use std::marker::PhantomData;
 use crate::{
     algorithms::maximum_flow::{
         edge::MaximumFlowEdge, residual_network::ResidualNetwork, result::MaxFlowResult,
@@ -8,17 +9,18 @@ use crate::{
 };
 
 #[derive(Default)]
-pub struct FordFulkerson<F> {
-    rn: ResidualNetwork<F>,
+pub struct FordFulkerson<N, F> {
+    rn: ResidualNetwork<N, F>,
+    phantom: PhantomData<N>,
 }
 
-impl<F> MaximumFlowSolver<F> for FordFulkerson<F>
+impl<N, F> MaximumFlowSolver<N, F> for FordFulkerson<N, F>
 where
     F: FlowNum,
 {
     fn solve(
         &mut self,
-        graph: &Graph<Directed, (), MaximumFlowEdge<F>>,
+        graph: &Graph<Directed, N, MaximumFlowEdge<F>>,
         source: NodeId,
         sink: NodeId,
         upper: Option<F>,
@@ -28,7 +30,7 @@ where
 
     fn minimum_cut(
         &mut self,
-        _graph: &Graph<Directed, (), MaximumFlowEdge<F>>,
+        _graph: &Graph<Directed, N, MaximumFlowEdge<F>>,
         _source: NodeId,
         _sink: NodeId,
         _upper: Option<F>,
@@ -37,13 +39,13 @@ where
     }
 }
 
-impl<F> FordFulkerson<F>
+impl<N, F> FordFulkerson<N, F>
 where
     F: FlowNum,
 {
     fn run(
         &mut self,
-        graph: &Graph<Directed, (), MaximumFlowEdge<F>>,
+        graph: &Graph<Directed, N, MaximumFlowEdge<F>>,
         source: NodeId,
         sink: NodeId,
         upper: Option<F>,

@@ -2,10 +2,11 @@ use crate::graph::graph::Graph;
 use crate::graph::direction::Directed;
 use crate::algorithms::maximum_flow::edge::MaximumFlowEdge;
 use std::collections::VecDeque;
+use std::marker::PhantomData;
 use crate::core::numeric::FlowNum;
 
 #[derive(Default)]
-pub struct ResidualNetwork<F> {
+pub struct ResidualNetwork<N, F> {
     pub num_nodes: usize,
     pub num_edges: usize,
     pub edge_index_to_inside_arc_index: Box<[usize]>,
@@ -19,13 +20,15 @@ pub struct ResidualNetwork<F> {
 
     pub distances_to_sink: Box<[usize]>, // distance from u to sink in residual network
     que: VecDeque<usize>,
+    
+    phantom_data: PhantomData<N>,
 }
 
-impl<F> ResidualNetwork<F>
+impl<N, F> ResidualNetwork<N, F>
 where
     F: FlowNum,
 {
-    pub fn build(&mut self, graph: &Graph<Directed, (), MaximumFlowEdge<F>>) {
+    pub fn build(&mut self, graph: &Graph<Directed, N, MaximumFlowEdge<F>>) {
         self.num_nodes = graph.num_nodes();
         self.num_edges = graph.num_edges();
 

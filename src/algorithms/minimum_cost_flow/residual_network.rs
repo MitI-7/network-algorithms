@@ -3,14 +3,9 @@ use crate::{
         MinimumCostFlowNum, edge::MinimumCostFlowEdge, node::MinimumCostFlowNode,
         normalized_network::NormalizedNetwork,
     },
-    graph::{
-        direction::Directed,
-        graph::Graph,
-        ids::NodeId,
-    },
+    graph::{direction::Directed, graph::Graph, ids::NodeId},
 };
-use std::cmp::Reverse;
-use std::collections::BinaryHeap;
+use std::{cmp::Reverse, collections::BinaryHeap};
 
 #[derive(Default)]
 pub struct ResidualNetwork<F> {
