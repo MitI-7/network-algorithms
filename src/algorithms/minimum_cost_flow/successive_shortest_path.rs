@@ -6,6 +6,7 @@ use crate::algorithms::minimum_cost_flow::{
 };
 use crate::graph::{direction::Directed, graph::Graph, ids::EdgeId};
 use std::{cmp::Reverse, collections::BinaryHeap};
+use crate::algorithms::minimum_cost_flow::normalized_network::NormalizedNetwork;
 // use crate::graph::node::ExcessNode;
 
 #[derive(Default)]
@@ -27,7 +28,8 @@ where
         }
 
         let new_graph = translater(graph);
-        self.csr.build(&new_graph, None, None);
+        let ne = NormalizedNetwork::new(graph);
+        self.csr.build(&ne, None, None);
         // self.csr.excesses = new_graph.b.clone().into_boxed_slice();
 
         for s in 0..self.csr.num_nodes {

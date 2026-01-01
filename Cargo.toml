@@ -7,3 +7,4 @@ repository = "https://github.com/MitI-7/network-algorithms"
 
 [dependencies]
 num-traits = "0.2"
+rstest = "0.26"

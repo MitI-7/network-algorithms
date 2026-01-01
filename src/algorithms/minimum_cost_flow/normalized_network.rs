@@ -10,7 +10,7 @@ pub struct NormalizedEdge<F> {
     pub u: NodeId,
     pub v: NodeId,
     pub upper: F,          // 正規化後の上限 (= original.upper - original.lower)
-    pub cost: F,           // 非負
+    pub cost: F,           // non-negative
     pub edge_index: usize, // 元の graph.edges の index
 }
 
@@ -76,7 +76,6 @@ where
             let upper = e.data.upper - e.data.lower;
 
             if cost < F::zero() {
-                // 反転
                 (u, v) = (v, u);
                 cost = -cost;
             }

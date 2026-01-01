@@ -1,3 +1,4 @@
+use crate::algorithms::minimum_cost_flow::normalized_network::NormalizedNetwork;
 use crate::{
     algorithms::minimum_cost_flow::{
         MinimumCostFlowNum, edge::MinimumCostFlowEdge, node::MinimumCostFlowNode,
@@ -36,7 +37,7 @@ where
 {
     pub fn build(
         &mut self,
-        graph: &Graph<Directed, MinimumCostFlowNode<F>, MinimumCostFlowEdge<F>>,
+        graph: &NormalizedNetwork<'_, F>,
         artificial_nodes: Option<&[NodeId]>,
         artificial_edges: Option<&[MinimumCostFlowEdge<F>]>,
     ) {
@@ -47,11 +48,8 @@ where
         self.num_nodes = graph.num_nodes(); // + artificial_nodes.unwrap_or(&[]).len();
         self.num_edges = graph.num_edges(); // + artificial_edges.unwrap_or(&[]).len();
 
-        let mut e = Vec::new();
-        for u in 0..self.num_nodes {
-            e.push(graph.nodes[u].data.b);
-        }
-        self.excesses = e.into_boxed_slice();
+        // b は正規化後のものを使う
+        self.excesses = graph.excesses().to_vec().into_boxed_slice();
 
         self.edge_index_to_inside_edge_index = vec![usize::MAX; self.num_edges].into_boxed_slice();
         self.start = vec![0; self.num_nodes + 1].into_boxed_slice();
@@ -67,52 +65,52 @@ where
 
     fn make_csr(
         &mut self,
-        graph: &Graph<Directed, MinimumCostFlowNode<F>, MinimumCostFlowEdge<F>>,
+        graph: &NormalizedNetwork<'_, F>,
         _artificial_nodes: Option<&[NodeId]>,
         _artificial_edges: Option<&[MinimumCostFlowEdge<F>]>,
     ) {
-        let mut degree = vec![0; self.num_nodes];
+        let mut degree = vec![0usize; self.num_nodes];
 
-        // for edge in graph.edges.iter().chain(artificial_edges.unwrap()) {
-        for edge in graph.edges.iter() {
-            degree[edge.v.index()] += 1;
-            degree[edge.u.index()] += 1;
+        // 正規化済みの (u->v) を使って次数を数える
+        for ne in graph.iter_edges() {
+            degree[ne.u.index()] += 1;
+            degree[ne.v.index()] += 1;
         }
 
+        // start の prefix sum
         for i in 1..=self.num_nodes {
-            self.start[i] += self.start[i - 1] + degree[i - 1];
+            self.start[i] = self.start[i - 1] + degree[i - 1];
         }
 
-        let mut counter = vec![0; self.num_nodes];
-        // for (edge_index, edge) in graph.edges.iter().chain(artificial_edges.unwrap_or(&[])).enumerate() {
-        for (edge_index, edge) in graph.edges.iter().enumerate() {
-            assert!(edge.data.cost >= F::zero());
-            assert!(edge.data.lower == F::zero());
-            assert!(edge.data.upper >= F::zero());
-            // assert!(edge.flow == Flow::zero());
+        let mut counter = vec![0usize; self.num_nodes];
 
-            let (u, v) = (edge.u.index(), edge.v.index());
+        for edge in graph.iter_edges() {
+            // ここでは lower は常に 0 扱いなのでチェック不要
+            debug_assert!(edge.cost >= F::zero());
+            debug_assert!(edge.upper >= F::zero());
+
+            let u = edge.u.index();
+            let v = edge.v.index();
+
             let inside_edge_index_u = self.start[u] + counter[u];
             counter[u] += 1;
             let inside_edge_index_v = self.start[v] + counter[v];
-            self.edge_index_to_inside_edge_index[edge_index] = inside_edge_index_u;
             counter[v] += 1;
 
-            assert_ne!(inside_edge_index_u, inside_edge_index_v);
+            // 元の edge_index -> 正規化後 forward arc（u->v）の inside index
+            self.edge_index_to_inside_edge_index[edge.edge_index] = inside_edge_index_u;
 
             // u -> v
             self.to[inside_edge_index_u] = v;
-            // self.flow[inside_edge_index_u] = edge.data.flow;
-            self.upper[inside_edge_index_u] = edge.data.upper;
-            self.cost[inside_edge_index_u] = edge.data.cost;
+            self.upper[inside_edge_index_u] = edge.upper;
+            self.cost[inside_edge_index_u] = edge.cost;
             self.rev[inside_edge_index_u] = inside_edge_index_v;
 
-            // v -> u
+            // v -> u (reverse arc)
             self.to[inside_edge_index_v] = u;
-            // self.flow[inside_edge_index_v] = edge.data.upper - edge.data.flow;
-            self.flow[inside_edge_index_v] = edge.data.upper;
-            self.upper[inside_edge_index_v] = edge.data.upper;
-            self.cost[inside_edge_index_v] = -edge.data.cost;
+            self.flow[inside_edge_index_v] = edge.upper; // あなたの表現に合わせる
+            self.upper[inside_edge_index_v] = edge.upper;
+            self.cost[inside_edge_index_v] = -edge.cost;
             self.rev[inside_edge_index_v] = inside_edge_index_u;
         }
     }
