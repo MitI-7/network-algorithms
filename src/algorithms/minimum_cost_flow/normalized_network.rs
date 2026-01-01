@@ -30,11 +30,11 @@ where
         let n = base.num_nodes();
         let mut b = Vec::with_capacity(n);
         for u in 0..n {
-            b.push(base.nodes[u].data.b);
+            b.push(base.get_node(NodeId(u)).data.b);
         }
 
         // lower除去 + cost非負化（負コスト反転）に対応した b 更新
-        for e in base.edges.iter() {
+        for e in base.edges() {
             let u = e.u.index();
             let v = e.v.index();
             let lower = e.data.lower;
@@ -69,7 +69,7 @@ where
 
     /// CSR 構築用に「正規化済みの辺」を列挙する
     pub fn iter_edges(&'a self) -> impl Iterator<Item = NormalizedEdge<F>> + 'a {
-        self.base.edges.iter().enumerate().map(|(i, e)| {
+        self.base.edges().enumerate().map(|(i, e)| {
             let mut u = e.u;
             let mut v = e.v;
             let mut cost = e.data.cost;

@@ -4,7 +4,11 @@ use crate::{
         normalized_network::NormalizedNetwork, residual_network::ResidualNetwork,
         result::MinimumCostFlowResult, solver::MinimumCostFlowSolver, status::Status,
     },
-    graph::{direction::Directed, graph::Graph, ids::EdgeId},
+    graph::{
+        direction::Directed,
+        graph::Graph,
+        ids::{EdgeId, NodeId},
+    },
 };
 use std::{cmp::Reverse, collections::BinaryHeap};
 
@@ -35,7 +39,7 @@ where
     ) -> Result<MinimumCostFlowResult<F>, Status> {
         if (0..graph.num_nodes())
             .into_iter()
-            .fold(F::zero(), |sum, u| sum + graph.nodes[u].data.b)
+            .fold(F::zero(), |sum, u| sum + graph.get_node(NodeId(u)).data.b)
             != F::zero()
         {
             return Err(Status::Unbalanced);

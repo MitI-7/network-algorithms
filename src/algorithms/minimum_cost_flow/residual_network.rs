@@ -6,6 +6,7 @@ use crate::{
     graph::{direction::Directed, graph::Graph, ids::NodeId},
 };
 use std::{cmp::Reverse, collections::BinaryHeap};
+use crate::graph::ids::EdgeId;
 
 #[derive(Default)]
 pub struct ResidualNetwork<F> {
@@ -121,7 +122,7 @@ where
         let mut flows = Vec::new();
         for edge_id in 0..graph.num_edges() {
             let i = self.edge_index_to_inside_edge_index[edge_id];
-            let edge = &graph.edges[edge_id];
+            let edge = &graph.get_edge(EdgeId(edge_id));
             // graph.edges[edge_id].data.flow = if edge.data.cost >= F::zero() {
             flows.push(if edge.data.cost >= F::zero() {
                 self.flow[i] + edge.data.lower

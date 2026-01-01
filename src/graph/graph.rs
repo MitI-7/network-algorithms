@@ -8,8 +8,8 @@ use std::marker::PhantomData;
 
 #[derive(Clone, Debug)]
 pub struct Graph<D: Direction, N, E> {
-    pub(crate) nodes: Vec<Node<N>>,
-    pub(crate) edges: Vec<Edge<E>>,
+    nodes: Vec<Node<N>>,
+    edges: Vec<Edge<E>>,
     _direction: PhantomData<D>,
 }
 
@@ -40,12 +40,20 @@ impl<D: Direction, N, E> Graph<D, N, E> {
         EdgeId(self.num_edges() - 1)
     }
 
+    pub fn get_node(&self, node_id: NodeId) -> &Node<N> {
+        &self.nodes[node_id.index()]
+    }
+    
     pub fn get_node_mut(&mut self, node_id: NodeId) -> &mut Node<N> {
         &mut self.nodes[node_id.index()]
     }
 
     pub fn get_edge(&self, edge_id: EdgeId) -> &Edge<E> {
         &self.edges[edge_id.index()]
+    }
+
+    pub fn edges(&self) -> std::slice::Iter<'_, Edge<E>> {
+        self.edges.iter()
     }
 }
 

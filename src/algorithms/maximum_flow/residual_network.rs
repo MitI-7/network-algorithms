@@ -44,7 +44,7 @@ where
 
         let mut degree = vec![0; self.num_nodes].into_boxed_slice();
 
-        for edge in graph.edges.iter() {
+        for edge in graph.edges() {
             degree[edge.u.index()] += 1;
             degree[edge.v.index()] += 1;
         }
@@ -55,7 +55,7 @@ where
         }
 
         let mut counter = vec![0; self.num_nodes];
-            for (edge_index, e) in graph.edges.iter().enumerate() {
+            for (edge_index, e) in graph.edges().enumerate() {
                 let (u, v) = (e.u.index(), e.v.index());
                 let inside_edge_index_u = self.start[u] + counter[u];
                 counter[u] += 1;
