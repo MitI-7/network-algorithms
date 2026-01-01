@@ -67,13 +67,13 @@ where
                 // u -> v
                 self.to[inside_edge_index_u] = v;
                 self.flow[inside_edge_index_u] = F::zero();
-                self.upper[inside_edge_index_u] = e.data.capacity;
+                self.upper[inside_edge_index_u] = e.data.upper;
                 self.rev[inside_edge_index_u] = inside_edge_index_v;
 
                 // v -> u
                 self.to[inside_edge_index_v] = u;
-                self.flow[inside_edge_index_v] = e.data.capacity;
-                self.upper[inside_edge_index_v] = e.data.capacity;
+                self.flow[inside_edge_index_v] = e.data.upper;
+                self.upper[inside_edge_index_v] = e.data.upper;
                 self.rev[inside_edge_index_v] = inside_edge_index_u;
 
         }
