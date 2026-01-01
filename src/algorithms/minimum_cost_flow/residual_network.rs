@@ -1,7 +1,7 @@
-use crate::algorithms::minimum_cost_flow::normalized_network::NormalizedNetwork;
 use crate::{
     algorithms::minimum_cost_flow::{
         MinimumCostFlowNum, edge::MinimumCostFlowEdge, node::MinimumCostFlowNode,
+        normalized_network::NormalizedNetwork,
     },
     graph::{
         direction::Directed,
@@ -115,7 +115,7 @@ where
         }
     }
 
-    pub fn set_flow(
+    pub fn get_flow(
         &self,
         graph: &mut Graph<Directed, MinimumCostFlowNode<F>, MinimumCostFlowEdge<F>>,
     ) -> Vec<F> {

@@ -1,25 +1,26 @@
-use crate::algorithms::minimum_cost_flow::edge::MinimumCostFlowEdge;
-use crate::algorithms::minimum_cost_flow::node::MinimumCostFlowNode;
-use crate::algorithms::minimum_cost_flow::{
-    MinimumCostFlowNum, residual_network::ResidualNetwork, solver::MinimumCostFlowSolver, status::Status,
-    // translater::translater,
+use crate::{
+    algorithms::minimum_cost_flow::{
+        MinimumCostFlowNum, edge::MinimumCostFlowEdge, node::MinimumCostFlowNode,
+        normalized_network::NormalizedNetwork, residual_network::ResidualNetwork,
+        result::MinimumCostFlowResult, solver::MinimumCostFlowSolver, status::Status,
+    },
+    graph::{direction::Directed, graph::Graph, ids::EdgeId},
 };
-use crate::graph::{direction::Directed, graph::Graph, ids::EdgeId};
 use std::{cmp::Reverse, collections::BinaryHeap};
-use crate::algorithms::minimum_cost_flow::normalized_network::NormalizedNetwork;
-use crate::algorithms::minimum_cost_flow::result::MinimumCostFlowResult;
-// use crate::graph::node::ExcessNode;
 
 #[derive(Default)]
 pub struct SuccessiveShortestPath<F> {
-    csr: ResidualNetwork<F>,
+    rn: ResidualNetwork<F>,
 }
 
 impl<F> MinimumCostFlowSolver<F> for SuccessiveShortestPath<F>
 where
     F: MinimumCostFlowNum,
 {
-    fn solve(&mut self, graph: &mut Graph<Directed, MinimumCostFlowNode<F>, MinimumCostFlowEdge<F>>) -> Result<MinimumCostFlowResult<F>, Status> {
+    fn solve(
+        &mut self,
+        graph: &mut Graph<Directed, MinimumCostFlowNode<F>, MinimumCostFlowEdge<F>>,
+    ) -> Result<MinimumCostFlowResult<F>, Status> {
         self.run(graph)
     }
 }
@@ -30,7 +31,7 @@ where
 {
     pub fn run(
         &mut self,
-        graph: &mut Graph<Directed, MinimumCostFlowNode<F>,MinimumCostFlowEdge<F>>,
+        graph: &mut Graph<Directed, MinimumCostFlowNode<F>, MinimumCostFlowEdge<F>>,
     ) -> Result<MinimumCostFlowResult<F>, Status> {
         if (0..graph.num_nodes())
             .into_iter()
@@ -40,20 +41,18 @@ where
             return Err(Status::Unbalanced);
         }
 
-        // let new_graph = translater(graph);
-        let ne = NormalizedNetwork::new(graph);
-        self.csr.build(&ne, None, None);
-        // self.csr.excesses = new_graph.b.clone().into_boxed_slice();
+        let nn = NormalizedNetwork::new(graph);
+        self.rn.build(&nn, None, None);
 
-        for s in 0..self.csr.num_nodes {
-            while self.csr.excesses[s] > F::zero() {
+        for s in 0..self.rn.num_nodes {
+            while self.rn.excesses[s] > F::zero() {
                 match self.calculate_distance(s) {
                     Some((t, visited, dist, prev)) => {
                         // update potentials
-                        for u in 0..self.csr.num_nodes {
+                        for u in 0..self.rn.num_nodes {
                             if visited[u] {
-                                self.csr.potentials[u] =
-                                    self.csr.potentials[u] - dist[u].unwrap() + dist[t].unwrap();
+                                self.rn.potentials[u] =
+                                    self.rn.potentials[u] - dist[u].unwrap() + dist[t].unwrap();
                             }
                         }
                         // update flow
@@ -64,16 +63,15 @@ where
             }
         }
 
-        let flows = self.csr.set_flow(graph);
-
-        if self.csr.excesses.iter().all(|&e| e == F::zero()) {
-            let c =(0..graph.num_edges()).fold(F::zero(), |cost, edge_id| {
+        if self.rn.excesses.iter().all(|&e| e == F::zero()) {
+            let flows = self.rn.get_flow(graph);
+            let objective_value = (0..graph.num_edges()).fold(F::zero(), |cost, edge_id| {
                 let edge = graph.get_edge(EdgeId(edge_id));
                 cost + edge.data.cost * flows[edge_id]
-            }); 
+            });
             Ok(MinimumCostFlowResult {
-                objective_value: c,
-                flows: flows,
+                objective_value,
+                flows,
             })
         } else {
             Err(Status::Infeasible)
@@ -84,10 +82,10 @@ where
         &mut self,
         s: usize,
     ) -> Option<(usize, Vec<bool>, Vec<Option<F>>, Vec<Option<usize>>)> {
-        let mut prev = vec![None; self.csr.num_nodes];
+        let mut prev = vec![None; self.rn.num_nodes];
         let mut bh = BinaryHeap::new();
-        let mut dist: Vec<Option<F>> = vec![None; self.csr.num_nodes];
-        let mut visited = vec![false; self.csr.num_nodes];
+        let mut dist: Vec<Option<F>> = vec![None; self.rn.num_nodes];
+        let mut visited = vec![false; self.rn.num_nodes];
 
         bh.push((Reverse(F::zero()), s));
         dist[s] = Some(F::zero());
@@ -98,17 +96,17 @@ where
             }
             visited[u] = true;
 
-            if self.csr.excesses[u] < F::zero() {
+            if self.rn.excesses[u] < F::zero() {
                 return Some((u, visited, dist, prev));
             }
 
-            for edge_id in self.csr.start[u]..self.csr.start[u + 1] {
-                if self.csr.residual_capacity(edge_id) == F::zero() {
+            for edge_id in self.rn.start[u]..self.rn.start[u + 1] {
+                if self.rn.residual_capacity(edge_id) == F::zero() {
                     continue;
                 }
 
-                let to = self.csr.to[edge_id];
-                let new_dist = d.0 + self.csr.reduced_cost(u, edge_id);
+                let to = self.rn.to[edge_id];
+                let new_dist = d.0 + self.rn.reduced_cost(u, edge_id);
                 if dist[to].is_none() || dist[to].unwrap() > new_dist {
                     dist[to] = Some(new_dist);
                     prev[to] = Some(edge_id);
@@ -121,18 +119,18 @@ where
     }
 
     fn update_flow(&mut self, s: usize, t: usize, prev: Vec<Option<usize>>) {
-        debug_assert!(self.csr.excesses[s] > F::zero() && self.csr.excesses[t] < F::zero());
+        debug_assert!(self.rn.excesses[s] > F::zero() && self.rn.excesses[t] < F::zero());
 
         // calculate delta
-        let mut delta = self.csr.excesses[s].min(-self.csr.excesses[t]);
+        let mut delta = self.rn.excesses[s].min(-self.rn.excesses[t]);
         {
             let mut v = t;
             while let Some(edge_idx) = prev[v] {
-                delta = delta.min(self.csr.residual_capacity(edge_idx));
-                let rev = self.csr.rev[edge_idx];
-                v = self.csr.to[rev];
+                delta = delta.min(self.rn.residual_capacity(edge_idx));
+                let rev = self.rn.rev[edge_idx];
+                v = self.rn.to[rev];
             }
-            delta = delta.min(self.csr.excesses[v]);
+            delta = delta.min(self.rn.excesses[v]);
             debug_assert_eq!(s, v);
             debug_assert!(delta > F::zero());
         }
@@ -142,15 +140,15 @@ where
             let mut v = t;
             while let Some(edge_idx) = prev[v] {
                 // push
-                let rev = self.csr.rev[edge_idx];
-                self.csr.flow[edge_idx] += delta;
-                self.csr.flow[rev] -= delta;
-                v = self.csr.to[rev];
+                let rev = self.rn.rev[edge_idx];
+                self.rn.flow[edge_idx] += delta;
+                self.rn.flow[rev] -= delta;
+                v = self.rn.to[rev];
             }
             debug_assert_eq!(s, v);
         }
 
-        self.csr.excesses[t] += delta;
-        self.csr.excesses[s] -= delta;
+        self.rn.excesses[t] += delta;
+        self.rn.excesses[s] -= delta;
     }
 }
