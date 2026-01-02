@@ -1,4 +1,3 @@
-use std::marker::PhantomData;
 use crate::{
     algorithms::maximum_flow::{
         edge::MaximumFlowEdge, residual_network::ResidualNetwork, result::MaxFlowResult,
@@ -7,6 +6,7 @@ use crate::{
     core::numeric::FlowNum,
     graph::{direction::Directed, graph::Graph, ids::NodeId},
 };
+use std::marker::PhantomData;
 
 #[derive(Default)]
 pub struct FordFulkerson<N, F> {
@@ -53,7 +53,7 @@ where
         let mut residual = upper.unwrap_or_else(|| {
             self.rn
                 .neighbors(source.index())
-                .fold(F::zero(), |acc, i| acc + self.rn.upper[i])
+                .fold(F::zero(), |acc, arc_id| acc + self.rn.upper[arc_id.index()])
         });
         let mut objective_value = F::zero();
         while residual > F::zero() {
@@ -79,15 +79,15 @@ where
         }
         visited[u] = true;
 
-        for i in self.rn.neighbors(u) {
-            let to = self.rn.to[i];
-            let residual_capacity = self.rn.residual_capacity(i);
+        for arc_id in self.rn.neighbors(u) {
+            let to = self.rn.to[arc_id.index()];
+            let residual_capacity = self.rn.residual_capacity(arc_id);
             if visited[to] || residual_capacity == F::zero() {
                 continue;
             }
 
             if let Some(d) = self.dfs(to, sink, flow.min(residual_capacity), visited) {
-                self.rn.push_flow(u, i, d, true);
+                self.rn.push_flow(u, arc_id, d, true);
                 return Some(d);
             }
         }

@@ -5,5 +5,5 @@ pub enum Status {
     BadInput,
     Unbalanced,
     Infeasible,
-    Optimal,
+    // Optimal,
 }

@@ -1,13 +1,20 @@
-use crate::algorithms::minimum_cost_flow::validate::{
-    trivial_solution_if_any, validate_balance, validate_infeasible,
-};
 use crate::{
     algorithms::minimum_cost_flow::{
-        MinimumCostFlowNum, edge::MinimumCostFlowEdge, node::MinimumCostFlowNode,
-        normalized_network::NormalizedNetwork, residual_network::ResidualNetwork,
-        result::MinimumCostFlowResult, solver::MinimumCostFlowSolver, status::Status,
+        MinimumCostFlowNum,
+        edge::MinimumCostFlowEdge,
+        node::MinimumCostFlowNode,
+        normalized_network::NormalizedNetwork,
+        residual_network::ResidualNetwork,
+        result::MinimumCostFlowResult,
+        solver::MinimumCostFlowSolver,
+        status::Status,
+        validate::{trivial_solution_if_any, validate_balance, validate_infeasible},
     },
-    graph::{direction::Directed, graph::Graph, ids::EdgeId},
+    graph::{
+        direction::Directed,
+        graph::Graph,
+        ids::{ArcId, EdgeId},
+    },
 };
 use std::{cmp::Reverse, collections::BinaryHeap};
 
@@ -83,7 +90,7 @@ where
     pub fn calculate_distance(
         &mut self,
         s: usize,
-    ) -> Option<(usize, Vec<bool>, Vec<Option<F>>, Vec<Option<usize>>)> {
+    ) -> Option<(usize, Vec<bool>, Vec<Option<F>>, Vec<Option<ArcId>>)> {
         let mut prev = vec![None; self.rn.num_nodes];
         let mut bh = BinaryHeap::new();
         let mut dist: Vec<Option<F>> = vec![None; self.rn.num_nodes];
@@ -102,16 +109,17 @@ where
                 return Some((u, visited, dist, prev));
             }
 
-            for edge_id in self.rn.start[u]..self.rn.start[u + 1] {
-                if self.rn.residual_capacity(edge_id) == F::zero() {
+            for arc_id in self.rn.start[u]..self.rn.start[u + 1] {
+                let arc_id = ArcId(arc_id);
+                if self.rn.residual_capacity(arc_id) == F::zero() {
                     continue;
                 }
 
-                let to = self.rn.to[edge_id];
-                let new_dist = d.0 + self.rn.reduced_cost(u, edge_id);
+                let to = self.rn.to[arc_id.index()];
+                let new_dist = d.0 + self.rn.reduced_cost(u, arc_id);
                 if dist[to].is_none() || dist[to].unwrap() > new_dist {
                     dist[to] = Some(new_dist);
-                    prev[to] = Some(edge_id);
+                    prev[to] = Some(arc_id);
                     bh.push((Reverse(new_dist), to));
                 }
             }
@@ -120,16 +128,16 @@ where
         None
     }
 
-    fn update_flow(&mut self, s: usize, t: usize, prev: Vec<Option<usize>>) {
+    fn update_flow(&mut self, s: usize, t: usize, prev: Vec<Option<ArcId>>) {
         debug_assert!(self.rn.excesses[s] > F::zero() && self.rn.excesses[t] < F::zero());
 
         // calculate delta
         let mut delta = self.rn.excesses[s].min(-self.rn.excesses[t]);
         {
             let mut v = t;
-            while let Some(edge_idx) = prev[v] {
-                delta = delta.min(self.rn.residual_capacity(edge_idx));
-                let rev = self.rn.rev[edge_idx];
+            while let Some(arc_id) = prev[v] {
+                delta = delta.min(self.rn.residual_capacity(arc_id));
+                let rev = self.rn.rev[arc_id.index()];
                 v = self.rn.to[rev];
             }
             delta = delta.min(self.rn.excesses[v]);
@@ -140,10 +148,10 @@ where
         // update flow
         {
             let mut v = t;
-            while let Some(edge_idx) = prev[v] {
+            while let Some(arc_id) = prev[v] {
                 // push
-                let rev = self.rn.rev[edge_idx];
-                self.rn.flow[edge_idx] += delta;
+                let rev = self.rn.rev[arc_id.index()];
+                self.rn.flow[arc_id.index()] += delta;
                 self.rn.flow[rev] -= delta;
                 v = self.rn.to[rev];
             }

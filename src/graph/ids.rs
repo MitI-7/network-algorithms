@@ -1,35 +1,38 @@
+#[repr(transparent)]
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
 pub struct NodeId(pub usize);
 
-impl From<NodeId> for usize {
-    #[inline]
-    fn from(n: NodeId) -> Self {
-        n.0
-    }
-}
+// impl From<NodeId> for usize {
+//     #[inline(always)]
+//     fn from(n: NodeId) -> Self {
+//         n.0
+//     }
+// }
 
 impl NodeId {
-    #[inline]
+    #[inline(always)]
     pub fn index(self) -> usize {
         self.0
     }
 }
 
+#[repr(transparent)]
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
 pub struct EdgeId(pub usize);
 
 impl EdgeId {
-    #[inline]
+    #[inline(always)]
     pub fn index(self) -> usize {
         self.0
     }
 }
 
+#[repr(transparent)]
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
-pub struct ArcId(pub usize);
+pub(crate) struct ArcId(pub usize);
 
 impl ArcId {
-    #[inline]
+    #[inline(always)]
     pub fn index(self) -> usize {
         self.0
     }

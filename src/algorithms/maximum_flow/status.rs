@@ -2,5 +2,5 @@
 pub enum Status {
     BadInput,
     NotSolved,
-    Optimal,
+    // Optimal,
 }

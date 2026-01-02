@@ -24,7 +24,8 @@ impl<D: Direction, N, E> Graph<D, N, E> {
 
     pub fn add_node_with(&mut self, data: N) -> NodeId {
         let node_id = NodeId(self.num_nodes());
-        self.nodes.push(Node { u: node_id, data });
+        // self.nodes.push(Node { u: node_id, data });
+        self.nodes.push(Node { data });
         node_id
     }
 

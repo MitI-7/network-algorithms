@@ -16,10 +16,11 @@ use crate::{
     },
 };
 use std::collections::{BinaryHeap, VecDeque};
+use crate::graph::ids::ArcId;
 
 #[derive(Default)]
 pub struct PrimalDual<F> {
-    csr: ResidualNetwork<F>,
+    rn: ResidualNetwork<F>,
 
     // maximum flow(dinic)
     que: VecDeque<usize>,
@@ -59,28 +60,28 @@ where
         // transforms the minimum cost flow problem into a problem with a single excess node and a single deficit node.
         let (source, sink, artificial_edges, excess_fix) =
             construct_extend_network_one_supply_one_demand(&nn);
-        self.csr.build(
+        self.rn.build(
             &nn,
             Some(&[source, sink]),
             Some(&artificial_edges),
             Some(&excess_fix),
         );
 
-        self.distances.resize(self.csr.num_nodes, 0);
-        self.current_edge.resize(self.csr.num_nodes, 0);
+        self.distances.resize(self.rn.num_nodes, 0);
+        self.current_edge.resize(self.rn.num_nodes, 0);
 
-        while self.csr.excesses[source.index()] > F::zero() {
+        while self.rn.excesses[source.index()] > F::zero() {
             if !self.dual(source.index(), sink.index()) {
                 break;
             }
             self.primal(source.index(), sink.index());
         }
 
-        let flows = self.csr.get_flow(graph);
+        let flows = self.rn.get_flow(graph);
 
         // graph.remove_artificial_sub_graph(&artificial_nodes, &artificial_edges);
-        if self.csr.excesses[source.index()] != F::zero()
-            || self.csr.excesses[sink.index()] != F::zero()
+        if self.rn.excesses[source.index()] != F::zero()
+            || self.rn.excesses[sink.index()] != F::zero()
         {
             return Err(Status::Infeasible);
         }
@@ -96,11 +97,11 @@ where
 
     // update potentials
     fn dual(&mut self, source: usize, sink: usize) -> bool {
-        assert!(self.csr.excesses[source] > F::zero());
+        assert!(self.rn.excesses[source] > F::zero());
 
         // calculate the shortest path
-        let mut dist: Vec<Option<F>> = vec![None; self.csr.num_nodes];
-        let mut visited = vec![false; self.csr.num_nodes];
+        let mut dist: Vec<Option<F>> = vec![None; self.rn.num_nodes];
+        let mut visited = vec![false; self.rn.num_nodes];
         {
             let mut bh: BinaryHeap<(F, usize)> = BinaryHeap::new();
 
@@ -115,15 +116,15 @@ where
                 }
                 visited[u] = true;
 
-                for edge_index in self.csr.neighbors(u) {
-                    if self.csr.residual_capacity(edge_index) == F::zero() {
+                for edge_index in self.rn.neighbors(u) {
+                    if self.rn.residual_capacity(edge_index) == F::zero() {
                         continue;
                     }
-                    let to = self.csr.to[edge_index];
+                    let to = self.rn.to[edge_index.index()];
                     if dist[to].is_none()
-                        || dist[to].unwrap() > d + self.csr.reduced_cost(u, edge_index)
+                        || dist[to].unwrap() > d + self.rn.reduced_cost(u, edge_index)
                     {
-                        dist[to] = Some(d + self.csr.reduced_cost(u, edge_index));
+                        dist[to] = Some(d + self.rn.reduced_cost(u, edge_index));
                         bh.push((-dist[to].unwrap(), to));
                     }
                 }
@@ -131,9 +132,9 @@ where
         }
 
         // update potentials
-        for u in 0..self.csr.num_nodes {
+        for u in 0..self.rn.num_nodes {
             if visited[u] {
-                self.csr.potentials[u] -= dist[u].unwrap();
+                self.rn.potentials[u] -= dist[u].unwrap();
             }
         }
 
@@ -141,28 +142,28 @@ where
     }
 
     fn primal(&mut self, source: usize, sink: usize) {
-        assert!(self.csr.excesses[source] > F::zero() && self.csr.excesses[sink] < F::zero());
+        assert!(self.rn.excesses[source] > F::zero() && self.rn.excesses[sink] < F::zero());
 
         let mut flow = F::zero();
-        while self.csr.excesses[source] > F::zero() {
+        while self.rn.excesses[source] > F::zero() {
             self.update_distances(source, sink);
 
             // no s-t path
-            if self.distances[source] >= self.csr.num_nodes {
+            if self.distances[source] >= self.rn.num_nodes {
                 break;
             }
 
             self.current_edge
                 .iter_mut()
                 .enumerate()
-                .for_each(|(u, e)| *e = self.csr.start[u]);
-            match self.dfs(source, sink, self.csr.excesses[source]) {
+                .for_each(|(u, e)| *e = self.rn.start[u]);
+            match self.dfs(source, sink, self.rn.excesses[source]) {
                 Some(delta) => flow += delta,
                 None => break,
             }
         }
-        self.csr.excesses[source] -= flow;
-        self.csr.excesses[sink] += flow;
+        self.rn.excesses[source] -= flow;
+        self.rn.excesses[sink] += flow;
     }
 
     // O(n + m)
@@ -171,16 +172,16 @@ where
     pub fn update_distances(&mut self, source: usize, sink: usize) {
         self.que.clear();
         self.que.push_back(sink);
-        self.distances.fill(self.csr.num_nodes);
+        self.distances.fill(self.rn.num_nodes);
         self.distances[sink] = 0;
 
         while let Some(v) = self.que.pop_front() {
-            for i in self.csr.neighbors(v) {
+            for arc_id in self.rn.neighbors(v) {
                 // e.to -> v
-                let to = self.csr.to[i];
-                if self.csr.flow[i] > F::zero()
-                    && self.distances[to] == self.csr.num_nodes
-                    && self.csr.reduced_cost_rev(v, i) == F::zero()
+                let to = self.rn.to[arc_id.index()];
+                if self.rn.flow[arc_id.index()] > F::zero()
+                    && self.distances[to] == self.rn.num_nodes
+                    && self.rn.reduced_cost_rev(v, arc_id) == F::zero()
                 {
                     self.distances[to] = self.distances[v] + 1;
                     if to != source {
@@ -197,23 +198,24 @@ where
         }
 
         let mut res = F::zero();
-        for edge_index in self.current_edge[u]..self.csr.start[u + 1] {
-            self.current_edge[u] = edge_index;
+        for arc_id in self.current_edge[u]..self.rn.start[u + 1] {
+            let arc_id = ArcId(arc_id);
+            self.current_edge[u] = arc_id.index();
 
-            if !self.is_admissible_edge(u, edge_index)
-                || self.csr.reduced_cost(u, edge_index) != F::zero()
+            if !self.is_admissible_edge(u, arc_id)
+                || self.rn.reduced_cost(u, arc_id) != F::zero()
             {
                 continue;
             }
 
-            let v = self.csr.to[edge_index];
-            let residual_capacity = self.csr.residual_capacity(edge_index);
+            let v = self.rn.to[arc_id.index()];
+            let residual_capacity = self.rn.residual_capacity(arc_id);
             if let Some(d) = self.dfs(v, sink, residual_capacity.min(upper - res)) {
-                let rev = self.csr.rev[edge_index];
+                let rev = self.rn.rev[arc_id.index()];
 
                 // update flow
-                self.csr.flow[edge_index] += d;
-                self.csr.flow[rev] -= d;
+                self.rn.flow[arc_id.index()] += d;
+                self.rn.flow[rev] -= d;
 
                 res += d;
                 if res == upper {
@@ -221,15 +223,15 @@ where
                 }
             }
         }
-        self.current_edge[u] = self.csr.start[u + 1];
-        self.distances[u] = self.csr.num_nodes;
+        self.current_edge[u] = self.rn.start[u + 1];
+        self.distances[u] = self.rn.num_nodes;
 
         Some(res)
     }
 
     #[inline]
-    pub fn is_admissible_edge(&self, from: usize, i: usize) -> bool {
-        self.csr.residual_capacity(i) > F::zero()
-            && self.distances[from] == self.distances[self.csr.to[i]] + 1
+    pub fn is_admissible_edge(&self, from: usize, arc_id: ArcId) -> bool {
+        self.rn.residual_capacity(arc_id) > F::zero()
+            && self.distances[from] == self.distances[self.rn.to[arc_id.index()]] + 1
     }
 }
