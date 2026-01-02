@@ -126,7 +126,7 @@ where
 
     pub fn get_flow(
         &self,
-        graph: &mut Graph<Directed, MinimumCostFlowNode<F>, MinimumCostFlowEdge<F>>,
+        graph: &Graph<Directed, MinimumCostFlowNode<F>, MinimumCostFlowEdge<F>>,
     ) -> Vec<F> {
         // for u in 0..graph.num_nodes() {
         //     graph.excesses[u] = self.excesses[u];

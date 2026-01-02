@@ -29,7 +29,7 @@ where
 {
     fn solve(
         &mut self,
-        graph: &mut Graph<Directed, MinimumCostFlowNode<F>, MinimumCostFlowEdge<F>>,
+        graph: &Graph<Directed, MinimumCostFlowNode<F>, MinimumCostFlowEdge<F>>,
     ) -> Result<MinimumCostFlowResult<F>, Status> {
         self.run(graph)
     }
@@ -41,7 +41,7 @@ where
 {
     pub fn run(
         &mut self,
-        graph: &mut Graph<Directed, MinimumCostFlowNode<F>, MinimumCostFlowEdge<F>>,
+        graph: &Graph<Directed, MinimumCostFlowNode<F>, MinimumCostFlowEdge<F>>,
     ) -> Result<MinimumCostFlowResult<F>, Status> {
         validate_balance(graph)?;
         validate_infeasible(graph)?;

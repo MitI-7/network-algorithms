@@ -7,7 +7,7 @@ use crate::{
 };
 
 pub fn validate_balance<F: MinimumCostFlowNum>(
-    graph: &mut Graph<Directed, MinimumCostFlowNode<F>, MinimumCostFlowEdge<F>>,
+    graph: &Graph<Directed, MinimumCostFlowNode<F>, MinimumCostFlowEdge<F>>,
 ) -> Result<(), Status> {
     if (0..graph.num_nodes())
         .into_iter()
@@ -21,7 +21,7 @@ pub fn validate_balance<F: MinimumCostFlowNum>(
 }
 
 pub fn validate_infeasible<F: MinimumCostFlowNum>(
-    graph: &mut Graph<Directed, MinimumCostFlowNode<F>, MinimumCostFlowEdge<F>>,
+    graph: &Graph<Directed, MinimumCostFlowNode<F>, MinimumCostFlowEdge<F>>,
 ) -> Result<(), Status> {
     if graph.num_edges() == 0 {
         for u in 0..graph.num_nodes() {
@@ -35,7 +35,7 @@ pub fn validate_infeasible<F: MinimumCostFlowNum>(
 }
 
 pub fn trivial_solution_if_any<F: MinimumCostFlowNum>(
-    graph: &mut Graph<Directed, MinimumCostFlowNode<F>, MinimumCostFlowEdge<F>>,
+    graph: &Graph<Directed, MinimumCostFlowNode<F>, MinimumCostFlowEdge<F>>,
 ) -> Option<Result<MinimumCostFlowResult<F>, Status>> {
     if graph.num_nodes() == 0 {
         return Some(Ok(MinimumCostFlowResult {

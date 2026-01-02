@@ -11,6 +11,6 @@ where
 {
     fn solve(
         &mut self,
-        graph: &mut Graph<Directed, MinimumCostFlowNode<F>, MinimumCostFlowEdge<F>>,
+        graph: &Graph<Directed, MinimumCostFlowNode<F>, MinimumCostFlowEdge<F>>,
     ) -> Result<MinimumCostFlowResult<F>, Status>;
 }
