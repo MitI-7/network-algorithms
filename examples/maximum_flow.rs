@@ -14,7 +14,8 @@ fn ford_fulkerson() {
     edges.push(graph.add_edge(nodes[3], nodes[5], 2).unwrap());
     edges.push(graph.add_edge(nodes[4], nodes[5], 3).unwrap());
 
-    match FordFulkerson::default().solve(&graph, nodes[0], nodes[5], None) {
+    // match FordFulkerson::default().solve(&graph, nodes[0], nodes[5], None) {
+    match Dinic::default().solve(&graph, nodes[0], nodes[5], None) {
         Ok(result) => {
             println!("maximum flow:{}", result.objective_value);
             for edge_id in edges {
@@ -93,7 +94,7 @@ fn ford_fulkerson_p() {
 
 fn main() {
     ford_fulkerson();
-    ford_fulkerson_p();
+    // ford_fulkerson_p();
     //
     // println!("push relabel");
     // push_relabel();

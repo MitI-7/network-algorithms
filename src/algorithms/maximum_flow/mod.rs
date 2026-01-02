@@ -1,3 +1,4 @@
+pub mod dinic;
 mod edge;
 pub mod ford_fulkerson;
 pub mod graph;

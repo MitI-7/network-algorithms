@@ -5,7 +5,7 @@ use network_algorithms::maximum_flow::residual_network_core::ResidualNetworkCore
 
 enum Solver {
     // CapacityScaling,
-    // Dinic,
+    Dinic,
     // EdmondsKarp,
     FordFulkerson,
     // PushRelabelFIFO,
@@ -60,7 +60,7 @@ impl Solver {
     pub fn build(&self) -> Box<dyn MaximumFlowSolver<(), i64, Prepared=ResidualNetworkCore<(), i64>>> {
         match self {
             // Solver::CapacityScaling => Box::new(CapacityScaling::default()),
-            // Solver::Dinic => Box::new(Dinic::default()),
+            Solver::Dinic => Box::new(Dinic::default()),
             // Solver::EdmondsKarp => Box::new(EdmondsKarp::default()),
             Solver::FordFulkerson => Box::new(FordFulkerson::default()),
             // Solver::PushRelabelFIFO => Box::new(PushRelabelFIFO::default()),
@@ -72,7 +72,7 @@ impl Solver {
 
 #[rstest]
 // #[case::capacity_scaling(Solver::CapacityScaling)]
-// #[case::dinic(Solver::Dinic)]
+#[case::dinic(Solver::Dinic)]
 // #[case::edmonds_karp(Solver::EdmondsKarp)]
 #[case::ford_fulkerson(Solver::FordFulkerson)]
 // #[case::push_relabel_fifo(Solver::PushRelabelFIFO)]

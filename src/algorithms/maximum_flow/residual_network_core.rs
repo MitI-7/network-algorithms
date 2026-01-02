@@ -109,31 +109,6 @@ where
             // excesses.unwrap()[self.to[arc_id.index()].index()] += flow;
         }
     }
-
-    // // O(n + m)
-    // // calculate the distance from u to sink in the residual network
-    // // if such a path does not exist, distance[u] becomes self.num_nodes
-    // pub(crate) fn update_distances_to_sink(&mut self, source: NodeId, sink: NodeId) {
-    //     self.que.clear();
-    //     self.que.push_back(sink);
-    //     self.distances_to_sink.fill(self.num_nodes);
-    //     self.distances_to_sink[sink.index()] = 0;
-    //
-    //     while let Some(v) = self.que.pop_front() {
-    //         for arc_id in self.neighbors(v) {
-    //             // e.to -> v
-    //             let to = self.to[arc_id.index()];
-    //             if self.flow[arc_id.index()] > F::zero()
-    //                 && self.distances_to_sink[to.index()] == self.num_nodes
-    //             {
-    //                 self.distances_to_sink[to.index()] = self.distances_to_sink[v.index()] + 1;
-    //                 if to != source {
-    //                     self.que.push_back(to);
-    //                 }
-    //             }
-    //         }
-    //     }
-    // }
     //
     // #[inline]
     // pub(crate) fn is_admissible_edge(&self, from: NodeId, arc_id: ArcId) -> bool {
