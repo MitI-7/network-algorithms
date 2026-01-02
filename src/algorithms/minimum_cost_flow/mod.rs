@@ -5,7 +5,6 @@ mod normalized_network;
 pub mod prelude;
 pub mod residual_network;
 pub mod result;
-pub mod solver;
 pub mod status;
 mod validate;
 mod algorithms;

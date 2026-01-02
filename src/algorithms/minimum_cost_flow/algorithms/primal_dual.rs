@@ -4,20 +4,20 @@ use crate::{
         edge::MinimumCostFlowEdge,
         node::MinimumCostFlowNode,
         normalized_network::NormalizedNetwork,
-        residual_network::{ResidualNetwork, construct_extend_network_one_supply_one_demand},
+        residual_network::{construct_extend_network_one_supply_one_demand, ResidualNetwork},
         result::MinimumCostFlowResult,
-        solver::MinimumCostFlowSolver,
         status::Status,
         validate::{trivial_solution_if_any, validate_balance, validate_infeasible},
     },
+    core::numeric::CostNum,
     graph::{
         direction::Directed,
         graph::Graph,
         ids::{EdgeId, NodeId},
     },
-    core::numeric::CostNum,
 };
 use std::collections::{BinaryHeap, VecDeque};
+use crate::algorithms::minimum_cost_flow::algorithms::solver::MinimumCostFlowSolver;
 
 #[derive(Default)]
 pub struct PrimalDual<F> {

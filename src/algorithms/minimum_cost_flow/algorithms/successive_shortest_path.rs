@@ -5,18 +5,18 @@ use crate::{
         normalized_network::NormalizedNetwork,
         residual_network::ResidualNetwork,
         result::MinimumCostFlowResult,
-        solver::MinimumCostFlowSolver,
         status::Status,
         validate::{trivial_solution_if_any, validate_balance, validate_infeasible},
     },
+    core::numeric::CostNum,
     graph::{
         direction::Directed,
         graph::Graph,
         ids::{ArcId, EdgeId, NodeId},
     },
-    core::numeric::CostNum,
 };
 use std::{cmp::Reverse, collections::BinaryHeap};
+use crate::algorithms::minimum_cost_flow::algorithms::solver::MinimumCostFlowSolver;
 
 #[derive(Default)]
 pub struct SuccessiveShortestPath<F> {

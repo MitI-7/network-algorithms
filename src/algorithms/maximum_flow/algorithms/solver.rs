@@ -13,7 +13,7 @@ where
         graph: &Graph<Directed, N, MaximumFlowEdge<F>>,
         source: NodeId,
         sink: NodeId,
-        upper: Option<F>,
+        cut_off: Option<F>,
     ) -> Result<MaxFlowResult<F>, Status>;
 
     fn prepare(
@@ -26,6 +26,6 @@ where
         prepared: &Self::Prepared,
         s: NodeId,
         t: NodeId,
-        upper: Option<F>,
+        cut_off: Option<F>,
     ) -> Result<MaxFlowResult<F>, Status>;
 }

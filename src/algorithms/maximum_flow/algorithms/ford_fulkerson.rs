@@ -1,12 +1,13 @@
 use crate::{
     algorithms::maximum_flow::{
         edge::MaximumFlowEdge, residual_network_core::ResidualNetworkCore, result::MaxFlowResult,
-        solver::MaximumFlowSolver, status::Status, validate::validate_input,
+        status::Status, validate::validate_input,
     },
     core::numeric::FlowNum,
     graph::{direction::Directed, graph::Graph, ids::NodeId},
 };
 use std::marker::PhantomData;
+use crate::algorithms::maximum_flow::algorithms::solver::MaximumFlowSolver;
 
 #[derive(Default)]
 pub struct FordFulkerson<N, F> {

@@ -1,7 +1,7 @@
 use crate::{
     algorithms::maximum_flow::{
         edge::MaximumFlowEdge, residual_network_core::ResidualNetworkCore, result::MaxFlowResult,
-        solver::MaximumFlowSolver, status::Status, validate::validate_input,
+        status::Status, validate::validate_input,
     },
     core::numeric::FlowNum,
     graph::{
@@ -12,6 +12,7 @@ use crate::{
 };
 use std::collections::VecDeque;
 use std::marker::PhantomData;
+use crate::algorithms::maximum_flow::algorithms::solver::MaximumFlowSolver;
 
 #[derive(Default)]
 pub struct Dinic<N, F> {
