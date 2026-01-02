@@ -1,8 +1,6 @@
-use core::ops::{Div, DivAssign, Mul, MulAssign};
-use network_algorithms::{core::numeric::FlowNum, ids::NodeId, maximum_flow::prelude::*};
-use num_traits::{One, Zero};
+use network_algorithms::{ids::NodeId, maximum_flow::prelude::*};
 use rstest::rstest;
-use std::{fmt::Debug, fs::read_to_string, path::PathBuf, str::FromStr};
+use std::{fs::read_to_string, path::PathBuf};
 
 enum Solver {
     // CapacityScaling,
@@ -14,16 +12,13 @@ enum Solver {
     // ShortestAugmentingPath,
 }
 
-fn load_graph<F: Copy + Zero + FromStr + Default>(
+fn load_graph(
     input_file_path: &PathBuf,
-) -> (usize, usize, NodeId, NodeId, F, MaximumFlowGraph<i64>)
-where
-    <F as FromStr>::Err: Debug,
-{
+) -> (usize, usize, NodeId, NodeId, i64, MaximumFlowGraph<i64>) {
     let mut graph = MaximumFlowGraph::new();
 
     let (mut num_nodes, mut num_edges, mut source, mut sink, mut expected) =
-        (0, 0, NodeId(0), NodeId(0), F::zero());
+        (0, 0, NodeId(0), NodeId(0), 0);
     let mut nodes = Vec::new();
 
     read_to_string(&input_file_path)
@@ -61,18 +56,7 @@ impl Solver {
         skip_for_libreoj && path.to_str().map_or(false, |s| s.contains("LibreOJ"))
     }
 
-    pub fn build<
-        Flow: FlowNum
-            + Default
-            + One
-            + Mul<Output = Flow>
-            + MulAssign
-            + Div<Output = Flow>
-            + DivAssign
-            + 'static,
-    >(
-        &self,
-    ) -> Box<dyn MaximumFlowSolver<(), Flow>> {
+    pub fn build(&self) -> Box<dyn MaximumFlowSolver<(), i64>> {
         match self {
             // Solver::CapacityScaling => Box::new(CapacityScaling::default()),
             // Solver::Dinic => Box::new(Dinic::default()),
@@ -94,7 +78,7 @@ impl Solver {
 // #[case::push_relabel_highest_label(Solver::PushRelabelHighestLabel)]
 // #[case::shortest_augmenting_path(Solver::ShortestAugmentingPath)]
 fn maximum_flow(#[files("tests/maximum_flow/*/*.txt")] path: PathBuf, #[case] solver: Solver) {
-    let (num_nodes, num_edges, source, sink, expected, mut graph) = load_graph::<i64>(&path);
+    let (num_nodes, num_edges, source, sink, expected, mut graph) = load_graph(&path);
 
     if solver.should_skip(&path) {
         return;

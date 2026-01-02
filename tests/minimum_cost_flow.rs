@@ -1,6 +1,6 @@
-use network_algorithms::{minimum_cost_flow::MinimumCostFlowNum, minimum_cost_flow::prelude::*};
+use network_algorithms::minimum_cost_flow::prelude::*;
 use rstest::rstest;
-use std::{fmt::Debug, fs::read_to_string, path::PathBuf};
+use std::{fs::read_to_string, path::PathBuf};
 
 enum Solver {
     // CostScalingPushRelabel,
@@ -26,18 +26,7 @@ impl Solver {
     }
 
     // pub fn build<F, P>(&self) -> Box<dyn MinimumCostFlowSolver<F>>
-    pub fn build<F>(&self) -> Box<dyn MinimumCostFlowSolver<F>>
-    where
-        F: MinimumCostFlowNum
-            + TryFrom<usize>
-            + std::ops::MulAssign
-            + std::ops::Div<Output = F>
-            + std::ops::DivAssign
-            + Default
-            + 'static,
-        // P: Default + PivotRule<F> + 'static,
-        <F as TryFrom<usize>>::Error: Debug,
-    {
+    pub fn build(&self) -> Box<dyn MinimumCostFlowSolver<i128>> {
         match self {
             // Solver::CostScalingPushRelabel => Box::new(CostScalingPushRelabel::default()),
             // Solver::NegativeCostCanceling => Box::new(CycleCanceling::default()),
@@ -101,7 +90,7 @@ fn minimum_cost_flow(
         });
 
     // let mut solver_impl = solver.build::<_, BlockSearchPivotRule<_>>();
-    let mut solver_impl = solver.build::<_>();
+    let mut solver_impl = solver.build();
     let actual = solver_impl.solve(&mut graph);
 
     match actual {
