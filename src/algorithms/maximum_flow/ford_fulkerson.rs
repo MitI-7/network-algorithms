@@ -7,6 +7,7 @@ use crate::{
     graph::{direction::Directed, graph::Graph, ids::NodeId},
 };
 use std::marker::PhantomData;
+use crate::maximum_flow::validate::validate_input;
 
 #[derive(Default)]
 pub struct FordFulkerson<N, F> {
@@ -40,12 +41,7 @@ where
         sink: NodeId,
         upper: Option<F>,
     ) -> Result<MaxFlowResult<F>, Status> {
-        if source.index() >= graph.num_nodes()
-            || sink.index() >= graph.num_nodes()
-            || source == sink
-        {
-            return Err(Status::BadInput);
-        }
+        validate_input(graph, source, sink)?;
 
         self.rn.build(graph);
         let mut visited = vec![false; self.rn.num_nodes];
