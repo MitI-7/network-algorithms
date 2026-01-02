@@ -13,7 +13,7 @@ use crate::{
     graph::{
         direction::Directed,
         graph::Graph,
-        ids::{ArcId, EdgeId},
+        ids::{ArcId, EdgeId, NodeId},
     },
 };
 use std::{cmp::Reverse, collections::BinaryHeap};
@@ -54,14 +54,15 @@ where
         self.rn.build(&nn, None, None, None);
 
         for s in 0..self.rn.num_nodes {
-            while self.rn.excesses[s] > F::zero() {
+            let s = NodeId(s);
+            while self.rn.excesses[s.index()] > F::zero() {
                 match self.calculate_distance(s) {
                     Some((t, visited, dist, prev)) => {
                         // update potentials
                         for u in 0..self.rn.num_nodes {
                             if visited[u] {
-                                self.rn.potentials[u] =
-                                    self.rn.potentials[u] - dist[u].unwrap() + dist[t].unwrap();
+                                self.rn.potentials[u] = self.rn.potentials[u] - dist[u].unwrap()
+                                    + dist[t.index()].unwrap();
                             }
                         }
                         // update flow
@@ -89,27 +90,27 @@ where
 
     fn calculate_distance(
         &mut self,
-        s: usize,
-    ) -> Option<(usize, Vec<bool>, Vec<Option<F>>, Vec<Option<ArcId>>)> {
+        s: NodeId,
+    ) -> Option<(NodeId, Vec<bool>, Vec<Option<F>>, Vec<Option<ArcId>>)> {
         let mut prev = vec![None; self.rn.num_nodes];
         let mut bh = BinaryHeap::new();
         let mut dist: Vec<Option<F>> = vec![None; self.rn.num_nodes];
         let mut visited = vec![false; self.rn.num_nodes];
 
         bh.push((Reverse(F::zero()), s));
-        dist[s] = Some(F::zero());
+        dist[s.index()] = Some(F::zero());
 
         while let Some((d, u)) = bh.pop() {
-            if visited[u] {
+            if visited[u.index()] {
                 continue;
             }
-            visited[u] = true;
+            visited[u.index()] = true;
 
-            if self.rn.excesses[u] < F::zero() {
+            if self.rn.excesses[u.index()] < F::zero() {
                 return Some((u, visited, dist, prev));
             }
 
-            for arc_id in self.rn.start[u]..self.rn.start[u + 1] {
+            for arc_id in self.rn.start[u.index()]..self.rn.start[u.index() + 1] {
                 let arc_id = ArcId(arc_id);
                 if self.rn.residual_capacity(arc_id) == F::zero() {
                     continue;
@@ -117,9 +118,9 @@ where
 
                 let to = self.rn.to[arc_id.index()];
                 let new_dist = d.0 + self.rn.reduced_cost(u, arc_id);
-                if dist[to].is_none() || dist[to].unwrap() > new_dist {
-                    dist[to] = Some(new_dist);
-                    prev[to] = Some(arc_id);
+                if dist[to.index()].is_none() || dist[to.index()].unwrap() > new_dist {
+                    dist[to.index()] = Some(new_dist);
+                    prev[to.index()] = Some(arc_id);
                     bh.push((Reverse(new_dist), to));
                 }
             }
@@ -128,19 +129,21 @@ where
         None
     }
 
-    fn update_flow(&mut self, s: usize, t: usize, prev: Vec<Option<ArcId>>) {
-        debug_assert!(self.rn.excesses[s] > F::zero() && self.rn.excesses[t] < F::zero());
+    fn update_flow(&mut self, s: NodeId, t: NodeId, prev: Vec<Option<ArcId>>) {
+        debug_assert!(
+            self.rn.excesses[s.index()] > F::zero() && self.rn.excesses[t.index()] < F::zero()
+        );
 
         // calculate delta
-        let mut delta = self.rn.excesses[s].min(-self.rn.excesses[t]);
+        let mut delta = self.rn.excesses[s.index()].min(-self.rn.excesses[t.index()]);
         {
             let mut v = t;
-            while let Some(arc_id) = prev[v] {
+            while let Some(arc_id) = prev[v.index()] {
                 delta = delta.min(self.rn.residual_capacity(arc_id));
                 let rev = self.rn.rev[arc_id.index()];
-                v = self.rn.to[rev];
+                v = self.rn.to[rev.index()];
             }
-            delta = delta.min(self.rn.excesses[v]);
+            delta = delta.min(self.rn.excesses[v.index()]);
             debug_assert_eq!(s, v);
             debug_assert!(delta > F::zero());
         }
@@ -148,17 +151,17 @@ where
         // update flow
         {
             let mut v = t;
-            while let Some(arc_id) = prev[v] {
+            while let Some(arc_id) = prev[v.index()] {
                 // push
                 let rev = self.rn.rev[arc_id.index()];
                 self.rn.flow[arc_id.index()] += delta;
-                self.rn.flow[rev] -= delta;
-                v = self.rn.to[rev];
+                self.rn.flow[rev.index()] -= delta;
+                v = self.rn.to[rev.index()];
             }
             debug_assert_eq!(s, v);
         }
 
-        self.rn.excesses[t] += delta;
-        self.rn.excesses[s] -= delta;
+        self.rn.excesses[t.index()] += delta;
+        self.rn.excesses[s.index()] -= delta;
     }
 }

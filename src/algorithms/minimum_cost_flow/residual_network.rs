@@ -1,3 +1,5 @@
+use crate::graph::ids::ArcId;
+use crate::graph::iter::ArcIdRange;
 use crate::{
     algorithms::minimum_cost_flow::{
         MinimumCostFlowNum,
@@ -12,24 +14,22 @@ use crate::{
     },
 };
 use std::{cmp::Reverse, collections::BinaryHeap};
-use crate::graph::ids::ArcId;
-use crate::graph::iter::ArcIdRange;
 
 #[derive(Default)]
 pub(crate) struct ResidualNetwork<F> {
     pub(crate) num_nodes: usize,
     pub(crate) num_edges: usize,
-    pub(crate) edge_id_to_arc_id: Box<[usize]>,
+    pub(crate) edge_id_to_arc_id: Box<[ArcId]>,
 
     pub(crate) excesses: Box<[F]>,
     pub(crate) potentials: Box<[F]>,
 
     pub(crate) start: Box<[usize]>,
-    pub(crate) to: Box<[usize]>,
+    pub(crate) to: Box<[NodeId]>,
     pub(crate) flow: Box<[F]>,
     pub(crate) upper: Box<[F]>,
     pub(crate) cost: Box<[F]>,
-    pub(crate) rev: Box<[usize]>,
+    pub(crate) rev: Box<[ArcId]>,
 
     pub(crate) is_reversed: Box<[bool]>,
 }
@@ -64,13 +64,13 @@ where
             }
         }
 
-        self.edge_id_to_arc_id = vec![usize::MAX; self.num_edges].into_boxed_slice();
+        self.edge_id_to_arc_id = vec![ArcId(usize::MAX); self.num_edges].into_boxed_slice();
         self.start = vec![0; self.num_nodes + 1].into_boxed_slice();
-        self.to = vec![usize::MAX; self.num_edges * 2].into_boxed_slice();
+        self.to = vec![NodeId(usize::MAX); self.num_edges * 2].into_boxed_slice();
         self.flow = vec![F::zero(); self.num_edges * 2].into_boxed_slice();
         self.upper = vec![F::zero(); self.num_edges * 2].into_boxed_slice();
         self.cost = vec![F::zero(); self.num_edges * 2].into_boxed_slice();
-        self.rev = vec![usize::MAX; self.num_edges * 2].into_boxed_slice();
+        self.rev = vec![ArcId(usize::MAX); self.num_edges * 2].into_boxed_slice();
         self.potentials = vec![F::zero(); self.num_nodes].into_boxed_slice();
 
         let mut degree = vec![0usize; self.num_nodes];
@@ -98,29 +98,28 @@ where
             debug_assert!(edge.cost >= F::zero());
             debug_assert!(edge.upper >= F::zero());
 
-            let u = edge.u.index();
-            let v = edge.v.index();
+            let (u, v) = (edge.u, edge.v);
 
-            let arc_id_u = self.start[u] + counter[u];
-            counter[u] += 1;
-            let arc_id_v = self.start[v] + counter[v];
-            counter[v] += 1;
+            let arc_id_u = ArcId(self.start[u.index()] + counter[u.index()]);
+            counter[u.index()] += 1;
+            let arc_id_v = ArcId(self.start[v.index()] + counter[v.index()]);
+            counter[v.index()] += 1;
 
             // 元の edge_index -> 正規化後 forward arc（u->v）の inside index
             self.edge_id_to_arc_id[edge.edge_index] = arc_id_u;
 
             // u -> v
-            self.to[arc_id_u] = v;
-            self.upper[arc_id_u] = edge.upper;
-            self.cost[arc_id_u] = edge.cost;
-            self.rev[arc_id_u] = arc_id_v;
+            self.to[arc_id_u.index()] = v;
+            self.upper[arc_id_u.index()] = edge.upper;
+            self.cost[arc_id_u.index()] = edge.cost;
+            self.rev[arc_id_u.index()] = arc_id_v;
 
             // v -> u (reverse arc)
-            self.to[arc_id_v] = u;
-            self.flow[arc_id_v] = edge.upper; // あなたの表現に合わせる
-            self.upper[arc_id_v] = edge.upper;
-            self.cost[arc_id_v] = -edge.cost;
-            self.rev[arc_id_v] = arc_id_u;
+            self.to[arc_id_v.index()] = u;
+            self.flow[arc_id_v.index()] = edge.upper; // あなたの表現に合わせる
+            self.upper[arc_id_v.index()] = edge.upper;
+            self.cost[arc_id_v.index()] = -edge.cost;
+            self.rev[arc_id_v.index()] = arc_id_u;
         }
     }
 
@@ -138,9 +137,9 @@ where
             let edge = &graph.get_edge(EdgeId(edge_id));
             // graph.edges[edge_id].data.flow = if edge.data.cost >= F::zero() {
             flows.push(if edge.data.cost >= F::zero() {
-                self.flow[arc_id] + edge.data.lower
+                self.flow[arc_id.index()] + edge.data.lower
             } else {
-                edge.data.upper - self.flow[arc_id]
+                edge.data.upper - self.flow[arc_id.index()]
             });
             // assert!(graph.edges[edge_id].data.flow <= graph.edges[edge_id].data.upper);
             // assert!(graph.edges[edge_id].data.flow >= graph.edges[edge_id].data.lower);
@@ -149,26 +148,26 @@ where
     }
 
     #[inline]
-    pub fn neighbors(&self, u: usize) -> ArcIdRange {
+    pub fn neighbors(&self, u: NodeId) -> ArcIdRange {
         ArcIdRange {
-            cur: self.start[u],
-            end: self.start[u + 1],
+            cur: self.start[u.index()],
+            end: self.start[u.index() + 1],
         }
     }
 
     #[inline]
-    pub fn push_flow(&mut self, u: usize, arc_id: usize, flow: F) {
-        let rev = self.rev[arc_id];
-        let to = self.to[arc_id];
-        self.flow[arc_id] += flow;
-        self.flow[rev] -= flow;
-        self.excesses[u] -= flow;
-        self.excesses[to] += flow;
+    pub fn push_flow(&mut self, u: NodeId, arc_id: ArcId, flow: F) {
+        let rev = self.rev[arc_id.index()];
+        let to = self.to[arc_id.index()];
+        self.flow[arc_id.index()] += flow;
+        self.flow[rev.index()] -= flow;
+        self.excesses[u.index()] -= flow;
+        self.excesses[to.index()] += flow;
     }
 
     pub fn calculate_distance_from_source(
         &mut self,
-        source: usize,
+        source: NodeId,
     ) -> (Vec<Option<F>>, Vec<Option<ArcId>>) {
         let mut prev = vec![None; self.num_nodes];
         let mut bh = BinaryHeap::new();
@@ -176,13 +175,13 @@ where
         let mut visited = vec![false; self.num_nodes];
 
         bh.push((Reverse(F::zero()), source));
-        dist[source] = Some(F::zero());
+        dist[source.index()] = Some(F::zero());
 
         while let Some((d, u)) = bh.pop() {
-            if visited[u] {
+            if visited[u.index()] {
                 continue;
             }
-            visited[u] = true;
+            visited[u.index()] = true;
 
             for arc_id in self.neighbors(u) {
                 if self.residual_capacity(arc_id) == F::zero() {
@@ -191,9 +190,9 @@ where
 
                 let to = self.to[arc_id.index()];
                 let new_dist = d.0 + self.reduced_cost(u, arc_id);
-                if dist[to].is_none() || dist[to].unwrap() > new_dist {
-                    dist[to] = Some(new_dist);
-                    prev[to] = Some(arc_id);
+                if dist[to.index()].is_none() || dist[to.index()].unwrap() > new_dist {
+                    dist[to.index()] = Some(new_dist);
+                    prev[to.index()] = Some(arc_id);
                     bh.push((Reverse(new_dist), to));
                 }
             }
@@ -211,13 +210,15 @@ where
     }
 
     #[inline]
-    pub fn reduced_cost(&self, u: usize, arc_id: ArcId) -> F {
-        self.cost[arc_id.index()] - self.potentials[u] + self.potentials[self.to[arc_id.index()]]
+    pub fn reduced_cost(&self, u: NodeId, arc_id: ArcId) -> F {
+        self.cost[arc_id.index()] - self.potentials[u.index()]
+            + self.potentials[self.to[arc_id.index()].index()]
     }
 
     #[inline]
-    pub fn reduced_cost_rev(&self, u: usize, arc_id: ArcId) -> F {
-        -(self.cost[arc_id.index()] - self.potentials[u] + self.potentials[self.to[arc_id.index()]])
+    pub fn reduced_cost_rev(&self, u: NodeId, arc_id: ArcId) -> F {
+        -(self.cost[arc_id.index()] - self.potentials[u.index()]
+            + self.potentials[self.to[arc_id.index()].index()])
     }
 
     pub fn residual_capacity(&self, arc_id: ArcId) -> F {
@@ -225,7 +226,8 @@ where
     }
 
     pub fn is_feasible(&self, arc_id: ArcId) -> bool {
-        F::zero() <= self.flow[arc_id.index()] && self.flow[arc_id.index()] <= self.upper[arc_id.index()]
+        F::zero() <= self.flow[arc_id.index()]
+            && self.flow[arc_id.index()] <= self.upper[arc_id.index()]
     }
 }
 
