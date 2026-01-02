@@ -1,4 +1,4 @@
-use network_algorithms::maximum_flow::{FordFulkerson, MaximumFlowGraph, MaximumFlowSolver};
+use network_algorithms::maximum_flow::prelude::*;
 
 fn ford_fulkerson_sample() {
     let mut graph = MaximumFlowGraph::new();

@@ -1,9 +1,5 @@
 use core::ops::{Div, DivAssign, Mul, MulAssign};
-use network_algorithms::{
-    FlowNum,
-    ids::NodeId,
-    maximum_flow::{FordFulkerson, MaximumFlowGraph, MaximumFlowSolver},
-};
+use network_algorithms::{core::numeric::FlowNum, ids::NodeId, maximum_flow::prelude::*};
 use num_traits::{One, Zero};
 use rstest::rstest;
 use std::{fmt::Debug, fs::read_to_string, path::PathBuf, str::FromStr};

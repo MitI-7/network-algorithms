@@ -1,22 +1,19 @@
+use crate::graph::ids::ArcId;
 use crate::{
     algorithms::minimum_cost_flow::{
+        MinimumCostFlowNum,
         edge::MinimumCostFlowEdge,
         node::MinimumCostFlowNode,
         normalized_network::NormalizedNetwork,
         residual_network::{ResidualNetwork, construct_extend_network_one_supply_one_demand},
         result::MinimumCostFlowResult,
+        solver::MinimumCostFlowSolver,
         status::Status,
-        validate::{trivial_solution_if_any, validate_infeasible, validate_balance},
-        {MinimumCostFlowNum, MinimumCostFlowSolver},
+        validate::{trivial_solution_if_any, validate_balance, validate_infeasible},
     },
-    graph::{
-        direction::Directed,
-        graph::Graph,
-        ids::EdgeId,
-    },
+    graph::{direction::Directed, graph::Graph, ids::EdgeId},
 };
 use std::collections::{BinaryHeap, VecDeque};
-use crate::graph::ids::ArcId;
 
 #[derive(Default)]
 pub struct PrimalDual<F> {
@@ -202,9 +199,7 @@ where
             let arc_id = ArcId(arc_id);
             self.current_edge[u] = arc_id.index();
 
-            if !self.is_admissible_edge(u, arc_id)
-                || self.rn.reduced_cost(u, arc_id) != F::zero()
-            {
+            if !self.is_admissible_edge(u, arc_id) || self.rn.reduced_cost(u, arc_id) != F::zero() {
                 continue;
             }
 

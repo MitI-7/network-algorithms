@@ -1,6 +1,4 @@
-use network_algorithms::minimum_cost_flow::{
-    MinimumCostFlowGraph, MinimumCostFlowSolver, SuccessiveShortestPath,
-};
+use network_algorithms::minimum_cost_flow::prelude::*;
 
 fn primal_network_simplex() {
     let mut graph = MinimumCostFlowGraph::<i32>::new();

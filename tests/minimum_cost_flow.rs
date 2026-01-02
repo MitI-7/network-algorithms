@@ -1,7 +1,4 @@
-use network_algorithms::minimum_cost_flow::{
-    MinimumCostFlowGraph, MinimumCostFlowNum, MinimumCostFlowSolver, PrimalDual,
-    SuccessiveShortestPath,
-};
+use network_algorithms::{minimum_cost_flow::MinimumCostFlowNum, minimum_cost_flow::prelude::*};
 use rstest::rstest;
 use std::{fmt::Debug, fs::read_to_string, path::PathBuf};
 

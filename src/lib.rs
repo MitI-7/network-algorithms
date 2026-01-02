@@ -1,5 +1,5 @@
 mod algorithms;
-mod core;
+pub mod core;
 mod graph;
 
 pub use crate::algorithms::maximum_flow;

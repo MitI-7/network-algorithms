@@ -1,5 +1,5 @@
 use crate::{
-    FlowNum,
+    core::numeric::FlowNum,
     graph::{direction::Directed, graph::Graph, ids::NodeId},
     maximum_flow::{edge::MaximumFlowEdge, status::Status},
 };
