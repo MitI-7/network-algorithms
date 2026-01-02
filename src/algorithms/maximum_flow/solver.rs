@@ -7,6 +7,7 @@ pub trait MaximumFlowSolver<N, F>
 where
     F: FlowNum,
 {
+    type Prepared;
     fn solve(
         &mut self,
         graph: &Graph<Directed, N, MaximumFlowEdge<F>>,
@@ -14,12 +15,17 @@ where
         sink: NodeId,
         upper: Option<F>,
     ) -> Result<MaxFlowResult<F>, Status>;
-    //
-    // fn minimum_cut(
-    //     &mut self,
-    //     graph: &Graph<Directed, N, MaximumFlowEdge<F>>,
-    //     source: NodeId,
-    //     sink: NodeId,
-    //     upper: Option<F>,
-    // ) -> Result<MaxFlowResult<F>, Status>;
+
+    fn prepare(
+        &mut self,
+        graph: &Graph<Directed, N, MaximumFlowEdge<F>>,
+    ) -> Result<Self::Prepared, Status>;
+
+    fn solve_with_prepared(
+        &mut self,
+        prepared: &Self::Prepared,
+        s: NodeId,
+        t: NodeId,
+        upper: Option<F>,
+    ) -> Result<MaxFlowResult<F>, Status>;
 }

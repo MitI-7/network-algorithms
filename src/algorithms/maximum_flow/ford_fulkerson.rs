@@ -1,17 +1,18 @@
 use crate::{
     algorithms::maximum_flow::{
         edge::MaximumFlowEdge, residual_network::ResidualNetwork, result::MaxFlowResult,
-        solver::MaximumFlowSolver, status::Status,
+        solver::MaximumFlowSolver, status::Status, validate::validate_input,
     },
     core::numeric::FlowNum,
     graph::{direction::Directed, graph::Graph, ids::NodeId},
 };
 use std::marker::PhantomData;
-use crate::maximum_flow::validate::validate_input;
 
 #[derive(Default)]
 pub struct FordFulkerson<N, F> {
-    rn: ResidualNetwork<N, F>,
+    residual_capacities: Box<[F]>,
+    excesses: Box<[F]>,
+    visited: Box<[bool]>,
     phantom: PhantomData<N>,
 }
 
@@ -19,6 +20,8 @@ impl<N, F> MaximumFlowSolver<N, F> for FordFulkerson<N, F>
 where
     F: FlowNum,
 {
+    type Prepared = ResidualNetwork<N, F>;
+
     fn solve(
         &mut self,
         graph: &Graph<Directed, N, MaximumFlowEdge<F>>,
@@ -26,7 +29,26 @@ where
         sink: NodeId,
         upper: Option<F>,
     ) -> Result<MaxFlowResult<F>, Status> {
-        self.run(graph, source, sink, upper)
+        validate_input(graph, source, sink)?;
+        let rn = ResidualNetwork::from_graph(graph);
+        self.run_with_prepared(&rn, source, sink, upper)
+    }
+
+    fn prepare(
+        &mut self,
+        graph: &Graph<Directed, N, MaximumFlowEdge<F>>,
+    ) -> Result<Self::Prepared, Status> {
+        Ok(ResidualNetwork::from_graph(graph))
+    }
+
+    fn solve_with_prepared(
+        &mut self,
+        rn: &Self::Prepared,
+        s: NodeId,
+        t: NodeId,
+        upper: Option<F>,
+    ) -> Result<MaxFlowResult<F>, Status> {
+        self.run_with_prepared(rn, s, t, upper)
     }
 }
 
@@ -34,27 +56,39 @@ impl<N, F> FordFulkerson<N, F>
 where
     F: FlowNum,
 {
-    fn run(
+    fn run_with_prepared(
         &mut self,
-        graph: &Graph<Directed, N, MaximumFlowEdge<F>>,
+        rn: &ResidualNetwork<N, F>,
         source: NodeId,
         sink: NodeId,
         upper: Option<F>,
     ) -> Result<MaxFlowResult<F>, Status> {
-        validate_input(graph, source, sink)?;
+        // initialize
+        if self.residual_capacities.len() != rn.num_edges * 2 {
+            self.residual_capacities = vec![F::zero(); rn.num_edges * 2].into_boxed_slice();
+        } else {
+            self.residual_capacities.fill(F::zero());
+        }
+        if self.excesses.len() != rn.num_nodes {
+            self.excesses = vec![F::zero(); rn.num_nodes].into_boxed_slice();
+        } else {
+            self.excesses.fill(F::zero());
+        }
 
-        self.rn.build(graph);
-        let mut visited = vec![false; self.rn.num_nodes];
+        self.residual_capacities.copy_from_slice(&rn.upper);
+
+        self.visited = vec![false; rn.num_nodes].into_boxed_slice();
 
         let mut residual = upper.unwrap_or_else(|| {
-            self.rn
-                .neighbors(source)
-                .fold(F::zero(), |acc, arc_id| acc + self.rn.residual_capacity(arc_id))
+            rn.neighbors(source).fold(F::zero(), |acc, arc_id| {
+                acc + self.residual_capacities[arc_id.index()]
+            })
         });
+
         let mut objective_value = F::zero();
         while residual > F::zero() {
-            visited.fill(false);
-            match self.dfs(source, sink, residual, &mut visited) {
+            self.visited.fill(false);
+            match self.dfs(rn, source, sink, residual) {
                 Some(delta) => {
                     objective_value += delta;
                     residual -= delta;
@@ -65,25 +99,25 @@ where
 
         Ok(MaxFlowResult {
             objective_value,
-            flows: self.rn.get_flows(graph),
+            flows: rn.get_flows(&self.residual_capacities),
         })
     }
 
-    fn dfs(&mut self, u: NodeId, sink: NodeId, flow: F, visited: &mut Vec<bool>) -> Option<F> {
+    fn dfs(&mut self, rn: &ResidualNetwork<N, F>, u: NodeId, sink: NodeId, flow: F) -> Option<F> {
         if u == sink {
             return Some(flow);
         }
-        visited[u.index()] = true;
+        self.visited[u.index()] = true;
 
-        for arc_id in self.rn.neighbors(u) {
-            let to = self.rn.to[arc_id.index()];
-            let residual_capacity = self.rn.residual_capacity(arc_id);
-            if visited[to.index()] || residual_capacity == F::zero() {
+        for arc_id in rn.neighbors(u) {
+            let to = rn.to[arc_id.index()];
+            let residual_capacity = self.residual_capacities[arc_id.index()];
+            if self.visited[to.index()] || residual_capacity == F::zero() {
                 continue;
             }
 
-            if let Some(d) = self.dfs(to, sink, flow.min(residual_capacity), visited) {
-                self.rn.push_flow(u, arc_id, d, true);
+            if let Some(d) = self.dfs(rn, to, sink, flow.min(residual_capacity)) {
+                rn.push_flow(u, arc_id, d, &mut self.residual_capacities, None);
                 return Some(d);
             }
         }

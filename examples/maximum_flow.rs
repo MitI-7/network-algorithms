@@ -30,6 +30,42 @@ fn ford_fulkerson() {
     }
 }
 
+
+fn ford_fulkerson_p() {
+    let mut graph = MaximumFlowGraph::new();
+    let nodes = graph.add_nodes(6);
+    assert_eq!(graph.num_nodes(), 6);
+    let mut edges = Vec::new();
+    edges.push(graph.add_edge(nodes[0], nodes[1], 3).unwrap());
+    edges.push(graph.add_edge(nodes[0], nodes[2], 3).unwrap());
+    edges.push(graph.add_edge(nodes[1], nodes[2], 2).unwrap());
+    edges.push(graph.add_edge(nodes[1], nodes[3], 3).unwrap());
+    edges.push(graph.add_edge(nodes[2], nodes[4], 2).unwrap());
+    edges.push(graph.add_edge(nodes[3], nodes[4], 4).unwrap());
+    edges.push(graph.add_edge(nodes[3], nodes[5], 2).unwrap());
+    edges.push(graph.add_edge(nodes[4], nodes[5], 3).unwrap());
+
+    let mut ff = FordFulkerson::<(), i32>::default();
+    let p= ff.prepare(&graph).unwrap();
+
+    // match ff.solve_with_prepared(&p, nodes[0], nodes[5], None) {
+    //     Ok(result) => {
+    //         println!("maximum flow:{}", result.objective_value);
+    //         assert_eq!(result.objective_value, 5);
+    //     }
+    //     _ => unreachable!(),
+    // }
+
+    match ff.solve_with_prepared(&p, nodes[2], nodes[4], None) {
+        Ok(result) => {
+            println!("maximum flow:{}", result.objective_value);
+            assert_eq!(result.objective_value, 2);
+        }
+        _ => unreachable!(),
+    }
+
+}
+
 // fn push_relabel() {
 //     let mut graph = MaximumFlowGraph::<i32>::default();
 //     let nodes = graph.add_nodes(4);
@@ -57,6 +93,7 @@ fn ford_fulkerson() {
 
 fn main() {
     ford_fulkerson();
+    ford_fulkerson_p();
     //
     // println!("push relabel");
     // push_relabel();

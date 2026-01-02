@@ -4,28 +4,22 @@ use crate::{
     graph::{
         direction::Directed,
         graph::Graph,
-        ids::{ArcId, EdgeId, NodeId},
+        ids::{ArcId, NodeId},
         iter::ArcIdRange,
     },
 };
-use std::{collections::VecDeque, marker::PhantomData};
+use std::marker::PhantomData;
 
 #[derive(Default)]
-pub(crate) struct ResidualNetwork<N, F> {
+pub struct ResidualNetwork<N, F> {
     pub(crate) num_nodes: usize,
     pub(crate) num_edges: usize,
     pub(crate) edge_id_to_arc_id: Box<[ArcId]>,
 
-    // invariant attribute
     pub(crate) start: Box<[usize]>,
+    pub(crate) upper: Box<[F]>,
     pub(crate) to: Box<[NodeId]>,
     pub(crate) rev: Box<[ArcId]>,
-
-    // state
-    pub(crate) residual_capacities: Box<[F]>,
-    pub(crate) excesses: Box<[F]>,
-    pub(crate) distances_to_sink: Box<[usize]>, // distance from u to sink in residual network
-    que: VecDeque<NodeId>,
 
     phantom_data: PhantomData<N>,
 }
@@ -34,19 +28,23 @@ impl<N, F> ResidualNetwork<N, F>
 where
     F: FlowNum,
 {
-    pub fn build(&mut self, graph: &Graph<Directed, N, MaximumFlowEdge<F>>) {
-        self.num_nodes = graph.num_nodes();
-        self.num_edges = graph.num_edges();
+    pub fn from_graph(graph: &Graph<Directed, N, MaximumFlowEdge<F>>) -> Self {
+        let mut rn = ResidualNetwork {
+            num_nodes: graph.num_nodes(),
+            num_edges: graph.num_edges(),
+            edge_id_to_arc_id: vec![ArcId(usize::MAX); graph.num_edges()].into_boxed_slice(),
+            start: vec![0; graph.num_nodes() + 1].into_boxed_slice(),
+            upper: vec![F::zero(); graph.num_edges() * 2].into_boxed_slice(),
+            to: vec![NodeId(usize::MAX); graph.num_edges() * 2].into_boxed_slice(),
+            rev: vec![ArcId(usize::MAX); graph.num_edges() * 2].into_boxed_slice(),
+            phantom_data: PhantomData,
+        };
+        rn.build(graph);
 
-        // initialize
-        self.edge_id_to_arc_id = vec![ArcId(usize::MAX); self.num_edges].into_boxed_slice();
-        self.start = vec![0; self.num_nodes + 1].into_boxed_slice();
-        self.to = vec![NodeId(usize::MAX); self.num_edges * 2].into_boxed_slice();
-        self.rev = vec![ArcId(usize::MAX); self.num_edges * 2].into_boxed_slice();
-        self.residual_capacities = vec![F::zero(); self.num_edges * 2].into_boxed_slice();
-        self.excesses = vec![F::zero(); self.num_nodes].into_boxed_slice();
-        self.distances_to_sink = vec![self.num_nodes; self.num_nodes].into_boxed_slice();
+        rn
+    }
 
+    fn build(&mut self, graph: &Graph<Directed, N, MaximumFlowEdge<F>>) {
         let mut degree = vec![0; self.num_nodes].into_boxed_slice();
 
         for edge in graph.edges() {
@@ -71,23 +69,18 @@ where
             // u -> v
             self.to[arc_id_u.index()] = v;
             self.rev[arc_id_u.index()] = arc_id_v;
-            self.residual_capacities[arc_id_u.index()] = e.data.upper;
+            self.upper[arc_id_u.index()] = e.data.upper;
 
             // v -> u
             self.to[arc_id_v.index()] = u;
             self.rev[arc_id_v.index()] = arc_id_u;
-            self.residual_capacities[arc_id_v.index()] = F::zero();
         }
     }
 
-    pub(crate) fn get_flows(&self, graph: &Graph<Directed, N, MaximumFlowEdge<F>>) -> Vec<F> {
+    pub(crate) fn get_flows(&self, residual_capacities: &[F]) -> Vec<F> {
         self.edge_id_to_arc_id
             .iter()
-            .enumerate()
-            .map(|(edge_id, &arc_id)| {
-                graph.get_edge(EdgeId(edge_id)).unwrap().data.upper
-                    - self.residual_capacities[arc_id.index()]
-            })
+            .map(|&arc_id| self.upper[arc_id.index()] - residual_capacities[arc_id.index()])
             .collect()
     }
 
@@ -100,13 +93,20 @@ where
     }
 
     #[inline]
-    pub(crate) fn push_flow(&mut self, u: NodeId, arc_id: ArcId, flow: F, without_excess: bool) {
-        self.residual_capacities[arc_id.index()] -= flow;
-        self.residual_capacities[self.rev[arc_id.index()].index()] += flow;
+    pub(crate) fn push_flow(
+        &self,
+        _u: NodeId,
+        arc_id: ArcId,
+        flow: F,
+        residual_capacities: &mut [F],
+        excesses: Option<&mut [F]>,
+    ) {
+        residual_capacities[arc_id.index()] -= flow;
+        residual_capacities[self.rev[arc_id.index()].index()] += flow;
 
-        if !without_excess {
-            self.excesses[u.index()] -= flow;
-            self.excesses[self.to[arc_id.index()].index()] += flow;
+        if excesses.is_some() {
+            // excesses.unwrap()[u.index()] -= flow;
+            // excesses.unwrap()[self.to[arc_id.index()].index()] += flow;
         }
     }
 
@@ -141,8 +141,4 @@ where
     //         && self.distances_to_sink[from.index()]
     //             == self.distances_to_sink[self.to[arc_id.index()].index()] + 1
     // }
-
-    pub(crate) fn residual_capacity(&self, arc_id: ArcId) -> F {
-        self.residual_capacities[arc_id.index()]
-    }
 }

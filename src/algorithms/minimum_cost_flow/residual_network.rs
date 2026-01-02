@@ -26,7 +26,7 @@ pub(crate) struct ResidualNetwork<F> {
     pub(crate) upper: Box<[F]>,
     pub(crate) cost: Box<[F]>,
     pub(crate) rev: Box<[ArcId]>,
-    pub(crate) is_reversed: Box<[bool]>,
+    // pub(crate) is_reversed: Box<[bool]>,
 
     // state
     pub(crate) flow: Box<[F]>,
