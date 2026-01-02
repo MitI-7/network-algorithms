@@ -6,12 +6,12 @@ use crate::{
         node::MinimumCostFlowNode,
         normalized_network::{NormalizedEdge, NormalizedNetwork},
     },
+    core::numeric::CostNum,
     graph::{
         direction::Directed,
         graph::Graph,
         ids::{EdgeId, NodeId},
     },
-    core::numeric::CostNum,
 };
 use std::{cmp::Reverse, collections::BinaryHeap};
 
@@ -21,17 +21,17 @@ pub(crate) struct ResidualNetwork<F> {
     pub(crate) num_edges: usize,
     pub(crate) edge_id_to_arc_id: Box<[ArcId]>,
 
-    pub(crate) excesses: Box<[F]>,
-    pub(crate) potentials: Box<[F]>,
-
     pub(crate) start: Box<[usize]>,
     pub(crate) to: Box<[NodeId]>,
-    pub(crate) flow: Box<[F]>,
     pub(crate) upper: Box<[F]>,
     pub(crate) cost: Box<[F]>,
     pub(crate) rev: Box<[ArcId]>,
-
     pub(crate) is_reversed: Box<[bool]>,
+
+    // state
+    pub(crate) flow: Box<[F]>,
+    pub(crate) excesses: Box<[F]>,
+    pub(crate) potentials: Box<[F]>,
 }
 
 impl<F> ResidualNetwork<F>
@@ -67,10 +67,10 @@ where
         self.edge_id_to_arc_id = vec![ArcId(usize::MAX); self.num_edges].into_boxed_slice();
         self.start = vec![0; self.num_nodes + 1].into_boxed_slice();
         self.to = vec![NodeId(usize::MAX); self.num_edges * 2].into_boxed_slice();
-        self.flow = vec![F::zero(); self.num_edges * 2].into_boxed_slice();
         self.upper = vec![F::zero(); self.num_edges * 2].into_boxed_slice();
         self.cost = vec![F::zero(); self.num_edges * 2].into_boxed_slice();
         self.rev = vec![ArcId(usize::MAX); self.num_edges * 2].into_boxed_slice();
+        self.flow = vec![F::zero(); self.num_edges * 2].into_boxed_slice();
         self.potentials = vec![F::zero(); self.num_nodes].into_boxed_slice();
 
         let mut degree = vec![0usize; self.num_nodes];
@@ -94,7 +94,6 @@ where
             .iter_edges()
             .chain(artificial_edges.into_iter().flatten().copied())
         {
-            // ここでは lower は常に 0 扱いなのでチェック不要
             debug_assert!(edge.cost >= F::zero());
             debug_assert!(edge.upper >= F::zero());
 
@@ -105,7 +104,6 @@ where
             let arc_id_v = ArcId(self.start[v.index()] + counter[v.index()]);
             counter[v.index()] += 1;
 
-            // 元の edge_index -> 正規化後 forward arc（u->v）の inside index
             self.edge_id_to_arc_id[edge.edge_index] = arc_id_u;
 
             // u -> v
@@ -116,10 +114,10 @@ where
 
             // v -> u (reverse arc)
             self.to[arc_id_v.index()] = u;
-            self.flow[arc_id_v.index()] = edge.upper; // あなたの表現に合わせる
             self.upper[arc_id_v.index()] = edge.upper;
             self.cost[arc_id_v.index()] = -edge.cost;
             self.rev[arc_id_v.index()] = arc_id_u;
+            self.flow[arc_id_v.index()] = edge.upper;
         }
     }
 

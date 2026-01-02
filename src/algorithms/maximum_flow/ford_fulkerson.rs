@@ -49,7 +49,7 @@ where
         let mut residual = upper.unwrap_or_else(|| {
             self.rn
                 .neighbors(source)
-                .fold(F::zero(), |acc, arc_id| acc + self.rn.upper[arc_id.index()])
+                .fold(F::zero(), |acc, arc_id| acc + self.rn.residual_capacity(arc_id))
         });
         let mut objective_value = F::zero();
         while residual > F::zero() {
@@ -65,7 +65,7 @@ where
 
         Ok(MaxFlowResult {
             objective_value,
-            flows: self.rn.get_flows(),
+            flows: self.rn.get_flows(graph),
         })
     }
 
