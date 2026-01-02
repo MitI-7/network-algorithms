@@ -11,7 +11,7 @@ use crate::{
 use std::marker::PhantomData;
 
 #[derive(Default)]
-pub struct ResidualNetwork<N, F> {
+pub struct ResidualNetworkCore<N, F> {
     pub(crate) num_nodes: usize,
     pub(crate) num_edges: usize,
     pub(crate) edge_id_to_arc_id: Box<[ArcId]>,
@@ -24,12 +24,12 @@ pub struct ResidualNetwork<N, F> {
     phantom_data: PhantomData<N>,
 }
 
-impl<N, F> ResidualNetwork<N, F>
+impl<N, F> ResidualNetworkCore<N, F>
 where
     F: FlowNum,
 {
     pub fn from_graph(graph: &Graph<Directed, N, MaximumFlowEdge<F>>) -> Self {
-        let mut rn = ResidualNetwork {
+        let mut rn = ResidualNetworkCore {
             num_nodes: graph.num_nodes(),
             num_edges: graph.num_edges(),
             edge_id_to_arc_id: vec![ArcId(usize::MAX); graph.num_edges()].into_boxed_slice(),

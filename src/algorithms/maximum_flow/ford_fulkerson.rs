@@ -1,6 +1,6 @@
 use crate::{
     algorithms::maximum_flow::{
-        edge::MaximumFlowEdge, residual_network::ResidualNetwork, result::MaxFlowResult,
+        edge::MaximumFlowEdge, residual_network_core::ResidualNetworkCore, result::MaxFlowResult,
         solver::MaximumFlowSolver, status::Status, validate::validate_input,
     },
     core::numeric::FlowNum,
@@ -20,7 +20,7 @@ impl<N, F> MaximumFlowSolver<N, F> for FordFulkerson<N, F>
 where
     F: FlowNum,
 {
-    type Prepared = ResidualNetwork<N, F>;
+    type Prepared = ResidualNetworkCore<N, F>;
 
     fn solve(
         &mut self,
@@ -30,7 +30,7 @@ where
         upper: Option<F>,
     ) -> Result<MaxFlowResult<F>, Status> {
         validate_input(graph, source, sink)?;
-        let rn = ResidualNetwork::from_graph(graph);
+        let rn = ResidualNetworkCore::from_graph(graph);
         self.run_with_prepared(&rn, source, sink, upper)
     }
 
@@ -38,7 +38,7 @@ where
         &mut self,
         graph: &Graph<Directed, N, MaximumFlowEdge<F>>,
     ) -> Result<Self::Prepared, Status> {
-        Ok(ResidualNetwork::from_graph(graph))
+        Ok(ResidualNetworkCore::from_graph(graph))
     }
 
     fn solve_with_prepared(
@@ -58,7 +58,7 @@ where
 {
     fn run_with_prepared(
         &mut self,
-        rn: &ResidualNetwork<N, F>,
+        rn: &ResidualNetworkCore<N, F>,
         source: NodeId,
         sink: NodeId,
         upper: Option<F>,
@@ -103,7 +103,7 @@ where
         })
     }
 
-    fn dfs(&mut self, rn: &ResidualNetwork<N, F>, u: NodeId, sink: NodeId, flow: F) -> Option<F> {
+    fn dfs(&mut self, rn: &ResidualNetworkCore<N, F>, u: NodeId, sink: NodeId, flow: F) -> Option<F> {
         if u == sink {
             return Some(flow);
         }

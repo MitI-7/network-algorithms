@@ -1,7 +1,7 @@
 use network_algorithms::{ids::NodeId, maximum_flow::prelude::*};
 use rstest::rstest;
 use std::{fs::read_to_string, path::PathBuf};
-use network_algorithms::maximum_flow::residual_network::ResidualNetwork;
+use network_algorithms::maximum_flow::residual_network_core::ResidualNetworkCore;
 
 enum Solver {
     // CapacityScaling,
@@ -57,7 +57,7 @@ impl Solver {
         skip_for_libreoj && path.to_str().map_or(false, |s| s.contains("LibreOJ"))
     }
 
-    pub fn build(&self) -> Box<dyn MaximumFlowSolver<(), i64, Prepared=ResidualNetwork<(), i64>>> {
+    pub fn build(&self) -> Box<dyn MaximumFlowSolver<(), i64, Prepared=ResidualNetworkCore<(), i64>>> {
         match self {
             // Solver::CapacityScaling => Box::new(CapacityScaling::default()),
             // Solver::Dinic => Box::new(Dinic::default()),

@@ -2,7 +2,7 @@ mod edge;
 pub mod ford_fulkerson;
 pub mod graph;
 pub mod prelude;
-pub mod residual_network;
+pub mod residual_network_core;
 pub mod result;
 pub mod solver;
 pub mod status;
