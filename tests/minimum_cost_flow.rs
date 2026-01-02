@@ -76,7 +76,7 @@ fn minimum_cost_flow(
                 nodes = graph.add_nodes(num_nodes);
             } else if i <= num_nodes {
                 let b = line[0].parse().unwrap();
-                graph.get_node_mut(nodes[i - 1]).data.b = b;
+                graph.get_node_mut(nodes[i - 1]).unwrap().data.b = b;
             } else {
                 let (from, to, lower, upper, cost) = (
                     line[0].parse::<usize>().unwrap(),

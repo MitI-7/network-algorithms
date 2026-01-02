@@ -30,7 +30,7 @@ where
         let n = base.num_nodes();
         let mut b = Vec::with_capacity(n);
         for u in 0..n {
-            b.push(base.get_node(NodeId(u)).data.b);
+            b.push(base.get_node(NodeId(u)).unwrap().data.b);
         }
 
         // lower除去 + cost非負化（負コスト反転）に対応した b 更新

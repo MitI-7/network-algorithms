@@ -134,7 +134,7 @@ where
         let mut flows = Vec::new();
         for edge_id in 0..graph.num_edges() {
             let arc_id = self.edge_id_to_arc_id[edge_id];
-            let edge = &graph.get_edge(EdgeId(edge_id));
+            let edge = &graph.get_edge(EdgeId(edge_id)).unwrap();
             // graph.edges[edge_id].data.flow = if edge.data.cost >= F::zero() {
             flows.push(if edge.data.cost >= F::zero() {
                 self.flow[arc_id.index()] + edge.data.lower
@@ -201,13 +201,20 @@ where
         (dist, prev)
     }
 
-    pub fn minimum_cost(&self) -> F {
-        let mut c = F::zero();
-        for i in 0..self.num_edges {
-            c += self.flow[i] * self.cost[i];
-        }
-        c
-    }
+    // fn calculate_objective_value(&self) -> F {
+    //     (0..graph.num_edges()).fold(F::zero(), |cost, edge_id| {
+    //         let edge = graph.get_edge(EdgeId(edge_id));
+    //         cost + edge.data.cost * flows[edge_id]
+    //     })
+    // }
+
+    // pub fn minimum_cost(&self) -> F {
+    //     let mut c = F::zero();
+    //     for i in 0..self.num_edges {
+    //         c += self.flow[i] * self.cost[i];
+    //     }
+    //     c
+    // }
 
     #[inline]
     pub fn reduced_cost(&self, u: NodeId, arc_id: ArcId) -> F {

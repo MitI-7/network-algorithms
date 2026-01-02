@@ -15,7 +15,10 @@ impl<F> MaximumFlowGraph<F> {
         Self(Graph::new_directed())
     }
 
-    pub fn add_edge(&mut self, u: NodeId, v: NodeId, upper: F) -> EdgeId {
+    pub fn add_edge(&mut self, u: NodeId, v: NodeId, upper: F) -> Option<EdgeId> {
+        if u.index() >= self.num_nodes() || v.index() >= self.num_nodes() {
+            return None;
+        }
         self.0.add_edge(u, v, MaximumFlowEdge { upper })
     }
 }

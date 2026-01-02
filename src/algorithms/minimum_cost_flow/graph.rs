@@ -18,7 +18,17 @@ where
         Self(Graph::new_directed())
     }
 
-    pub fn add_edge(&mut self, u: NodeId, v: NodeId, lower: F, upper: F, cost: F) -> EdgeId {
+    pub fn add_edge(
+        &mut self,
+        u: NodeId,
+        v: NodeId,
+        lower: F,
+        upper: F,
+        cost: F,
+    ) -> Option<EdgeId> {
+        if u.index() >= self.num_nodes() || v.index() >= self.num_nodes() {
+            return None;
+        }
         self.0
             .add_edge(u, v, MinimumCostFlowEdge { lower, upper, cost })
     }

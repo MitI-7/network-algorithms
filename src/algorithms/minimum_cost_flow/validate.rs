@@ -11,7 +11,7 @@ pub fn validate_balance<F: MinimumCostFlowNum>(
 ) -> Result<(), Status> {
     if (0..graph.num_nodes())
         .into_iter()
-        .fold(F::zero(), |sum, u| sum + graph.get_node(NodeId(u)).data.b)
+        .fold(F::zero(), |sum, u| sum + graph.get_node(NodeId(u)).unwrap().data.b)
         != F::zero()
     {
         return Err(Status::Unbalanced);
@@ -25,7 +25,7 @@ pub fn validate_infeasible<F: MinimumCostFlowNum>(
 ) -> Result<(), Status> {
     if graph.num_edges() == 0 {
         for u in 0..graph.num_nodes() {
-            if graph.get_node(NodeId(u)).data.b != F::zero() {
+            if graph.get_node(NodeId(u)).unwrap().data.b != F::zero() {
                 return Err(Status::Infeasible);
             }
         }

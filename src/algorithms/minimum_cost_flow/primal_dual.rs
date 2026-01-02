@@ -11,11 +11,13 @@ use crate::{
         status::Status,
         validate::{trivial_solution_if_any, validate_balance, validate_infeasible},
     },
-    graph::{direction::Directed, graph::Graph, ids::EdgeId},
+    graph::{
+        direction::Directed,
+        graph::Graph,
+        ids::{EdgeId, NodeId},
+    },
 };
 use std::collections::{BinaryHeap, VecDeque};
-use crate::graph::node::Node;
-use crate::ids::NodeId;
 
 #[derive(Default)]
 pub struct PrimalDual<F> {
@@ -87,7 +89,7 @@ where
 
         Ok(MinimumCostFlowResult {
             objective_value: (0..graph.num_edges()).fold(F::zero(), |cost, edge_id| {
-                let edge = graph.get_edge(EdgeId(edge_id));
+                let edge = graph.get_edge(EdgeId(edge_id)).unwrap();
                 cost + edge.data.cost * flows[edge_id]
             }),
             flows,
@@ -141,7 +143,10 @@ where
     }
 
     fn primal(&mut self, source: NodeId, sink: NodeId) {
-        assert!(self.rn.excesses[source.index()] > F::zero() && self.rn.excesses[sink.index()] < F::zero());
+        assert!(
+            self.rn.excesses[source.index()] > F::zero()
+                && self.rn.excesses[sink.index()] < F::zero()
+        );
 
         let mut flow = F::zero();
         while self.rn.excesses[source.index()] > F::zero() {
@@ -168,7 +173,7 @@ where
     // O(n + m)
     // calculate the distance from u to sink in the residual network
     // if such a path does not exist, distance[u] becomes self.num_nodes
-    pub fn update_distances(&mut self, source: NodeId, sink: NodeId) {
+    fn update_distances(&mut self, source: NodeId, sink: NodeId) {
         self.que.clear();
         self.que.push_back(sink);
         self.distances.fill(self.rn.num_nodes);
@@ -227,8 +232,9 @@ where
     }
 
     #[inline]
-    pub fn is_admissible_edge(&self, from: NodeId, arc_id: ArcId) -> bool {
+    fn is_admissible_edge(&self, from: NodeId, arc_id: ArcId) -> bool {
         self.rn.residual_capacity(arc_id) > F::zero()
-            && self.distances[from.index()] == self.distances[self.rn.to[arc_id.index()].index()] + 1
+            && self.distances[from.index()]
+                == self.distances[self.rn.to[arc_id.index()].index()] + 1
     }
 }

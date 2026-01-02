@@ -1,18 +1,18 @@
 use network_algorithms::maximum_flow::prelude::*;
 
-fn ford_fulkerson_sample() {
+fn ford_fulkerson() {
     let mut graph = MaximumFlowGraph::new();
     let nodes = graph.add_nodes(6);
     assert_eq!(graph.num_nodes(), 6);
     let mut edges = Vec::new();
-    edges.push(graph.add_edge(nodes[0], nodes[1], 3));
-    edges.push(graph.add_edge(nodes[0], nodes[2], 3));
-    edges.push(graph.add_edge(nodes[1], nodes[2], 2));
-    edges.push(graph.add_edge(nodes[1], nodes[3], 3));
-    edges.push(graph.add_edge(nodes[2], nodes[4], 2));
-    edges.push(graph.add_edge(nodes[3], nodes[4], 4));
-    edges.push(graph.add_edge(nodes[3], nodes[5], 2));
-    edges.push(graph.add_edge(nodes[4], nodes[5], 3));
+    edges.push(graph.add_edge(nodes[0], nodes[1], 3).unwrap());
+    edges.push(graph.add_edge(nodes[0], nodes[2], 3).unwrap());
+    edges.push(graph.add_edge(nodes[1], nodes[2], 2).unwrap());
+    edges.push(graph.add_edge(nodes[1], nodes[3], 3).unwrap());
+    edges.push(graph.add_edge(nodes[2], nodes[4], 2).unwrap());
+    edges.push(graph.add_edge(nodes[3], nodes[4], 4).unwrap());
+    edges.push(graph.add_edge(nodes[3], nodes[5], 2).unwrap());
+    edges.push(graph.add_edge(nodes[4], nodes[5], 3).unwrap());
 
     match FordFulkerson::default().solve(&graph, nodes[0], nodes[5], None) {
         Ok(result) => {
@@ -56,7 +56,7 @@ fn ford_fulkerson_sample() {
 // }
 
 fn main() {
-    ford_fulkerson_sample();
+    ford_fulkerson();
     //
     // println!("push relabel");
     // push_relabel();

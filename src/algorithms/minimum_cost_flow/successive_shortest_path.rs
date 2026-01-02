@@ -76,7 +76,7 @@ where
         if self.rn.excesses.iter().all(|&e| e == F::zero()) {
             let flows = self.rn.get_flow(graph);
             let objective_value = (0..graph.num_edges()).fold(F::zero(), |cost, edge_id| {
-                let edge = graph.get_edge(EdgeId(edge_id));
+                let edge = graph.get_edge(EdgeId(edge_id)).unwrap();
                 cost + edge.data.cost * flows[edge_id]
             });
             Ok(MinimumCostFlowResult {

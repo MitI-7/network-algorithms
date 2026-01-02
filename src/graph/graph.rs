@@ -36,21 +36,33 @@ impl<D: Direction, N, E> Graph<D, N, E> {
         datas.into_iter().map(|d| self.add_node_with(d)).collect()
     }
 
-    pub fn add_edge(&mut self, u: NodeId, v: NodeId, data: E) -> EdgeId {
+    pub fn add_edge(&mut self, u: NodeId, v: NodeId, data: E) -> Option<EdgeId> {
+        if u.index() >= self.num_nodes() || v.index() >= self.num_nodes() {
+            return None;
+        }
         self.edges.push(Edge { u, v, data });
-        EdgeId(self.num_edges() - 1)
+        Some(EdgeId(self.num_edges() - 1))
     }
 
-    pub fn get_node(&self, node_id: NodeId) -> &Node<N> {
-        &self.nodes[node_id.index()]
+    pub fn get_node(&self, node_id: NodeId) -> Option<&Node<N>> {
+        if node_id.index() >= self.num_nodes() {
+            return None;
+        }
+        Some(&self.nodes[node_id.index()])
     }
     
-    pub fn get_node_mut(&mut self, node_id: NodeId) -> &mut Node<N> {
-        &mut self.nodes[node_id.index()]
+    pub fn get_node_mut(&mut self, node_id: NodeId) -> Option<&mut Node<N>> {
+        if node_id.index() >= self.num_nodes() {
+            return None;
+        }
+        Some(&mut self.nodes[node_id.index()])
     }
 
-    pub fn get_edge(&self, edge_id: EdgeId) -> &Edge<E> {
-        &self.edges[edge_id.index()]
+    pub fn get_edge(&self, edge_id: EdgeId) -> Option<&Edge<E>> {
+        if edge_id.index() >= self.num_edges() {
+            return None;
+        }
+        Some(&self.edges[edge_id.index()])
     }
 
     pub fn edges(&self) -> std::slice::Iter<'_, Edge<E>> {
