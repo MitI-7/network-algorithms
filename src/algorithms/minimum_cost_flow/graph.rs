@@ -32,6 +32,10 @@ where
         self.0
             .add_edge(u, v, MinimumCostFlowEdge { lower, upper, cost })
     }
+
+    pub fn set_excess(&mut self, u: NodeId, b: F) {
+        self.get_node_mut(u).unwrap().data.b = b;
+    }
 }
 
 impl<F> Deref for MinimumCostFlowGraph<F> {

@@ -1,6 +1,5 @@
 use crate::{
     algorithms::minimum_cost_flow::{
-        MinimumCostFlowNum,
         edge::MinimumCostFlowEdge,
         node::MinimumCostFlowNode,
         normalized_network::NormalizedNetwork,
@@ -15,6 +14,7 @@ use crate::{
         graph::Graph,
         ids::{ArcId, EdgeId, NodeId},
     },
+    core::numeric::CostNum,
 };
 use std::{cmp::Reverse, collections::BinaryHeap};
 
@@ -25,7 +25,7 @@ pub struct SuccessiveShortestPath<F> {
 
 impl<F> MinimumCostFlowSolver<F> for SuccessiveShortestPath<F>
 where
-    F: MinimumCostFlowNum,
+    F: CostNum,
 {
     fn solve(
         &mut self,
@@ -37,7 +37,7 @@ where
 
 impl<F> SuccessiveShortestPath<F>
 where
-    F: MinimumCostFlowNum,
+    F: CostNum,
 {
     pub fn run(
         &mut self,

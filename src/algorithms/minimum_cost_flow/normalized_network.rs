@@ -1,8 +1,9 @@
 use crate::{
     algorithms::minimum_cost_flow::{
-        MinimumCostFlowNum, edge::MinimumCostFlowEdge, node::MinimumCostFlowNode,
+        edge::MinimumCostFlowEdge, node::MinimumCostFlowNode,
     },
     graph::{direction::Directed, graph::Graph, ids::NodeId},
+    core::numeric::CostNum,
 };
 
 #[derive(Clone, Copy, Debug)]
@@ -16,7 +17,7 @@ pub struct NormalizedEdge<F> {
 
 pub struct NormalizedNetwork<'a, F>
 where
-    F: MinimumCostFlowNum,
+    F: CostNum,
 {
     base: &'a Graph<Directed, MinimumCostFlowNode<F>, MinimumCostFlowEdge<F>>,
     b: Vec<F>, // 正規化後の供給需要
@@ -24,7 +25,7 @@ where
 
 impl<'a, F> NormalizedNetwork<'a, F>
 where
-    F: MinimumCostFlowNum,
+    F: CostNum,
 {
     pub fn new(base: &'a Graph<Directed, MinimumCostFlowNode<F>, MinimumCostFlowEdge<F>>) -> Self {
         let n = base.num_nodes();

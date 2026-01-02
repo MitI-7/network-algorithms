@@ -1,7 +1,6 @@
 use crate::graph::ids::ArcId;
 use crate::{
     algorithms::minimum_cost_flow::{
-        MinimumCostFlowNum,
         edge::MinimumCostFlowEdge,
         node::MinimumCostFlowNode,
         normalized_network::NormalizedNetwork,
@@ -16,6 +15,7 @@ use crate::{
         graph::Graph,
         ids::{EdgeId, NodeId},
     },
+    core::numeric::CostNum,
 };
 use std::collections::{BinaryHeap, VecDeque};
 
@@ -31,7 +31,7 @@ pub struct PrimalDual<F> {
 
 impl<F> MinimumCostFlowSolver<F> for PrimalDual<F>
 where
-    F: MinimumCostFlowNum,
+    F: CostNum,
 {
     fn solve(
         &mut self,
@@ -43,7 +43,7 @@ where
 
 impl<F> PrimalDual<F>
 where
-    F: MinimumCostFlowNum,
+    F: CostNum,
 {
     pub fn run(
         &mut self,

@@ -2,7 +2,6 @@ use crate::graph::ids::ArcId;
 use crate::graph::iter::ArcIdRange;
 use crate::{
     algorithms::minimum_cost_flow::{
-        MinimumCostFlowNum,
         edge::MinimumCostFlowEdge,
         node::MinimumCostFlowNode,
         normalized_network::{NormalizedEdge, NormalizedNetwork},
@@ -12,6 +11,7 @@ use crate::{
         graph::Graph,
         ids::{EdgeId, NodeId},
     },
+    core::numeric::CostNum,
 };
 use std::{cmp::Reverse, collections::BinaryHeap};
 
@@ -36,7 +36,7 @@ pub(crate) struct ResidualNetwork<F> {
 
 impl<F> ResidualNetwork<F>
 where
-    F: MinimumCostFlowNum,
+    F: CostNum,
 {
     pub fn build(
         &mut self,
@@ -242,7 +242,7 @@ pub(crate) fn construct_extend_network_one_supply_one_demand<F>(
     graph: &NormalizedNetwork<'_, F>,
 ) -> (NodeId, NodeId, Vec<NormalizedEdge<F>>, Vec<F>)
 where
-    F: MinimumCostFlowNum,
+    F: CostNum,
 {
     let mut edges = Vec::new();
     let mut excess = vec![F::zero(); graph.num_nodes() + 2];

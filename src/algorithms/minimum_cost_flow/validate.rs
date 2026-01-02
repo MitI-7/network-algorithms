@@ -1,12 +1,13 @@
 use crate::{
     algorithms::minimum_cost_flow::{
-        MinimumCostFlowNum, Status, edge::MinimumCostFlowEdge, node::MinimumCostFlowNode,
+        status::Status, edge::MinimumCostFlowEdge, node::MinimumCostFlowNode,
         result::MinimumCostFlowResult,
     },
     graph::{direction::Directed, graph::Graph, ids::NodeId},
+    core::numeric::CostNum,
 };
 
-pub fn validate_balance<F: MinimumCostFlowNum>(
+pub fn validate_balance<F: CostNum>(
     graph: &Graph<Directed, MinimumCostFlowNode<F>, MinimumCostFlowEdge<F>>,
 ) -> Result<(), Status> {
     if (0..graph.num_nodes())
@@ -20,7 +21,7 @@ pub fn validate_balance<F: MinimumCostFlowNum>(
     Ok(())
 }
 
-pub fn validate_infeasible<F: MinimumCostFlowNum>(
+pub fn validate_infeasible<F: CostNum>(
     graph: &Graph<Directed, MinimumCostFlowNode<F>, MinimumCostFlowEdge<F>>,
 ) -> Result<(), Status> {
     if graph.num_edges() == 0 {
@@ -34,7 +35,7 @@ pub fn validate_infeasible<F: MinimumCostFlowNum>(
     Ok(())
 }
 
-pub fn trivial_solution_if_any<F: MinimumCostFlowNum>(
+pub fn trivial_solution_if_any<F: CostNum>(
     graph: &Graph<Directed, MinimumCostFlowNode<F>, MinimumCostFlowEdge<F>>,
 ) -> Option<Result<MinimumCostFlowResult<F>, Status>> {
     if graph.num_nodes() == 0 {

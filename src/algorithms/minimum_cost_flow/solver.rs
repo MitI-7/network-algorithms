@@ -1,13 +1,15 @@
-use crate::algorithms::minimum_cost_flow::edge::MinimumCostFlowEdge;
-use crate::algorithms::minimum_cost_flow::node::MinimumCostFlowNode;
-use crate::algorithms::minimum_cost_flow::{MinimumCostFlowNum, Status};
-use crate::graph::direction::Directed;
-use crate::graph::graph::Graph;
-use crate::algorithms::minimum_cost_flow::result::MinimumCostFlowResult;
+use crate::{
+    algorithms::minimum_cost_flow::{
+        edge::MinimumCostFlowEdge, node::MinimumCostFlowNode, result::MinimumCostFlowResult,
+        status::Status,
+    },
+    core::numeric::CostNum,
+    graph::{direction::Directed, graph::Graph},
+};
 
 pub trait MinimumCostFlowSolver<F>
 where
-    F: MinimumCostFlowNum,
+    F: CostNum,
 {
     fn solve(
         &mut self,
