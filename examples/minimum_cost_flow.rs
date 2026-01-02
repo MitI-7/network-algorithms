@@ -1,4 +1,4 @@
-use network_algorithms::algorithms::minimum_cost_flow::{
+use network_algorithms::minimum_cost_flow::{
     MinimumCostFlowGraph, MinimumCostFlowSolver, SuccessiveShortestPath,
 };
 

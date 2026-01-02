@@ -87,7 +87,7 @@ where
         }
     }
 
-    pub fn calculate_distance(
+    fn calculate_distance(
         &mut self,
         s: usize,
     ) -> Option<(usize, Vec<bool>, Vec<Option<F>>, Vec<Option<ArcId>>)> {

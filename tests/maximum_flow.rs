@@ -1,8 +1,8 @@
 use core::ops::{Div, DivAssign, Mul, MulAssign};
 use network_algorithms::{
-    algorithms::maximum_flow::{FordFulkerson, MaximumFlowGraph, MaximumFlowSolver},
-    core::numeric::FlowNum,
-    graph::{ids::NodeId},
+    FlowNum,
+    ids::NodeId,
+    maximum_flow::{FordFulkerson, MaximumFlowGraph, MaximumFlowSolver},
 };
 use num_traits::{One, Zero};
 use rstest::rstest;

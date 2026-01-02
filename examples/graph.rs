@@ -1,6 +1,5 @@
-use network_algorithms::graph::{
-    direction::Directed,
-    graph::Graph,
+use network_algorithms::{
+    direction::Directed, Graph,
 };
 
 fn main() {

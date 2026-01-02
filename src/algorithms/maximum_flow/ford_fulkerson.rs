@@ -52,13 +52,13 @@ where
 
         let mut residual = upper.unwrap_or_else(|| {
             self.rn
-                .neighbors(source.index())
+                .neighbors(source)
                 .fold(F::zero(), |acc, arc_id| acc + self.rn.upper[arc_id.index()])
         });
         let mut objective_value = F::zero();
         while residual > F::zero() {
             visited.fill(false);
-            match self.dfs(source.index(), sink.index(), residual, &mut visited) {
+            match self.dfs(source, sink, residual, &mut visited) {
                 Some(delta) => {
                     objective_value += delta;
                     residual -= delta;
@@ -73,16 +73,16 @@ where
         })
     }
 
-    fn dfs(&mut self, u: usize, sink: usize, flow: F, visited: &mut Vec<bool>) -> Option<F> {
+    fn dfs(&mut self, u: NodeId, sink: NodeId, flow: F, visited: &mut Vec<bool>) -> Option<F> {
         if u == sink {
             return Some(flow);
         }
-        visited[u] = true;
+        visited[u.index()] = true;
 
         for arc_id in self.rn.neighbors(u) {
             let to = self.rn.to[arc_id.index()];
             let residual_capacity = self.rn.residual_capacity(arc_id);
-            if visited[to] || residual_capacity == F::zero() {
+            if visited[to.index()] || residual_capacity == F::zero() {
                 continue;
             }
 
