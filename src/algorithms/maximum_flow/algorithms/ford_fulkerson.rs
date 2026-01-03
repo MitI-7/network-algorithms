@@ -12,7 +12,6 @@ use crate::{
 };
 use std::marker::PhantomData;
 
-#[derive(Default)]
 pub struct FordFulkerson<N, F> {
     rn: ResidualNetwork<N, F>,
     visited: Box<[bool]>,

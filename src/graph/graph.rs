@@ -24,7 +24,6 @@ impl<D: Direction, N, E> Graph<D, N, E> {
 
     pub fn add_node_with(&mut self, data: N) -> NodeId {
         let node_id = NodeId(self.num_nodes());
-        // self.nodes.push(Node { u: node_id, data });
         self.nodes.push(Node { data });
         node_id
     }
@@ -40,8 +39,9 @@ impl<D: Direction, N, E> Graph<D, N, E> {
         if u.index() >= self.num_nodes() || v.index() >= self.num_nodes() {
             return None;
         }
+        let edge_id = EdgeId(self.num_edges());
         self.edges.push(Edge { u, v, data });
-        Some(EdgeId(self.num_edges() - 1))
+        Some(edge_id)
     }
 
     pub fn get_node(&self, node_id: NodeId) -> Option<&Node<N>> {
@@ -50,7 +50,7 @@ impl<D: Direction, N, E> Graph<D, N, E> {
         }
         Some(&self.nodes[node_id.index()])
     }
-    
+
     pub fn get_node_mut(&mut self, node_id: NodeId) -> Option<&mut Node<N>> {
         if node_id.index() >= self.num_nodes() {
             return None;

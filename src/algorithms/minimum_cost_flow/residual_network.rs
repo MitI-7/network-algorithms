@@ -86,9 +86,9 @@ where
             self.excesses[u] = *e;
         }
 
-        if fix_excesses.is_some() {
+        if let Some(fix) = fix_excesses {
             for u in 0..self.num_nodes {
-                self.excesses[u] += fix_excesses.unwrap()[u];
+                self.excesses[u] += fix[u];
             }
         }
 

@@ -33,16 +33,6 @@ where
     F: FlowNum,
 {
     fn new(graph: &Graph<Directed, N, MaximumFlowEdge<F>>) -> Self {
-        // let delta: F = graph
-        //     .edges
-        //     .iter()
-        //     .filter(|e| e.u == source)
-        //     .fold(F::zero(), |acc, e| acc + e.data.upper);
-        // let dummy_source = graph.add_node(); // dummy source
-        // graph.add_edge(dummy_source, source, CapEdge { flow: F::zero(), upper: upper.unwrap_or(delta) }); // dummy edge
-        //
-        // let source = dummy_source;
-
         let rn = ResidualNetwork::new(graph);
         let num_nodes = rn.num_nodes;
 
@@ -63,6 +53,7 @@ where
         validate_input(&self.rn, source, sink)?;
         // initialize
         self.rn.residual_capacities.copy_from_slice(&self.rn.upper);
+        self.rn.excesses.fill(F::zero());
 
         let residual = self
             .rn

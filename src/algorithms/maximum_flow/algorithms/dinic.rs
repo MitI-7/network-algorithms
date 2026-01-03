@@ -16,7 +16,6 @@ use crate::{
 };
 use std::{collections::VecDeque, marker::PhantomData};
 
-#[derive(Default)]
 pub struct Dinic<N, F> {
     rn: ResidualNetwork<N, F>,
     current_edge: Box<[usize]>,
