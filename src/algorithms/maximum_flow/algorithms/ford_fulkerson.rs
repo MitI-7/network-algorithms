@@ -1,6 +1,6 @@
 use crate::{
     algorithms::maximum_flow::{
-        algorithms::solver::{BuildMaximumFlowSolver, MaximumFlowSolver},
+        algorithms::{macros::impl_maximum_flow_solver, solver::MaximumFlowSolver},
         edge::MaximumFlowEdge,
         residual_network::ResidualNetwork,
         result::MaxFlowResult,
@@ -19,24 +19,6 @@ pub struct FordFulkerson<N, F> {
     phantom: PhantomData<N>,
 }
 
-impl<N, F> BuildMaximumFlowSolver<N, F> for FordFulkerson<N, F>
-where
-    F: FlowNum,
-{
-    fn new(graph: &Graph<Directed, N, MaximumFlowEdge<F>>) -> Self {
-        FordFulkerson::new(graph)
-    }
-}
-
-impl<N, F> MaximumFlowSolver<N, F> for FordFulkerson<N, F>
-where
-    F: FlowNum,
-{
-    fn solve(&mut self, source: NodeId, sink: NodeId, upper: Option<F>) -> Result<MaxFlowResult<F>, Status> {
-        FordFulkerson::run(self, source, sink, upper)
-    }
-}
-
 impl<N, F> FordFulkerson<N, F>
 where
     F: FlowNum,
@@ -44,14 +26,10 @@ where
     fn new(graph: &Graph<Directed, N, MaximumFlowEdge<F>>) -> Self {
         let rn = ResidualNetwork::new(graph);
         let num_nodes = rn.num_nodes;
-        Self {
-            rn,
-            visited: vec![false; num_nodes].into_boxed_slice(),
-            phantom: PhantomData,
-        }
+        Self { rn, visited: vec![false; num_nodes].into_boxed_slice(), phantom: PhantomData }
     }
 
-    fn run(&mut self, source: NodeId, sink: NodeId, upper: Option<F>) -> Result<MaxFlowResult<F>, Status> {
+    pub(crate) fn run(&mut self, source: NodeId, sink: NodeId, upper: Option<F>) -> Result<MaxFlowResult<F>, Status> {
         validate_input(&self.rn, source, sink)?;
 
         self.rn.residual_capacities.copy_from_slice(&self.rn.upper);
@@ -91,10 +69,12 @@ where
             }
 
             if let Some(d) = self.dfs(to, sink, flow.min(residual_capacity)) {
-                self.rn.push_flow(u, arc_id, d, None);
+                self.rn.push_flow(u, arc_id, d, false);
                 return Some(d);
             }
         }
         None
     }
 }
+
+impl_maximum_flow_solver!(FordFulkerson, run);

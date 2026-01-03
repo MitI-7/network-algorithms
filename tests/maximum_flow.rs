@@ -7,7 +7,7 @@ enum Solver {
     Dinic,
     // EdmondsKarp,
     FordFulkerson,
-    // PushRelabelFIFO,
+    PushRelabelFIFO,
     // PushRelabelHighestLabel,
     // ShortestAugmentingPath,
 }
@@ -62,6 +62,10 @@ impl Solver {
                 let mut solver = FordFulkerson::new(graph);
                 solver.solve(s, t, None)
             }
+            Solver::PushRelabelFIFO => {
+                let mut solver = PushRelabelFIFO::new(graph);
+                solver.solve(s, t, None)
+            }
         }
     }
 }
@@ -71,7 +75,7 @@ impl Solver {
 #[case::dinic(Solver::Dinic)]
 // #[case::edmonds_karp(Solver::EdmondsKarp)]
 #[case::ford_fulkerson(Solver::FordFulkerson)]
-// #[case::push_relabel_fifo(Solver::PushRelabelFIFO)]
+#[case::push_relabel_fifo(Solver::PushRelabelFIFO)]
 // #[case::push_relabel_highest_label(Solver::PushRelabelHighestLabel)]
 // #[case::shortest_augmenting_path(Solver::ShortestAugmentingPath)]
 fn maximum_flow(#[files("tests/maximum_flow/*/*.txt")] path: PathBuf, #[case] solver: Solver) {

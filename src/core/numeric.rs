@@ -1,12 +1,13 @@
 use core::ops::{Add, AddAssign, Div, Mul, Neg, Sub, SubAssign};
+use std::fmt::Debug;
 use num_traits::{Bounded, One, Signed, Zero};
 
 pub trait FlowNum:
-    Copy + Ord + Zero + Bounded + Add<Output = Self> + Sub<Output = Self> + AddAssign + SubAssign
+    Copy + Ord + Zero + Bounded + Add<Output = Self> + Sub<Output = Self> + AddAssign + SubAssign + Debug
 {
 }
 impl<T> FlowNum for T where
-    T: Copy + Ord + Zero + Bounded + Add<Output = T> + Sub<Output = T> + AddAssign + SubAssign
+    T: Copy + Ord + Zero + Bounded + Add<Output = T> + Sub<Output = T> + AddAssign + SubAssign + Debug
 {
 }
 

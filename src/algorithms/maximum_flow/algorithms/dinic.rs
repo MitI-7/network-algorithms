@@ -1,6 +1,6 @@
 use crate::{
     algorithms::maximum_flow::{
-        algorithms::solver::{BuildMaximumFlowSolver, MaximumFlowSolver},
+        algorithms::{macros::impl_maximum_flow_solver, solver::MaximumFlowSolver},
         edge::MaximumFlowEdge,
         residual_network::ResidualNetwork,
         result::MaxFlowResult,
@@ -23,23 +23,6 @@ pub struct Dinic<N, F> {
     distances_to_sink: Box<[usize]>,
     que: VecDeque<NodeId>,
     phantom: PhantomData<N>,
-}
-impl<N, F> BuildMaximumFlowSolver<N, F> for Dinic<N, F>
-where
-    F: FlowNum,
-{
-    fn new(graph: &Graph<Directed, N, MaximumFlowEdge<F>>) -> Self {
-        Dinic::new(graph)
-    }
-}
-
-impl<N, F> MaximumFlowSolver<N, F> for Dinic<N, F>
-where
-    F: FlowNum,
-{
-    fn solve(&mut self, source: NodeId, sink: NodeId, upper: Option<F>) -> Result<MaxFlowResult<F>, Status> {
-        Dinic::run(self, source, sink, upper)
-    }
 }
 
 impl<N, F> Dinic<N, F>
@@ -113,7 +96,7 @@ where
             }
 
             if let Some(d) = self.dfs(v, sink, residual_capacity.min(upper - res)) {
-                self.rn.push_flow(u, arc_id, d, None);
+                self.rn.push_flow(u, arc_id, d, false);
                 res += d;
                 if res == upper {
                     return Some(res);
@@ -157,3 +140,5 @@ where
             && self.distances_to_sink[from.index()] == self.distances_to_sink[self.rn.to[arc_id.index()].index()] + 1
     }
 }
+
+impl_maximum_flow_solver!(Dinic, run);

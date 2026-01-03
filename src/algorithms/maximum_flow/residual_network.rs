@@ -8,6 +8,7 @@ use crate::{
         iter::ArcIdRange,
     },
 };
+use std::collections::VecDeque;
 use std::marker::PhantomData;
 
 #[derive(Default)]
@@ -22,6 +23,9 @@ pub(crate) struct ResidualNetwork<N, F> {
     pub(crate) rev: Box<[ArcId]>,
 
     pub(crate) residual_capacities: Box<[F]>,
+    pub(crate) excesses: Box<[F]>,
+    pub(crate) distances_to_sink: Box<[usize]>,
+    que: VecDeque<NodeId>,
     phantom_data: PhantomData<N>,
 }
 
@@ -39,6 +43,9 @@ where
             to: vec![NodeId(usize::MAX); graph.num_edges() * 2].into_boxed_slice(),
             rev: vec![ArcId(usize::MAX); graph.num_edges() * 2].into_boxed_slice(),
             residual_capacities: vec![F::zero(); graph.num_edges() * 2].into_boxed_slice(),
+            excesses: vec![F::zero(); graph.num_nodes()].into_boxed_slice(),
+            distances_to_sink: vec![0; graph.num_nodes()].into_boxed_slice(),
+            que: VecDeque::new(),
             phantom_data: PhantomData,
         };
         rn.build(graph);
@@ -92,20 +99,41 @@ where
     }
 
     #[inline]
-    pub(crate) fn push_flow(&mut self, _u: NodeId, arc_id: ArcId, flow: F, excesses: Option<&mut [F]>) {
+    pub(crate) fn push_flow(&mut self, u: NodeId, arc_id: ArcId, flow: F, fix_excess: bool) {
         self.residual_capacities[arc_id.index()] -= flow;
         self.residual_capacities[self.rev[arc_id.index()].index()] += flow;
 
-        if excesses.is_some() {
-            // excesses.unwrap()[u.index()] -= flow;
-            // excesses.unwrap()[self.to[arc_id.index()].index()] += flow;
+        if fix_excess {
+            self.excesses[u.index()] -= flow;
+            self.excesses[self.to[arc_id.index()].index()] += flow;
         }
     }
-    //
-    // #[inline]
-    // pub(crate) fn is_admissible_edge(&self, from: NodeId, arc_id: ArcId) -> bool {
-    //     self.residual_capacity(arc_id) > F::zero()
-    //         && self.distances_to_sink[from.index()]
-    //             == self.distances_to_sink[self.to[arc_id.index()].index()] + 1
-    // }
+
+    pub(crate) fn update_distances_to_sink(&mut self, source: NodeId, sink: NodeId) {
+        self.que.clear();
+        self.que.push_back(sink);
+        self.distances_to_sink.fill(self.num_nodes);
+        self.distances_to_sink[sink.index()] = 0;
+
+        while let Some(v) = self.que.pop_front() {
+            for arc_id in self.neighbors(v) {
+                let to = self.to[arc_id.index()];
+                let rev_arc_id = self.rev[arc_id.index()];
+                if self.residual_capacities[rev_arc_id.index()] > F::zero()
+                    && self.distances_to_sink[to.index()] == self.num_nodes
+                {
+                    self.distances_to_sink[to.index()] = self.distances_to_sink[v.index()] + 1;
+                    if to != source {
+                        self.que.push_back(to);
+                    }
+                }
+            }
+        }
+    }
+
+    #[inline]
+    pub(crate) fn is_admissible_arc(&self, from: NodeId, arc_id: ArcId) -> bool {
+        self.residual_capacities[arc_id.index()] > F::zero()
+            && self.distances_to_sink[from.index()] == self.distances_to_sink[self.to[arc_id.index()].index()] + 1
+    }
 }
