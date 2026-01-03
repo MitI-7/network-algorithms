@@ -1,8 +1,10 @@
-use crate::algorithms::maximum_flow::algorithms::solver::MaximumFlowSolver;
-use crate::maximum_flow::prelude::BuildMaximumFlowSolver;
 use crate::{
     algorithms::maximum_flow::{
-        edge::MaximumFlowEdge, residual_network_core::ResidualNetworkCore, result::MaxFlowResult, status::Status,
+        algorithms::solver::{BuildMaximumFlowSolver, MaximumFlowSolver},
+        edge::MaximumFlowEdge,
+        residual_network_core::ResidualNetworkCore,
+        result::MaxFlowResult,
+        status::Status,
         validate::validate_input,
     },
     core::numeric::FlowNum,

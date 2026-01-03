@@ -1,7 +1,6 @@
 use network_algorithms::{ids::NodeId, maximum_flow::prelude::*};
 use rstest::rstest;
 use std::{fs::read_to_string, path::PathBuf};
-use network_algorithms::maximum_flow::residual_network_core::ResidualNetworkCore;
 
 enum Solver {
     // CapacityScaling,
@@ -13,13 +12,10 @@ enum Solver {
     // ShortestAugmentingPath,
 }
 
-fn load_graph(
-    input_file_path: &PathBuf,
-) -> (usize, usize, NodeId, NodeId, i64, MaximumFlowGraph<i64>) {
+fn load_graph(input_file_path: &PathBuf) -> (usize, usize, NodeId, NodeId, i64, MaximumFlowGraph<i64>) {
     let mut graph = MaximumFlowGraph::new();
 
-    let (mut num_nodes, mut num_edges, mut source, mut sink, mut expected) =
-        (0, 0, NodeId(0), NodeId(0), 0);
+    let (mut num_nodes, mut num_edges, mut source, mut sink, mut expected) = (0, 0, NodeId(0), NodeId(0), 0);
     let mut nodes = Vec::new();
 
     read_to_string(&input_file_path)

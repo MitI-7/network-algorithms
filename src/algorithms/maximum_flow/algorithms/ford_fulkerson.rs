@@ -56,7 +56,7 @@ where
 
     fn run(&mut self, source: NodeId, sink: NodeId, upper: Option<F>) -> Result<MaxFlowResult<F>, Status> {
         validate_input(&self.rn, source, sink)?;
-        
+
         self.residual_capacities.copy_from_slice(&self.rn.upper);
 
         let mut residual = upper.unwrap_or_else(|| {

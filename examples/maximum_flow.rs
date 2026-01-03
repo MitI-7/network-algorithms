@@ -31,14 +31,14 @@ fn ford_fulkerson() {
     }
 }
 
-fn dinic2() {
+fn dinic() {
     let (nodes, edges, graph) = make_sample_graph();
 
-    let mut ff = FordFulkerson::new(&graph);
-    let objective_value = ff.solve(nodes[0], nodes[5], None).unwrap().objective_value;
+    let mut dinic = Dinic::new(&graph);
+    let objective_value = dinic.solve(nodes[0], nodes[5], None).unwrap().objective_value;
     println!("maximum flow from {} to {} is {}", 0, 5, objective_value);
 
-    let objective_value = ff.solve(nodes[2], nodes[4], None).unwrap().objective_value;
+    let objective_value = dinic.solve(nodes[2], nodes[4], None).unwrap().objective_value;
     println!("maximum flow from {} to {} is {}", 2, 4, objective_value);
 }
 
@@ -69,8 +69,5 @@ fn dinic2() {
 
 fn main() {
     ford_fulkerson();
-    // ford_fulkerson_p();
-    //
-    // println!("push relabel");
-    // push_relabel();
+    dinic();
 }
