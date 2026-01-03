@@ -22,6 +22,7 @@ pub struct Dinic<N, F> {
     current_edge: Box<[usize]>,
     distances_to_sink: Box<[usize]>,
     que: VecDeque<NodeId>,
+    cutoff: Option<F>,
     phantom: PhantomData<N>,
 }
 
@@ -32,23 +33,24 @@ where
     fn new(graph: &Graph<Directed, N, MaximumFlowEdge<F>>) -> Self {
         let rn = ResidualNetwork::new(graph);
         let num_nodes = rn.num_nodes;
-        let num_edges = rn.num_edges;
 
         Self {
             rn,
             current_edge: vec![0_usize; num_nodes].into_boxed_slice(),
             distances_to_sink: vec![0; num_nodes].into_boxed_slice(),
             que: VecDeque::new(),
+            cutoff: None,
             phantom: PhantomData,
         }
     }
 
-    fn run(&mut self, source: NodeId, sink: NodeId, upper: Option<F>) -> Result<MaxFlowResult<F>, Status> {
+    fn run(&mut self, source: NodeId, sink: NodeId) -> Result<MaxFlowResult<F>, Status> {
         validate_input(&self.rn, source, sink)?;
 
+        // initialize
         self.rn.residual_capacities.copy_from_slice(&self.rn.upper);
 
-        let mut residual = upper.unwrap_or_else(|| {
+        let mut residual = self.cutoff.unwrap_or_else(|| {
             self.rn
                 .neighbors(source)
                 .fold(F::zero(), |sum, arc_id| sum + self.rn.upper[arc_id.index()])
@@ -138,6 +140,15 @@ where
     fn is_admissible_edge(&self, from: NodeId, arc_id: ArcId) -> bool {
         self.rn.residual_capacities[arc_id.index()] > F::zero()
             && self.distances_to_sink[from.index()] == self.distances_to_sink[self.rn.to[arc_id.index()].index()] + 1
+    }
+
+    pub fn cutoff(mut self, k: F) -> Self {
+        self.cutoff = Some(k);
+        self
+    }
+
+    pub fn clear_cutoff(&mut self) {
+        self.cutoff = None;
     }
 }
 

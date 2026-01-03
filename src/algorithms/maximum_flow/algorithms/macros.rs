@@ -8,8 +8,8 @@ macro_rules! impl_maximum_flow_solver {
                 Self::new(graph)
             }
 
-            fn solve(&mut self, source: NodeId, sink: NodeId, upper: Option<F>) -> Result<MaxFlowResult<F>, Status> {
-                self.$run(source, sink, upper)
+            fn solve(&mut self, source: NodeId, sink: NodeId) -> Result<MaxFlowResult<F>, Status> {
+                self.$run(source, sink)
             }
         }
     };

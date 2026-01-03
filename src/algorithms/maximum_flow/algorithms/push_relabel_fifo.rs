@@ -59,15 +59,16 @@ where
         }
     }
 
-    fn run(&mut self, source: NodeId, sink: NodeId, upper: Option<F>) -> Result<MaxFlowResult<F>, Status> {
+    fn run(&mut self, source: NodeId, sink: NodeId) -> Result<MaxFlowResult<F>, Status> {
         validate_input(&self.rn, source, sink)?;
+        // initialize
         self.rn.residual_capacities.copy_from_slice(&self.rn.upper);
 
-        let residual = upper.unwrap_or_else(|| {
-            self.rn
-                .neighbors(source)
-                .fold(F::zero(), |sum, arc_id| sum + self.rn.upper[arc_id.index()])
-        });
+        let residual = self
+            .rn
+            .neighbors(source)
+            .fold(F::zero(), |sum, arc_id| sum + self.rn.upper[arc_id.index()]);
+
         self.rn.excesses[source.index()] = residual;
 
         self.pre_process(source, sink);

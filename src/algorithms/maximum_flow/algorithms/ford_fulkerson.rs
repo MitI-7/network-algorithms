@@ -16,6 +16,7 @@ use std::marker::PhantomData;
 pub struct FordFulkerson<N, F> {
     rn: ResidualNetwork<N, F>,
     visited: Box<[bool]>,
+    cutoff: Option<F>,
     phantom: PhantomData<N>,
 }
 
@@ -26,15 +27,15 @@ where
     fn new(graph: &Graph<Directed, N, MaximumFlowEdge<F>>) -> Self {
         let rn = ResidualNetwork::new(graph);
         let num_nodes = rn.num_nodes;
-        Self { rn, visited: vec![false; num_nodes].into_boxed_slice(), phantom: PhantomData }
+        Self { rn, visited: vec![false; num_nodes].into_boxed_slice(), cutoff: None, phantom: PhantomData }
     }
 
-    pub(crate) fn run(&mut self, source: NodeId, sink: NodeId, upper: Option<F>) -> Result<MaxFlowResult<F>, Status> {
+    pub(crate) fn run(&mut self, source: NodeId, sink: NodeId) -> Result<MaxFlowResult<F>, Status> {
         validate_input(&self.rn, source, sink)?;
-
+        // initialize
         self.rn.residual_capacities.copy_from_slice(&self.rn.upper);
 
-        let mut residual = upper.unwrap_or_else(|| {
+        let mut residual = self.cutoff.unwrap_or_else(|| {
             self.rn
                 .neighbors(source)
                 .fold(F::zero(), |acc, arc_id| acc + self.rn.residual_capacities[arc_id.index()])
@@ -74,6 +75,15 @@ where
             }
         }
         None
+    }
+
+    pub fn cutoff(mut self, k: F) -> Self {
+        self.cutoff = Some(k);
+        self
+    }
+
+    pub fn clear_cutoff(&mut self) {
+        self.cutoff = None;
     }
 }
 

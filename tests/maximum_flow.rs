@@ -56,15 +56,15 @@ impl Solver {
         match self {
             Solver::Dinic => {
                 let mut solver = Dinic::new(graph);
-                solver.solve(s, t, None)
+                solver.solve(s, t)
             }
             Solver::FordFulkerson => {
                 let mut solver = FordFulkerson::new(graph);
-                solver.solve(s, t, None)
+                solver.solve(s, t)
             }
             Solver::PushRelabelFIFO => {
                 let mut solver = PushRelabelFIFO::new(graph);
-                solver.solve(s, t, None)
+                solver.solve(s, t)
             }
         }
     }
