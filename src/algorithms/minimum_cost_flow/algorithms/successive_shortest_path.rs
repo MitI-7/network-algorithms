@@ -73,19 +73,11 @@ where
             }
         }
 
-        if self.rn.excesses.iter().all(|&e| e == F::zero()) {
-            let flows = self.rn.get_flow(graph);
-            let objective_value = (0..graph.num_edges()).fold(F::zero(), |cost, edge_id| {
-                let edge = graph.get_edge(EdgeId(edge_id)).unwrap();
-                cost + edge.data.cost * flows[edge_id]
-            });
-            Ok(MinimumCostFlowResult {
-                objective_value,
-                flows,
-            })
-        } else {
-            Err(Status::Infeasible)
+        if self.rn.excesses.iter().any(|&f| f > F::zero()) {
+            return Err(Status::Infeasible);
         }
+        
+        Ok(self.rn.make_minimum_cost_flow_result_in_original_graph())
     }
 
     fn calculate_distance(

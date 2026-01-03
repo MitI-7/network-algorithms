@@ -10,9 +10,10 @@ use crate::{
 pub struct NormalizedEdge<F> {
     pub u: NodeId,
     pub v: NodeId,
-    pub upper: F,          // 正規化後の上限 (= original.upper - original.lower)
+    pub lower: F,
+    pub upper: F,          // original.upper - original.lower
     pub cost: F,           // non-negative
-    pub edge_index: usize, // 元の graph.edges の index
+    pub is_reversed: bool,
 }
 
 pub struct NormalizedNetwork<'a, F>
@@ -69,15 +70,16 @@ where
     }
 
     pub fn iter_edges(&self) -> impl Iterator<Item = NormalizedEdge<F>> + '_ {
-        self.base.edges().enumerate().map(|(i, e)| {
-            let mut u = e.u;
-            let mut v = e.v;
-            let mut cost = e.data.cost;
-            let upper = e.data.upper - e.data.lower;
+        self.base.edges().map(|edge| {
+            let (mut u, mut v) = (edge.u, edge.v);
+            let mut cost = edge.data.cost;
+            let upper = edge.data.upper - edge.data.lower;
+            let mut is_reversed = false;
 
             if cost < F::zero() {
                 (u, v) = (v, u);
                 cost = -cost;
+                is_reversed = true;
             }
 
             debug_assert!(cost >= F::zero());
@@ -86,9 +88,10 @@ where
             NormalizedEdge {
                 u,
                 v,
+                lower: edge.data.lower,
                 upper,
                 cost,
-                edge_index: i,
+                is_reversed,
             }
         })
     }

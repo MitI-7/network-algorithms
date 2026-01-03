@@ -1,5 +1,6 @@
 use crate::graph::ids::ArcId;
 use crate::graph::iter::ArcIdRange;
+use crate::minimum_cost_flow::prelude::MinimumCostFlowResult;
 use crate::{
     algorithms::minimum_cost_flow::{
         edge::MinimumCostFlowEdge,
@@ -23,15 +24,20 @@ pub(crate) struct ResidualNetwork<F> {
 
     pub(crate) start: Box<[usize]>,
     pub(crate) to: Box<[NodeId]>,
+    pub(crate) lower: Box<[F]>,
     pub(crate) upper: Box<[F]>,
     pub(crate) cost: Box<[F]>,
     pub(crate) rev: Box<[ArcId]>,
-    // pub(crate) is_reversed: Box<[bool]>,
+    pub(crate) is_reversed: Box<[bool]>,
 
     // state
     pub(crate) flow: Box<[F]>,
     pub(crate) excesses: Box<[F]>,
     pub(crate) potentials: Box<[F]>,
+
+    // ex
+    pub(crate) num_nodes_original_graph: usize,
+    pub(crate) num_edges_original_graph: usize,
 }
 
 impl<F> ResidualNetwork<F>
@@ -51,6 +57,8 @@ where
 
         self.num_nodes = graph.num_nodes() + artificial_nodes.unwrap_or(&[]).len();
         self.num_edges = graph.num_edges() + artificial_edges.unwrap_or(&[]).len();
+        self.num_nodes_original_graph = graph.num_nodes();
+        self.num_edges_original_graph = graph.num_edges();
 
         // b は正規化後のものを使う
         self.excesses = vec![F::zero(); self.num_nodes].into_boxed_slice();
@@ -67,9 +75,11 @@ where
         self.edge_id_to_arc_id = vec![ArcId(usize::MAX); self.num_edges].into_boxed_slice();
         self.start = vec![0; self.num_nodes + 1].into_boxed_slice();
         self.to = vec![NodeId(usize::MAX); self.num_edges * 2].into_boxed_slice();
+        self.lower = vec![F::zero(); self.num_edges].into_boxed_slice();
         self.upper = vec![F::zero(); self.num_edges * 2].into_boxed_slice();
         self.cost = vec![F::zero(); self.num_edges * 2].into_boxed_slice();
         self.rev = vec![ArcId(usize::MAX); self.num_edges * 2].into_boxed_slice();
+        self.is_reversed = vec![false; self.num_edges].into_boxed_slice();
         self.flow = vec![F::zero(); self.num_edges * 2].into_boxed_slice();
         self.potentials = vec![F::zero(); self.num_nodes].into_boxed_slice();
 
@@ -90,9 +100,10 @@ where
 
         let mut counter = vec![0usize; self.num_nodes];
 
-        for edge in graph
+        for (edge_id, edge) in graph
             .iter_edges()
             .chain(artificial_edges.into_iter().flatten().copied())
+            .enumerate()
         {
             debug_assert!(edge.cost >= F::zero());
             debug_assert!(edge.upper >= F::zero());
@@ -104,7 +115,9 @@ where
             let arc_id_v = ArcId(self.start[v.index()] + counter[v.index()]);
             counter[v.index()] += 1;
 
-            self.edge_id_to_arc_id[edge.edge_index] = arc_id_u;
+            self.edge_id_to_arc_id[edge_id] = arc_id_u;
+            self.lower[edge_id] = edge.lower;
+            self.is_reversed[edge_id] = edge.is_reversed;
 
             // u -> v
             self.to[arc_id_u.index()] = v;
@@ -121,36 +134,28 @@ where
         }
     }
 
-    pub fn get_flow(
-        &self,
-        graph: &Graph<Directed, MinimumCostFlowNode<F>, MinimumCostFlowEdge<F>>,
-    ) -> Vec<F> {
-        // for u in 0..graph.num_nodes() {
-        //     graph.excesses[u] = self.excesses[u];
-        // }
-
-        let mut flows = Vec::new();
-        for edge_id in 0..graph.num_edges() {
+    pub fn make_minimum_cost_flow_result_in_original_graph(&self) -> MinimumCostFlowResult<F> {
+        let mut objective_value = F::zero();
+        let mut flows = Vec::with_capacity(self.num_edges_original_graph);
+        for edge_id in 0..self.num_edges_original_graph {
             let arc_id = self.edge_id_to_arc_id[edge_id];
-            let edge = &graph.get_edge(EdgeId(edge_id)).unwrap();
-            // graph.edges[edge_id].data.flow = if edge.data.cost >= F::zero() {
-            flows.push(if edge.data.cost >= F::zero() {
-                self.flow[arc_id.index()] + edge.data.lower
+            
+            if self.is_reversed[edge_id] {
+                let f = self.upper[arc_id.index()] + self.lower[edge_id] - self.flow[arc_id.index()];
+                flows.push(f);
+                objective_value += f * -self.cost[arc_id.index()];
             } else {
-                edge.data.upper - self.flow[arc_id.index()]
-            });
-            // assert!(graph.edges[edge_id].data.flow <= graph.edges[edge_id].data.upper);
-            // assert!(graph.edges[edge_id].data.flow >= graph.edges[edge_id].data.lower);
+                let f = self.flow[arc_id.index()] + self.lower[edge_id];
+                flows.push(f);
+                objective_value += f * self.cost[arc_id.index()]; 
+            };
         }
-        flows
+        MinimumCostFlowResult { objective_value, flows }
     }
 
     #[inline]
     pub fn neighbors(&self, u: NodeId) -> ArcIdRange {
-        ArcIdRange {
-            cur: self.start[u.index()],
-            end: self.start[u.index() + 1],
-        }
+        ArcIdRange { cur: self.start[u.index()], end: self.start[u.index() + 1] }
     }
 
     #[inline]
@@ -163,10 +168,7 @@ where
         self.excesses[to.index()] += flow;
     }
 
-    pub fn calculate_distance_from_source(
-        &mut self,
-        source: NodeId,
-    ) -> (Vec<Option<F>>, Vec<Option<ArcId>>) {
+    pub fn calculate_distance_from_source(&mut self, source: NodeId) -> (Vec<Option<F>>, Vec<Option<ArcId>>) {
         let mut prev = vec![None; self.num_nodes];
         let mut bh = BinaryHeap::new();
         let mut dist: Vec<Option<F>> = vec![None; self.num_nodes];
@@ -216,14 +218,12 @@ where
 
     #[inline]
     pub fn reduced_cost(&self, u: NodeId, arc_id: ArcId) -> F {
-        self.cost[arc_id.index()] - self.potentials[u.index()]
-            + self.potentials[self.to[arc_id.index()].index()]
+        self.cost[arc_id.index()] - self.potentials[u.index()] + self.potentials[self.to[arc_id.index()].index()]
     }
 
     #[inline]
     pub fn reduced_cost_rev(&self, u: NodeId, arc_id: ArcId) -> F {
-        -(self.cost[arc_id.index()] - self.potentials[u.index()]
-            + self.potentials[self.to[arc_id.index()].index()])
+        -(self.cost[arc_id.index()] - self.potentials[u.index()] + self.potentials[self.to[arc_id.index()].index()])
     }
 
     pub fn residual_capacity(&self, arc_id: ArcId) -> F {
@@ -231,8 +231,7 @@ where
     }
 
     pub fn is_feasible(&self, arc_id: ArcId) -> bool {
-        F::zero() <= self.flow[arc_id.index()]
-            && self.flow[arc_id.index()] <= self.upper[arc_id.index()]
+        F::zero() <= self.flow[arc_id.index()] && self.flow[arc_id.index()] <= self.upper[arc_id.index()]
     }
 }
 
@@ -247,7 +246,6 @@ where
     let source = NodeId(graph.num_nodes());
     let sink = NodeId(source.index() + 1);
     let mut total_excess = F::zero();
-    let mut edge_index = graph.num_edges();
 
     for u in 0..graph.num_nodes() {
         if u == source.index() || u == sink.index() {
@@ -257,20 +255,21 @@ where
             edges.push(NormalizedEdge {
                 u: source,
                 v: NodeId(u),
+                lower: F::zero(),
                 upper: graph.excesses()[u],
                 cost: F::zero(),
-                edge_index,
+                is_reversed: false,
             });
-            edge_index += 1;
             total_excess += graph.excesses()[u];
         }
         if graph.excesses()[u] < F::zero() {
             edges.push(NormalizedEdge {
                 u: NodeId(u),
                 v: sink,
+                lower: F::zero(),
                 upper: -graph.excesses()[u],
                 cost: F::zero(),
-                edge_index,
+                is_reversed: false,
             });
         }
         excess[u] -= graph.excesses()[u];

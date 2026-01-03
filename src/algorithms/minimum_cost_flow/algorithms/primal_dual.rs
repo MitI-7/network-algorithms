@@ -78,8 +78,6 @@ where
             self.primal(source, sink);
         }
 
-        let flows = self.rn.get_flow(graph);
-
         // graph.remove_artificial_sub_graph(&artificial_nodes, &artificial_edges);
         if self.rn.excesses[source.index()] != F::zero()
             || self.rn.excesses[sink.index()] != F::zero()
@@ -87,13 +85,7 @@ where
             return Err(Status::Infeasible);
         }
 
-        Ok(MinimumCostFlowResult {
-            objective_value: (0..graph.num_edges()).fold(F::zero(), |cost, edge_id| {
-                let edge = graph.get_edge(EdgeId(edge_id)).unwrap();
-                cost + edge.data.cost * flows[edge_id]
-            }),
-            flows,
-        })
+        Ok(self.rn.make_minimum_cost_flow_result_in_original_graph())
     }
 
     // update potentials
