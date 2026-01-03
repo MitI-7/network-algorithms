@@ -1,3 +1,4 @@
+use std::cmp::Reverse;
 use crate::{
     algorithms::minimum_cost_flow::{
         algorithms::{macros::impl_minimum_cost_flow_solver, solver::MinimumCostFlowSolver},
@@ -56,7 +57,7 @@ where
     fn run(&mut self) -> Result<MinimumCostFlowResult<F>, Status> {
         validate_balance(&self.rn)?;
         validate_infeasible(&self.rn)?;
-        
+
         if let Some(res) = trivial_solution_if_any(&self.rn) {
             return res;
         }
@@ -84,14 +85,12 @@ where
         let mut dist: Vec<Option<F>> = vec![None; self.rn.num_nodes];
         let mut visited = vec![false; self.rn.num_nodes];
         {
-            let mut bh: BinaryHeap<(F, NodeId)> = BinaryHeap::new();
+            let mut bh: BinaryHeap<(Reverse<F>, NodeId)> = BinaryHeap::new();
 
-            bh.push((F::zero(), source));
+            bh.push((Reverse(F::zero()), source));
             dist[source.index()] = Some(F::zero());
 
             while let Some((mut d, u)) = bh.pop() {
-                d = -d;
-
                 if visited[u.index()] {
                     continue;
                 }
@@ -102,10 +101,10 @@ where
                         continue;
                     }
                     let to = self.rn.to[edge_index.index()];
-                    if dist[to.index()].is_none() || dist[to.index()].unwrap() > d + self.rn.reduced_cost(u, edge_index)
+                    if dist[to.index()].is_none() || dist[to.index()].unwrap() > d.0 + self.rn.reduced_cost(u, edge_index)
                     {
-                        dist[to.index()] = Some(d + self.rn.reduced_cost(u, edge_index));
-                        bh.push((-dist[to.index()].unwrap(), to));
+                        dist[to.index()] = Some(d.0 + self.rn.reduced_cost(u, edge_index));
+                        bh.push((Reverse(dist[to.index()].unwrap()), to));
                     }
                 }
             }

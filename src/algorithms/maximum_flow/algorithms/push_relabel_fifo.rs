@@ -16,7 +16,7 @@ use crate::{
 };
 use std::{collections::VecDeque, marker::PhantomData};
 
-pub struct PushRelabelFIFO<N, F> {
+pub struct PushRelabelFifo<N, F> {
     rn: ResidualNetwork<N, F>,
     global_relabel_freq: f64,
     value_only: bool,
@@ -28,7 +28,7 @@ pub struct PushRelabelFIFO<N, F> {
     phantom: PhantomData<N>,
 }
 
-impl<N, F> PushRelabelFIFO<N, F>
+impl<N, F> PushRelabelFifo<N, F>
 where
     F: FlowNum,
 {
@@ -194,7 +194,7 @@ where
             .filter(|&arc_id| self.rn.residual_capacities[arc_id.index()] > F::zero())
             .map(|arc_id| self.rn.distances_to_sink[self.rn.to[arc_id.index()].index()] + 1)
             .min()
-            .unwrap()
+            .expect("relabel: no outgoing residual arc found (invariant violated)")
             .min(self.rn.num_nodes);
 
         self.rn.distances_to_sink[u.index()] = new_distance;
@@ -258,4 +258,4 @@ where
     }
 }
 
-impl_maximum_flow_solver!(PushRelabelFIFO, run);
+impl_maximum_flow_solver!(PushRelabelFifo, run);

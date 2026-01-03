@@ -1,6 +1,8 @@
-#[derive(PartialEq, Debug)]
+#[non_exhaustive]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub enum Status {
-    BadInput,
+    #[default]
     NotSolved,
+    BadInput,
     // Optimal,
 }

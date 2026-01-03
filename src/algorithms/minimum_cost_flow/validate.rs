@@ -29,14 +29,14 @@ pub fn trivial_solution_if_any<F: CostNum>(
     if rn.num_nodes == 0 {
         return Some(Ok(MinimumCostFlowResult {
             objective_value: F::zero(),
-            flows: vec![F::zero(); rn.num_nodes_original_graph],
+            flows: vec![F::zero(); rn.num_edges_original_graph],
         }));
     }
 
     if rn.num_edges == 0 {
         return Some(Ok(MinimumCostFlowResult {
             objective_value: F::zero(),
-            flows: vec![F::zero(); rn.num_nodes_original_graph],
+            flows: vec![F::zero(); rn.num_edges_original_graph],
         }));
     }
 

@@ -52,26 +52,28 @@ where
         artificial_edges: Option<&[NormalizedEdge<F>]>,
         fix_excesses: Option<&[F]>,
     ) -> Self {
-        
+        let num_nodes = graph.num_nodes() + artificial_nodes.unwrap_or(&[]).len();
+        let num_edges = graph.num_edges() + artificial_edges.unwrap_or(&[]).len();
+
         let mut rn = Self {
-            num_nodes : graph.num_nodes() + artificial_nodes.unwrap_or(&[]).len(),
-            num_edges : graph.num_edges() + artificial_edges.unwrap_or(&[]).len(),
-            edge_id_to_arc_id: vec![ArcId(usize::MAX); graph.num_edges()].into_boxed_slice(),
-            
-            start: vec![0; graph.num_nodes() + 1].into_boxed_slice(),
-            to: vec![NodeId(usize::MAX); graph.num_edges() * 2].into_boxed_slice(),
-            lower: vec![F::zero(); graph.num_edges() * 2].into_boxed_slice(),
-            upper: vec![F::zero(); graph.num_edges() * 2].into_boxed_slice(),
-            cost: vec![F::zero(); graph.num_edges() * 2].into_boxed_slice(),
-            rev: vec![ArcId(usize::MAX); graph.num_edges() * 2].into_boxed_slice(),
-            is_reversed: vec![false; graph.num_edges() * 2].into_boxed_slice(),
-            
-            flow: vec![F::zero(); graph.num_edges() * 2].into_boxed_slice(),
-            excesses: vec![F::zero(); graph.num_nodes()].into_boxed_slice(),
-            potentials: vec![F::zero(); graph.num_nodes()].into_boxed_slice(),
-            
-            num_nodes_original_graph : graph.num_nodes(),
-            num_edges_original_graph : graph.num_edges(),
+            num_nodes,
+            num_edges,
+            edge_id_to_arc_id: vec![ArcId(usize::MAX); num_edges].into_boxed_slice(),
+
+            start: vec![0; num_nodes + 1].into_boxed_slice(),
+            to: vec![NodeId(usize::MAX); num_edges * 2].into_boxed_slice(),
+            lower: vec![F::zero(); num_edges * 2].into_boxed_slice(),
+            upper: vec![F::zero(); num_edges * 2].into_boxed_slice(),
+            cost: vec![F::zero(); num_edges * 2].into_boxed_slice(),
+            rev: vec![ArcId(usize::MAX); num_edges * 2].into_boxed_slice(),
+            is_reversed: vec![false; num_edges * 2].into_boxed_slice(),
+
+            flow: vec![F::zero(); num_edges * 2].into_boxed_slice(),
+            excesses: vec![F::zero(); num_nodes].into_boxed_slice(),
+            potentials: vec![F::zero(); num_nodes].into_boxed_slice(),
+
+            num_nodes_original_graph: graph.num_nodes(),
+            num_edges_original_graph: graph.num_edges(),
         };
         rn.build(graph, artificial_nodes, artificial_edges, fix_excesses);
 
@@ -87,7 +89,7 @@ where
         if graph.num_nodes() == 0 {
             return;
         }
-        
+
         // b は正規化後のものを使う
         self.excesses = vec![F::zero(); self.num_nodes].into_boxed_slice();
         for (u, e) in graph.excesses().iter().enumerate() {
@@ -100,17 +102,6 @@ where
             }
         }
 
-        self.edge_id_to_arc_id = vec![ArcId(usize::MAX); self.num_edges].into_boxed_slice();
-        self.start = vec![0; self.num_nodes + 1].into_boxed_slice();
-        self.to = vec![NodeId(usize::MAX); self.num_edges * 2].into_boxed_slice();
-        self.lower = vec![F::zero(); self.num_edges].into_boxed_slice();
-        self.upper = vec![F::zero(); self.num_edges * 2].into_boxed_slice();
-        self.cost = vec![F::zero(); self.num_edges * 2].into_boxed_slice();
-        self.rev = vec![ArcId(usize::MAX); self.num_edges * 2].into_boxed_slice();
-        self.is_reversed = vec![false; self.num_edges].into_boxed_slice();
-        self.flow = vec![F::zero(); self.num_edges * 2].into_boxed_slice();
-        self.potentials = vec![F::zero(); self.num_nodes].into_boxed_slice();
-
         let mut degree = vec![0usize; self.num_nodes];
 
         for ne in graph
@@ -121,7 +112,6 @@ where
             degree[ne.v.index()] += 1;
         }
 
-        // start の prefix sum
         for u in 1..=self.num_nodes {
             self.start[u] = self.start[u - 1] + degree[u - 1];
         }

@@ -63,7 +63,7 @@ impl Solver {
                 solver.solve(s, t)
             }
             Solver::PushRelabelFIFO => {
-                let mut solver = PushRelabelFIFO::new(graph);
+                let mut solver = PushRelabelFifo::new(graph);
                 solver.solve(s, t)
             }
         }
