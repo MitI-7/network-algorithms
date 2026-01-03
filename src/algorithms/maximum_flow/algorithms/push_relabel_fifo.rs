@@ -148,7 +148,9 @@ where
 
     fn discharge(&mut self, u: NodeId) {
         // push
-        for arc_id in self.rn.neighbors(u) {
+        // for arc_id in self.rn.neighbors(u) {
+        for arc_id in self.current_edge[u.index()]..self.rn.start[u.index() + 1] {
+            let arc_id = ArcId(arc_id);
             self.current_edge[u.index()] = arc_id.index();
             if self.rn.excesses[u.index()] > F::zero() {
                 self.push(u, arc_id);
@@ -194,7 +196,7 @@ where
             .filter(|&arc_id| self.rn.residual_capacities[arc_id.index()] > F::zero())
             .map(|arc_id| self.rn.distances_to_sink[self.rn.to[arc_id.index()].index()] + 1)
             .min()
-            .expect("relabel: no outgoing residual arc found (invariant violated)")
+            .expect("relabel: no outgoing residual arc found")
             .min(self.rn.num_nodes);
 
         self.rn.distances_to_sink[u.index()] = new_distance;
@@ -215,13 +217,14 @@ where
     }
 
     fn push_flow_excess_back_to_source(&mut self, source: NodeId, sink: NodeId) {
+        let mut visited = vec![false; self.rn.num_nodes].into_boxed_slice();
         for u in 0..self.rn.num_nodes {
             let u = NodeId(u);
             if u == source || u == sink {
                 continue;
             }
             while self.rn.excesses[u.index()] > F::zero() {
-                let mut visited = vec![false; self.rn.num_nodes];
+                visited.fill(false);
                 self.current_edge
                     .iter_mut()
                     .enumerate()
@@ -233,7 +236,7 @@ where
         }
     }
 
-    fn dfs(&mut self, u: NodeId, source: NodeId, flow: F, visited: &mut Vec<bool>) -> F {
+    fn dfs(&mut self, u: NodeId, source: NodeId, flow: F, visited: &mut [bool]) -> F {
         if u == source {
             return flow;
         }

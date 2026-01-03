@@ -79,7 +79,7 @@ impl Solver {
 // #[case::push_relabel_highest_label(Solver::PushRelabelHighestLabel)]
 // #[case::shortest_augmenting_path(Solver::ShortestAugmentingPath)]
 fn maximum_flow(#[files("tests/maximum_flow/*/*.txt")] path: PathBuf, #[case] solver: Solver) {
-    let (num_nodes, num_edges, source, sink, expected, mut graph) = load_graph(&path);
+    let (num_nodes, num_edges, source, sink, expected, graph) = load_graph(&path);
 
     if solver.should_skip(&path) {
         return;

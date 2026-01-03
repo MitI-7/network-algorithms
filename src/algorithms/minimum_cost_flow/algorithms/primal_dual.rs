@@ -27,6 +27,10 @@ pub struct PrimalDual<F> {
     distances: Box<[usize]>,
     current_edge: Box<[usize]>,
 
+    // working
+    dist: Box<[Option<F>]>,
+    visited: Box<[bool]>,
+
     // extended network
     source: NodeId,
     sink: NodeId,
@@ -49,6 +53,8 @@ where
             que: VecDeque::new(),
             distances: vec![0; num_nodes].into_boxed_slice(),
             current_edge: vec![0; num_nodes].into_boxed_slice(),
+            dist: vec![None; num_nodes].into_boxed_slice(),
+            visited: vec![false; num_nodes].into_boxed_slice(),
             source,
             sink,
         }
@@ -82,30 +88,30 @@ where
         assert!(self.rn.excesses[source.index()] > F::zero());
 
         // calculate the shortest path
-        let mut dist: Vec<Option<F>> = vec![None; self.rn.num_nodes];
-        let mut visited = vec![false; self.rn.num_nodes];
+        self.dist.fill(None);
+        self.visited.fill(false);
         {
             let mut bh: BinaryHeap<(Reverse<F>, NodeId)> = BinaryHeap::new();
 
             bh.push((Reverse(F::zero()), source));
-            dist[source.index()] = Some(F::zero());
+            self.dist[source.index()] = Some(F::zero());
 
-            while let Some((mut d, u)) = bh.pop() {
-                if visited[u.index()] {
+            while let Some((d, u)) = bh.pop() {
+                if self.visited[u.index()] {
                     continue;
                 }
-                visited[u.index()] = true;
+                self.visited[u.index()] = true;
 
                 for edge_index in self.rn.neighbors(u) {
                     if self.rn.residual_capacity(edge_index) == F::zero() {
                         continue;
                     }
                     let to = self.rn.to[edge_index.index()];
-                    if dist[to.index()].is_none()
-                        || dist[to.index()].unwrap() > d.0 + self.rn.reduced_cost(u, edge_index)
+                    if self.dist[to.index()].is_none()
+                        || self.dist[to.index()].unwrap() > d.0 + self.rn.reduced_cost(u, edge_index)
                     {
-                        dist[to.index()] = Some(d.0 + self.rn.reduced_cost(u, edge_index));
-                        bh.push((Reverse(dist[to.index()].unwrap()), to));
+                        self.dist[to.index()] = Some(d.0 + self.rn.reduced_cost(u, edge_index));
+                        bh.push((Reverse(self.dist[to.index()].unwrap()), to));
                     }
                 }
             }
@@ -113,12 +119,12 @@ where
 
         // update potentials
         for u in 0..self.rn.num_nodes {
-            if visited[u] {
-                self.rn.potentials[u] -= dist[u].unwrap();
+            if self.visited[u] {
+                self.rn.potentials[u] -= self.dist[u].unwrap();
             }
         }
 
-        visited[sink.index()]
+        self.visited[sink.index()]
     }
 
     fn primal(&mut self, source: NodeId, sink: NodeId) {

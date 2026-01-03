@@ -28,7 +28,7 @@ pub(crate) struct ResidualNetwork<F> {
     pub(crate) potentials: Box<[F]>,
 
     // ex
-    pub(crate) num_nodes_original_graph: usize,
+    pub(crate) _num_nodes_original_graph: usize,
     pub(crate) num_edges_original_graph: usize,
 }
 
@@ -62,7 +62,7 @@ where
             excesses: vec![F::zero(); num_nodes].into_boxed_slice(),
             potentials: vec![F::zero(); num_nodes].into_boxed_slice(),
 
-            num_nodes_original_graph: graph.num_nodes(),
+            _num_nodes_original_graph: graph.num_nodes(),
             num_edges_original_graph: graph.num_edges(),
         };
         rn.build(graph, artificial_nodes, artificial_edges, fix_excesses);
