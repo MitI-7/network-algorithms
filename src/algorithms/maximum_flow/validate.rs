@@ -1,15 +1,15 @@
 use crate::{
     core::numeric::FlowNum,
-    graph::{direction::Directed, graph::Graph, ids::NodeId},
-    maximum_flow::{edge::MaximumFlowEdge, status::Status},
+    graph::ids::NodeId,
+    maximum_flow::{residual_network_core::ResidualNetworkCore, status::Status},
 };
 
 pub fn validate_input<N, F: FlowNum>(
-    graph: &Graph<Directed, N, MaximumFlowEdge<F>>,
+    rn: &ResidualNetworkCore<N, F>,
     source: NodeId,
     sink: NodeId,
 ) -> Result<(), Status> {
-    if source.index() >= graph.num_nodes() || sink.index() >= graph.num_nodes() || source == sink {
+    if source.index() >= rn.num_nodes || sink.index() >= rn.num_nodes || source == sink {
         return Err(Status::BadInput);
     }
 

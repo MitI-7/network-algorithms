@@ -1,9 +1,9 @@
+use network_algorithms::ids::{EdgeId, NodeId};
 use network_algorithms::maximum_flow::prelude::*;
 
-fn ford_fulkerson() {
+fn make_sample_graph() -> (Vec<NodeId>, Vec<EdgeId>, MaximumFlowGraph<i32>) {
     let mut graph = MaximumFlowGraph::new();
     let nodes = graph.add_nodes(6);
-    assert_eq!(graph.num_nodes(), 6);
     let mut edges = Vec::new();
     edges.push(graph.add_edge(nodes[0], nodes[1], 3).unwrap());
     edges.push(graph.add_edge(nodes[0], nodes[2], 3).unwrap());
@@ -14,16 +14,16 @@ fn ford_fulkerson() {
     edges.push(graph.add_edge(nodes[3], nodes[5], 2).unwrap());
     edges.push(graph.add_edge(nodes[4], nodes[5], 3).unwrap());
 
-    // match FordFulkerson::default().solve(&graph, nodes[0], nodes[5], None) {
-    match Dinic::default().solve(&graph, nodes[0], nodes[5], None) {
+    (nodes, edges, graph)
+}
+
+fn ford_fulkerson() {
+    let (nodes, edges, graph) = make_sample_graph();
+    match FordFulkerson::new(&graph).solve(nodes[0], nodes[5], None) {
         Ok(result) => {
             println!("maximum flow:{}", result.objective_value);
             for edge_id in edges {
-                println!(
-                    "{:?}: {}",
-                    graph.get_edge(edge_id),
-                    result.flows[edge_id.index()]
-                );
+                println!("{:?}: {}", graph.get_edge(edge_id), result.flows[edge_id.index()]);
             }
             assert_eq!(result.objective_value, 5);
         }
@@ -31,40 +31,15 @@ fn ford_fulkerson() {
     }
 }
 
+fn dinic2() {
+    let (nodes, edges, graph) = make_sample_graph();
 
-fn ford_fulkerson_p() {
-    let mut graph = MaximumFlowGraph::new();
-    let nodes = graph.add_nodes(6);
-    assert_eq!(graph.num_nodes(), 6);
-    let mut edges = Vec::new();
-    edges.push(graph.add_edge(nodes[0], nodes[1], 3).unwrap());
-    edges.push(graph.add_edge(nodes[0], nodes[2], 3).unwrap());
-    edges.push(graph.add_edge(nodes[1], nodes[2], 2).unwrap());
-    edges.push(graph.add_edge(nodes[1], nodes[3], 3).unwrap());
-    edges.push(graph.add_edge(nodes[2], nodes[4], 2).unwrap());
-    edges.push(graph.add_edge(nodes[3], nodes[4], 4).unwrap());
-    edges.push(graph.add_edge(nodes[3], nodes[5], 2).unwrap());
-    edges.push(graph.add_edge(nodes[4], nodes[5], 3).unwrap());
+    let mut ff = FordFulkerson::new(&graph);
+    let objective_value = ff.solve(nodes[0], nodes[5], None).unwrap().objective_value;
+    println!("maximum flow from {} to {} is {}", 0, 5, objective_value);
 
-    let mut ff = FordFulkerson::<(), i32>::default();
-    let p= ff.prepare(&graph).unwrap();
-
-    // match ff.solve_with_prepared(&p, nodes[0], nodes[5], None) {
-    //     Ok(result) => {
-    //         println!("maximum flow:{}", result.objective_value);
-    //         assert_eq!(result.objective_value, 5);
-    //     }
-    //     _ => unreachable!(),
-    // }
-
-    match ff.solve_with_prepared(&p, nodes[2], nodes[4], None) {
-        Ok(result) => {
-            println!("maximum flow:{}", result.objective_value);
-            assert_eq!(result.objective_value, 2);
-        }
-        _ => unreachable!(),
-    }
-
+    let objective_value = ff.solve(nodes[2], nodes[4], None).unwrap().objective_value;
+    println!("maximum flow from {} to {} is {}", 2, 4, objective_value);
 }
 
 // fn push_relabel() {

@@ -52,20 +52,20 @@ fn load_graph(
 
 impl Solver {
     pub fn should_skip(&self, path: &PathBuf) -> bool {
-        // let skip_for_libreoj = matches!(self, Solver::EdmondsKarp | Solver::FordFulkerson | Solver::PushRelabelFIFO);
         let skip_for_libreoj = matches!(self, Solver::FordFulkerson);
         skip_for_libreoj && path.to_str().map_or(false, |s| s.contains("LibreOJ"))
     }
 
-    pub fn build(&self) -> Box<dyn MaximumFlowSolver<(), i64, Prepared=ResidualNetworkCore<(), i64>>> {
+    pub fn run(&self, graph: &MaximumFlowGraph<i64>, s: NodeId, t: NodeId) -> Result<MaxFlowResult<i64>, Status> {
         match self {
-            // Solver::CapacityScaling => Box::new(CapacityScaling::default()),
-            Solver::Dinic => Box::new(Dinic::default()),
-            // Solver::EdmondsKarp => Box::new(EdmondsKarp::default()),
-            Solver::FordFulkerson => Box::new(FordFulkerson::default()),
-            // Solver::PushRelabelFIFO => Box::new(PushRelabelFIFO::default()),
-            // Solver::PushRelabelHighestLabel => Box::new(PushRelabelHighestLabel::default()),
-            // Solver::ShortestAugmentingPath => Box::new(ShortestAugmentingPath::default()),
+            Solver::Dinic => {
+                let mut solver = Dinic::new(graph);
+                solver.solve(s, t, None)
+            }
+            Solver::FordFulkerson => {
+                let mut solver = FordFulkerson::new(graph);
+                solver.solve(s, t, None)
+            }
         }
     }
 }
@@ -84,44 +84,42 @@ fn maximum_flow(#[files("tests/maximum_flow/*/*.txt")] path: PathBuf, #[case] so
     if solver.should_skip(&path) {
         return;
     }
-    let mut solver_impl = solver.build();
-    let actual = solver_impl.solve(&mut graph, source, sink, None);
+
+    let actual = solver.run(&graph, source, sink).unwrap();
     assert_eq!(graph.num_nodes(), num_nodes);
     assert_eq!(graph.num_edges(), num_edges);
-    assert_eq!(actual.unwrap().objective_value, expected);
+    assert_eq!(actual.objective_value, expected);
 }
 
-// #[rstest]
+#[rstest]
 // #[case::capacity_scaling(Solver::CapacityScaling)]
-// #[case::dinic(Solver::Dinic)]
+#[case::dinic(Solver::Dinic)]
 // #[case::edmonds_karp(Solver::EdmondsKarp)]
-// #[case::ford_fulkerson(Solver::FordFulkerson)]
+#[case::ford_fulkerson(Solver::FordFulkerson)]
 // #[case::push_relabel_fifo(Solver::PushRelabelFIFO)]
 // #[case::push_relabel_highest_label(Solver::PushRelabelHighestLabel)]
 // #[case::shortest_augmenting_path(Solver::ShortestAugmentingPath)]
-// fn maximum_flow_source_eq_sink(#[case] solver: Solver) {
-//     let mut graph = MaximumFlowGraph::<usize>::new();
-//     let nodes = graph.add_nodes(2);
-//     graph.add_directed_edge(nodes[0], nodes[1], 1);
-//
-//     let mut solver_impl = solver.build();
-//     let actual = solver_impl.solve(&mut graph, nodes[0], nodes[0], None);
-//     assert_eq!(actual.err().unwrap(), Status::BadInput);
-// }
-//
-// #[rstest]
+fn maximum_flow_source_eq_sink(#[case] solver: Solver) {
+    let mut graph = MaximumFlowGraph::new();
+    let nodes = graph.add_nodes(2);
+    graph.add_edge(nodes[0], nodes[1], 1);
+
+    let actual = solver.run(&graph, nodes[0], nodes[0]);
+    assert_eq!(actual.err().unwrap(), Status::BadInput);
+}
+
+#[rstest]
 // #[case::capacity_scaling(Solver::CapacityScaling)]
-// #[case::dinic(Solver::Dinic)]
+#[case::dinic(Solver::Dinic)]
 // #[case::edmonds_karp(Solver::EdmondsKarp)]
-// #[case::ford_fulkerson(Solver::FordFulkerson)]
+#[case::ford_fulkerson(Solver::FordFulkerson)]
 // #[case::push_relabel_fifo(Solver::PushRelabelFIFO)]
 // #[case::push_relabel_highest_label(Solver::PushRelabelHighestLabel)]
 // #[case::shortest_augmenting_path(Solver::ShortestAugmentingPath)]
-// fn maximum_flow_no_edges(#[case] solver: Solver) {
-//     let mut graph = MaximumFlowGraph::<usize>::new();
-//     let nodes = graph.add_nodes(10);
-//
-//     let mut solver_impl = solver.build();
-//     let actual = solver_impl.solve(&mut graph, nodes[0], nodes[9], None);
-//     assert_eq!(actual.unwrap(), 0);
-// }
+fn maximum_flow_no_edges(#[case] solver: Solver) {
+    let mut graph = MaximumFlowGraph::new();
+    let nodes = graph.add_nodes(10);
+
+    let actual = solver.run(&graph, nodes[0], nodes[9]).unwrap();
+    assert_eq!(actual.objective_value, 0);
+}
