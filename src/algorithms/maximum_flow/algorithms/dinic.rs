@@ -2,7 +2,7 @@ use crate::{
     algorithms::maximum_flow::{
         algorithms::solver::{BuildMaximumFlowSolver, MaximumFlowSolver},
         edge::MaximumFlowEdge,
-        residual_network_core::ResidualNetworkCore,
+        residual_network::ResidualNetwork,
         result::MaxFlowResult,
         status::Status,
         validate::validate_input,
@@ -18,8 +18,7 @@ use std::{collections::VecDeque, marker::PhantomData};
 
 #[derive(Default)]
 pub struct Dinic<N, F> {
-    rn: ResidualNetworkCore<N, F>,
-    residual_capacities: Box<[F]>,
+    rn: ResidualNetwork<N, F>,
     current_edge: Box<[usize]>,
     distances_to_sink: Box<[usize]>,
     que: VecDeque<NodeId>,
@@ -48,13 +47,12 @@ where
     F: FlowNum,
 {
     fn new(graph: &Graph<Directed, N, MaximumFlowEdge<F>>) -> Self {
-        let rn = ResidualNetworkCore::from_graph(graph);
+        let rn = ResidualNetwork::new(graph);
         let num_nodes = rn.num_nodes;
         let num_edges = rn.num_edges;
 
         Self {
             rn,
-            residual_capacities: vec![F::zero(); num_edges * 2].into_boxed_slice(),
             current_edge: vec![0_usize; num_nodes].into_boxed_slice(),
             distances_to_sink: vec![0; num_nodes].into_boxed_slice(),
             que: VecDeque::new(),
@@ -65,7 +63,7 @@ where
     fn run(&mut self, source: NodeId, sink: NodeId, upper: Option<F>) -> Result<MaxFlowResult<F>, Status> {
         validate_input(&self.rn, source, sink)?;
 
-        self.residual_capacities.copy_from_slice(&self.rn.upper);
+        self.rn.residual_capacities.copy_from_slice(&self.rn.upper);
 
         let mut residual = upper.unwrap_or_else(|| {
             self.rn
@@ -94,7 +92,7 @@ where
             }
         }
 
-        Ok(MaxFlowResult { objective_value, flows: self.rn.get_flows(&self.residual_capacities) })
+        Ok(MaxFlowResult { objective_value, flows: self.rn.get_flows(&self.rn.residual_capacities) })
     }
 
     fn dfs(&mut self, u: NodeId, sink: NodeId, upper: F) -> Option<F> {
@@ -108,14 +106,14 @@ where
             self.current_edge[u.index()] = arc_id.index();
 
             let v = self.rn.to[arc_id.index()];
-            let residual_capacity = self.residual_capacities[arc_id.index()];
+            let residual_capacity = self.rn.residual_capacities[arc_id.index()];
 
             if !self.is_admissible_edge(u, arc_id) {
                 continue;
             }
 
             if let Some(d) = self.dfs(v, sink, residual_capacity.min(upper - res)) {
-                self.rn.push_flow(u, arc_id, d, &mut self.residual_capacities, None);
+                self.rn.push_flow(u, arc_id, d, None);
                 res += d;
                 if res == upper {
                     return Some(res);
@@ -141,7 +139,7 @@ where
             for arc_id in self.rn.neighbors(v) {
                 let to = self.rn.to[arc_id.index()];
                 let rev_arc_id = self.rn.rev[arc_id.index()];
-                if self.residual_capacities[rev_arc_id.index()] > F::zero()
+                if self.rn.residual_capacities[rev_arc_id.index()] > F::zero()
                     && self.distances_to_sink[to.index()] == self.rn.num_nodes
                 {
                     self.distances_to_sink[to.index()] = self.distances_to_sink[v.index()] + 1;
@@ -155,7 +153,7 @@ where
 
     #[inline]
     fn is_admissible_edge(&self, from: NodeId, arc_id: ArcId) -> bool {
-        self.residual_capacities[arc_id.index()] > F::zero()
+        self.rn.residual_capacities[arc_id.index()] > F::zero()
             && self.distances_to_sink[from.index()] == self.distances_to_sink[self.rn.to[arc_id.index()].index()] + 1
     }
 }
