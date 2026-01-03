@@ -1,54 +1,42 @@
+use crate::minimum_cost_flow::residual_network::ResidualNetwork;
 use crate::{
     algorithms::minimum_cost_flow::{
-        status::Status, edge::MinimumCostFlowEdge, node::MinimumCostFlowNode,
-        result::MinimumCostFlowResult,
+        edge::MinimumCostFlowEdge, node::MinimumCostFlowNode, result::MinimumCostFlowResult, status::Status,
     },
-    graph::{direction::Directed, graph::Graph, ids::NodeId},
     core::numeric::CostNum,
+    graph::{direction::Directed, graph::Graph, ids::NodeId},
 };
 
-pub fn validate_balance<F: CostNum>(
-    graph: &Graph<Directed, MinimumCostFlowNode<F>, MinimumCostFlowEdge<F>>,
-) -> Result<(), Status> {
-    if (0..graph.num_nodes())
-        .into_iter()
-        .fold(F::zero(), |sum, u| sum + graph.get_node(NodeId(u)).unwrap().data.b)
-        != F::zero()
-    {
+pub fn validate_balance<F: CostNum>(rn: &ResidualNetwork<F>) -> Result<(), Status> {
+    if rn.excesses.iter().fold(F::zero(), |sum, &e| sum + e) != F::zero() {
         return Err(Status::Unbalanced);
     }
-    
     Ok(())
 }
 
-pub fn validate_infeasible<F: CostNum>(
-    graph: &Graph<Directed, MinimumCostFlowNode<F>, MinimumCostFlowEdge<F>>,
-) -> Result<(), Status> {
-    if graph.num_edges() == 0 {
-        for u in 0..graph.num_nodes() {
-            if graph.get_node(NodeId(u)).unwrap().data.b != F::zero() {
-                return Err(Status::Infeasible);
-            }
+pub fn validate_infeasible<F: CostNum>(rn: &ResidualNetwork<F>) -> Result<(), Status> {
+    if rn.num_edges == 0 {
+        if rn.excesses.iter().any(|&e| e != F::zero()) {
+            return Err(Status::Infeasible);
         }
     }
-
     Ok(())
 }
 
 pub fn trivial_solution_if_any<F: CostNum>(
-    graph: &Graph<Directed, MinimumCostFlowNode<F>, MinimumCostFlowEdge<F>>,
+    rn: &ResidualNetwork<F>,
 ) -> Option<Result<MinimumCostFlowResult<F>, Status>> {
-    if graph.num_nodes() == 0 {
+    if rn.num_nodes == 0 {
         return Some(Ok(MinimumCostFlowResult {
             objective_value: F::zero(),
-            flows: vec![F::zero(); graph.num_edges()],
+            flows: vec![F::zero(); rn.num_nodes_original_graph],
         }));
     }
 
-    if graph.num_edges() == 0 {
+    if rn.num_edges == 0 {
         return Some(Ok(MinimumCostFlowResult {
             objective_value: F::zero(),
-            flows: vec![F::zero(); graph.num_edges()],
+            flows: vec![F::zero(); rn.num_nodes_original_graph],
         }));
     }
 

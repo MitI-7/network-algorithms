@@ -1,9 +1,6 @@
-use crate::algorithms::minimum_cost_flow::algorithms::solver::MinimumCostFlowSolver;
-use crate::minimum_cost_flow::algorithms::macros::impl_minimum_cost_flow_solver;
-use crate::minimum_cost_flow::prelude::PrimalDual;
-use crate::minimum_cost_flow::residual_network::construct_extend_network_one_supply_one_demand;
 use crate::{
     algorithms::minimum_cost_flow::{
+        algorithms::{macros::impl_minimum_cost_flow_solver, solver::MinimumCostFlowSolver},
         edge::MinimumCostFlowEdge,
         node::MinimumCostFlowNode,
         normalized_network::NormalizedNetwork,
@@ -16,10 +13,9 @@ use crate::{
     graph::{
         direction::Directed,
         graph::Graph,
-        ids::{ArcId, EdgeId, NodeId},
+        ids::{ArcId, NodeId},
     },
 };
-use std::collections::VecDeque;
 use std::{cmp::Reverse, collections::BinaryHeap};
 
 #[derive(Default)]
@@ -33,24 +29,17 @@ where
 {
     pub fn new(graph: &Graph<Directed, MinimumCostFlowNode<F>, MinimumCostFlowEdge<F>>) -> Self {
         let nn = NormalizedNetwork::new(graph);
-
-        // transforms the minimum cost flow problem into a problem with a single excess node and a single deficit node.
-        // let (source, sink, artificial_edges, excess_fix) = construct_extend_network_one_supply_one_demand(&nn);
         let rn = ResidualNetwork::new(&nn, None, None, None);
-
         Self { rn }
     }
 
     fn run(&mut self) -> Result<MinimumCostFlowResult<F>, Status> {
-        // validate_balance(graph)?;
-        // validate_infeasible(graph)?;
+        validate_balance(&self.rn)?;
+        validate_infeasible(&self.rn)?;
 
-        // if let Some(res) = trivial_solution_if_any(graph) {
-        //     return res;
-        // }
-
-        // let nn = NormalizedNetwork::new(graph);
-        // self.rn.build(&nn, None, None, None);
+        if let Some(res) = trivial_solution_if_any(&self.rn) {
+            return res;
+        }
 
         for s in 0..self.rn.num_nodes {
             let s = NodeId(s);

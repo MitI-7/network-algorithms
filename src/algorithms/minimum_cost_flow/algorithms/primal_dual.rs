@@ -1,7 +1,6 @@
-use crate::algorithms::minimum_cost_flow::algorithms::solver::MinimumCostFlowSolver;
-use crate::graph::ids::ArcId;
 use crate::{
     algorithms::minimum_cost_flow::{
+        algorithms::{macros::impl_minimum_cost_flow_solver, solver::MinimumCostFlowSolver},
         edge::MinimumCostFlowEdge,
         node::MinimumCostFlowNode,
         normalized_network::NormalizedNetwork,
@@ -14,11 +13,10 @@ use crate::{
     graph::{
         direction::Directed,
         graph::Graph,
-        ids::{EdgeId, NodeId},
+        ids::{ArcId, NodeId},
     },
 };
 use std::collections::{BinaryHeap, VecDeque};
-use crate::minimum_cost_flow::algorithms::macros::impl_minimum_cost_flow_solver;
 
 pub struct PrimalDual<F> {
     rn: ResidualNetwork<F>,
@@ -44,7 +42,7 @@ where
         let (source, sink, artificial_edges, excess_fix) = construct_extend_network_one_supply_one_demand(&nn);
         let rn = ResidualNetwork::new(&nn, Some(&[source, sink]), Some(&artificial_edges), Some(&excess_fix));
         let num_nodes = rn.num_nodes;
-        
+
         PrimalDual {
             rn,
             que: VecDeque::new(),
@@ -56,12 +54,12 @@ where
     }
 
     fn run(&mut self) -> Result<MinimumCostFlowResult<F>, Status> {
-        // validate_balance(graph)?;
-        // validate_infeasible(graph)?;
-
-        // if let Some(res) = trivial_solution_if_any(graph) {
-        //     return res;
-        // }
+        validate_balance(&self.rn)?;
+        validate_infeasible(&self.rn)?;
+        
+        if let Some(res) = trivial_solution_if_any(&self.rn) {
+            return res;
+        }
 
         while self.rn.excesses[self.source.index()] > F::zero() {
             if !self.dual(self.source, self.sink) {
