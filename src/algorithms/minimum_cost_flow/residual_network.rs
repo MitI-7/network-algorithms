@@ -2,20 +2,10 @@ use crate::graph::ids::ArcId;
 use crate::graph::iter::ArcIdRange;
 use crate::minimum_cost_flow::prelude::MinimumCostFlowResult;
 use crate::{
-    algorithms::minimum_cost_flow::{
-        edge::MinimumCostFlowEdge,
-        node::MinimumCostFlowNode,
-        normalized_network::{NormalizedEdge, NormalizedNetwork},
-    },
+    algorithms::minimum_cost_flow::normalized_network::{NormalizedEdge, NormalizedNetwork},
     core::numeric::CostNum,
-    graph::{
-        direction::Directed,
-        graph::Graph,
-        ids::{EdgeId, NodeId},
-    },
+    graph::ids::NodeId,
 };
-use std::collections::VecDeque;
-use std::marker::PhantomData;
 use std::{cmp::Reverse, collections::BinaryHeap};
 
 #[derive(Default)]
@@ -33,7 +23,7 @@ pub(crate) struct ResidualNetwork<F> {
     pub(crate) is_reversed: Box<[bool]>,
 
     // state
-    pub(crate) flow: Box<[F]>,
+    pub(crate) residual_capacity: Box<[F]>,
     pub(crate) excesses: Box<[F]>,
     pub(crate) potentials: Box<[F]>,
 
@@ -68,7 +58,7 @@ where
             rev: vec![ArcId(usize::MAX); num_edges * 2].into_boxed_slice(),
             is_reversed: vec![false; num_edges * 2].into_boxed_slice(),
 
-            flow: vec![F::zero(); num_edges * 2].into_boxed_slice(),
+            residual_capacity: vec![F::zero(); num_edges * 2].into_boxed_slice(),
             excesses: vec![F::zero(); num_nodes].into_boxed_slice(),
             potentials: vec![F::zero(); num_nodes].into_boxed_slice(),
 
@@ -142,13 +132,13 @@ where
             self.upper[arc_id_u.index()] = edge.upper;
             self.cost[arc_id_u.index()] = edge.cost;
             self.rev[arc_id_u.index()] = arc_id_v;
+            self.residual_capacity[arc_id_u.index()] = edge.upper;
 
             // v -> u (reverse arc)
             self.to[arc_id_v.index()] = u;
             self.upper[arc_id_v.index()] = edge.upper;
             self.cost[arc_id_v.index()] = -edge.cost;
             self.rev[arc_id_v.index()] = arc_id_u;
-            self.flow[arc_id_v.index()] = edge.upper;
         }
     }
 
@@ -158,14 +148,15 @@ where
         for edge_id in 0..self.num_edges_original_graph {
             let arc_id = self.edge_id_to_arc_id[edge_id];
 
+            let flow = self.upper[arc_id.index()] - self.residual_capacity[arc_id.index()];
             if self.is_reversed[edge_id] {
-                let f = self.upper[arc_id.index()] + self.lower[edge_id] - self.flow[arc_id.index()];
-                flows.push(f);
-                objective_value += f * -self.cost[arc_id.index()];
+                let original_flow = self.upper[arc_id.index()] + self.lower[edge_id] - flow;
+                flows.push(original_flow);
+                objective_value += original_flow * -self.cost[arc_id.index()];
             } else {
-                let f = self.flow[arc_id.index()] + self.lower[edge_id];
-                flows.push(f);
-                objective_value += f * self.cost[arc_id.index()];
+                let original_flow = flow + self.lower[edge_id];
+                flows.push(original_flow);
+                objective_value += original_flow * self.cost[arc_id.index()];
             };
         }
         MinimumCostFlowResult { objective_value, flows }
@@ -180,8 +171,8 @@ where
     pub fn push_flow(&mut self, u: NodeId, arc_id: ArcId, flow: F) {
         let rev = self.rev[arc_id.index()];
         let to = self.to[arc_id.index()];
-        self.flow[arc_id.index()] += flow;
-        self.flow[rev.index()] -= flow;
+        self.residual_capacity[arc_id.index()] -= flow;
+        self.residual_capacity[rev.index()] += flow;
         self.excesses[u.index()] -= flow;
         self.excesses[to.index()] += flow;
     }
@@ -245,12 +236,13 @@ where
     }
 
     pub fn residual_capacity(&self, arc_id: ArcId) -> F {
-        self.upper[arc_id.index()] - self.flow[arc_id.index()]
+        self.residual_capacity[arc_id.index()]
     }
 
-    pub fn is_feasible(&self, arc_id: ArcId) -> bool {
-        F::zero() <= self.flow[arc_id.index()] && self.flow[arc_id.index()] <= self.upper[arc_id.index()]
-    }
+    // pub fn is_feasible(&self, arc_id: ArcId) -> bool {
+    //     let f = self.upper[arc_id.index()] - self.residual_capacity[arc_id.index()];
+    //     F::zero() <= f && f <= self.upper[arc_id.index()]
+    // }
 }
 
 pub(crate) fn construct_extend_network_one_supply_one_demand<F>(

@@ -1,4 +1,3 @@
-use std::cmp::Reverse;
 use crate::{
     algorithms::minimum_cost_flow::{
         algorithms::{macros::impl_minimum_cost_flow_solver, solver::MinimumCostFlowSolver},
@@ -17,6 +16,7 @@ use crate::{
         ids::{ArcId, NodeId},
     },
 };
+use std::cmp::Reverse;
 use std::collections::{BinaryHeap, VecDeque};
 
 pub struct PrimalDual<F> {
@@ -101,7 +101,8 @@ where
                         continue;
                     }
                     let to = self.rn.to[edge_index.index()];
-                    if dist[to.index()].is_none() || dist[to.index()].unwrap() > d.0 + self.rn.reduced_cost(u, edge_index)
+                    if dist[to.index()].is_none()
+                        || dist[to.index()].unwrap() > d.0 + self.rn.reduced_cost(u, edge_index)
                     {
                         dist[to.index()] = Some(d.0 + self.rn.reduced_cost(u, edge_index));
                         bh.push((Reverse(dist[to.index()].unwrap()), to));
@@ -158,7 +159,8 @@ where
             for arc_id in self.rn.neighbors(v) {
                 // e.to -> v
                 let to = self.rn.to[arc_id.index()];
-                if self.rn.flow[arc_id.index()] > F::zero()
+                let rev_arc_id = self.rn.rev[arc_id.index()];
+                if self.rn.residual_capacity[rev_arc_id.index()] > F::zero()
                     && self.distances[to.index()] == self.rn.num_nodes
                     && self.rn.reduced_cost_rev(v, arc_id) == F::zero()
                 {
@@ -191,8 +193,8 @@ where
                 let rev = self.rn.rev[arc_id.index()];
 
                 // update flow
-                self.rn.flow[arc_id.index()] += d;
-                self.rn.flow[rev.index()] -= d;
+                self.rn.residual_capacity[arc_id.index()] -= d;
+                self.rn.residual_capacity[rev.index()] += d;
 
                 res += d;
                 if res == upper {

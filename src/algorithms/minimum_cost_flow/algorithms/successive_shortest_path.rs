@@ -129,8 +129,8 @@ where
             while let Some(arc_id) = prev[v.index()] {
                 // push
                 let rev = self.rn.rev[arc_id.index()];
-                self.rn.flow[arc_id.index()] += delta;
-                self.rn.flow[rev.index()] -= delta;
+                self.rn.residual_capacity[arc_id.index()] -= delta;
+                self.rn.residual_capacity[rev.index()] += delta;
                 v = self.rn.to[rev.index()];
             }
             debug_assert_eq!(s, v);
