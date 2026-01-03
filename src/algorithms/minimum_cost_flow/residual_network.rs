@@ -14,6 +14,8 @@ use crate::{
         ids::{EdgeId, NodeId},
     },
 };
+use std::collections::VecDeque;
+use std::marker::PhantomData;
 use std::{cmp::Reverse, collections::BinaryHeap};
 
 #[derive(Default)]
@@ -44,22 +46,48 @@ impl<F> ResidualNetwork<F>
 where
     F: CostNum,
 {
+    pub fn new(
+        graph: &NormalizedNetwork<'_, F>,
+        artificial_nodes: Option<&[NodeId]>,
+        artificial_edges: Option<&[NormalizedEdge<F>]>,
+        fix_excesses: Option<&[F]>,
+    ) -> Self {
+        
+        let mut rn = Self {
+            num_nodes : graph.num_nodes() + artificial_nodes.unwrap_or(&[]).len(),
+            num_edges : graph.num_edges() + artificial_edges.unwrap_or(&[]).len(),
+            edge_id_to_arc_id: vec![ArcId(usize::MAX); graph.num_edges()].into_boxed_slice(),
+            
+            start: vec![0; graph.num_nodes() + 1].into_boxed_slice(),
+            to: vec![NodeId(usize::MAX); graph.num_edges() * 2].into_boxed_slice(),
+            lower: vec![F::zero(); graph.num_edges() * 2].into_boxed_slice(),
+            upper: vec![F::zero(); graph.num_edges() * 2].into_boxed_slice(),
+            cost: vec![F::zero(); graph.num_edges() * 2].into_boxed_slice(),
+            rev: vec![ArcId(usize::MAX); graph.num_edges() * 2].into_boxed_slice(),
+            is_reversed: vec![false; graph.num_edges() * 2].into_boxed_slice(),
+            
+            flow: vec![F::zero(); graph.num_edges() * 2].into_boxed_slice(),
+            excesses: vec![F::zero(); graph.num_nodes()].into_boxed_slice(),
+            potentials: vec![F::zero(); graph.num_nodes()].into_boxed_slice(),
+            
+            num_nodes_original_graph : graph.num_nodes(),
+            num_edges_original_graph : graph.num_edges(),
+        };
+        rn.build(graph, artificial_nodes, artificial_edges, fix_excesses);
+
+        rn
+    }
     pub fn build(
         &mut self,
         graph: &NormalizedNetwork<'_, F>,
-        artificial_nodes: Option<&[NodeId]>,
+        _artificial_nodes: Option<&[NodeId]>,
         artificial_edges: Option<&[NormalizedEdge<F>]>,
         fix_excesses: Option<&[F]>,
     ) {
         if graph.num_nodes() == 0 {
             return;
         }
-
-        self.num_nodes = graph.num_nodes() + artificial_nodes.unwrap_or(&[]).len();
-        self.num_edges = graph.num_edges() + artificial_edges.unwrap_or(&[]).len();
-        self.num_nodes_original_graph = graph.num_nodes();
-        self.num_edges_original_graph = graph.num_edges();
-
+        
         // b は正規化後のものを使う
         self.excesses = vec![F::zero(); self.num_nodes].into_boxed_slice();
         for (u, e) in graph.excesses().iter().enumerate() {
@@ -139,7 +167,7 @@ where
         let mut flows = Vec::with_capacity(self.num_edges_original_graph);
         for edge_id in 0..self.num_edges_original_graph {
             let arc_id = self.edge_id_to_arc_id[edge_id];
-            
+
             if self.is_reversed[edge_id] {
                 let f = self.upper[arc_id.index()] + self.lower[edge_id] - self.flow[arc_id.index()];
                 flows.push(f);
@@ -147,7 +175,7 @@ where
             } else {
                 let f = self.flow[arc_id.index()] + self.lower[edge_id];
                 flows.push(f);
-                objective_value += f * self.cost[arc_id.index()]; 
+                objective_value += f * self.cost[arc_id.index()];
             };
         }
         MinimumCostFlowResult { objective_value, flows }

@@ -25,14 +25,27 @@ impl Solver {
         b
     }
 
+    // pub fn run(&self, graph: &MaximumFlowGraph<i64>, s: NodeId, t: NodeId) -> Result<MaxFlowResult<i64>, Status> {
+    //         match self {
+    //             Solver::Dinic => {
+    //                 let mut solver = Dinic::new(graph);
+    //                 solver.solve(s, t)
+    //             }
+
     // pub fn build<F, P>(&self) -> Box<dyn MinimumCostFlowSolver<F>>
-    pub fn build(&self) -> Box<dyn MinimumCostFlowSolver<i128>> {
+    pub fn solve(&self, graph: &MinimumCostFlowGraph<i128>) -> Result<MinimumCostFlowResult<i128>, Status> {
         match self {
             // Solver::CostScalingPushRelabel => Box::new(CostScalingPushRelabel::default()),
             // Solver::NegativeCostCanceling => Box::new(CycleCanceling::default()),
             // Solver::OutOfKilter => Box::new(OutOfKilter::default()),
-            Solver::PrimalDual => Box::new(PrimalDual::default()),
-            Solver::SuccessiveShortestPath => Box::new(SuccessiveShortestPath::default()),
+            Solver::PrimalDual => {
+                let mut solver = PrimalDual::new(graph);
+                solver.solve()
+            },
+            Solver::SuccessiveShortestPath => {
+                let mut solver = SuccessiveShortestPath::new(graph);;
+                solver.solve()
+            },
             // Solver::DualNetworkSimplex => Box::new(DualNetworkSimplex::<F, P>::default()),
             // Solver::ParametricNetworkSimplex => Box::new(ParametricNetworkSimplex::default()),
             // Solver::PrimalNetworkSimplex => Box::new(PrimalNetworkSimplex::<F, P>::default()),
@@ -89,9 +102,7 @@ fn minimum_cost_flow(
             }
         });
 
-    // let mut solver_impl = solver.build::<_, BlockSearchPivotRule<_>>();
-    let mut solver_impl = solver.build();
-    let actual = solver_impl.solve(&mut graph);
+    let actual = solver.solve(&graph);
 
     match actual {
         Ok(actual) => {

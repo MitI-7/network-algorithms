@@ -1,10 +1,11 @@
+use crate::algorithms::minimum_cost_flow::algorithms::solver::MinimumCostFlowSolver;
 use crate::graph::ids::ArcId;
 use crate::{
     algorithms::minimum_cost_flow::{
         edge::MinimumCostFlowEdge,
         node::MinimumCostFlowNode,
         normalized_network::NormalizedNetwork,
-        residual_network::{construct_extend_network_one_supply_one_demand, ResidualNetwork},
+        residual_network::{ResidualNetwork, construct_extend_network_one_supply_one_demand},
         result::MinimumCostFlowResult,
         status::Status,
         validate::{trivial_solution_if_any, validate_balance, validate_infeasible},
@@ -17,71 +18,60 @@ use crate::{
     },
 };
 use std::collections::{BinaryHeap, VecDeque};
-use crate::algorithms::minimum_cost_flow::algorithms::solver::MinimumCostFlowSolver;
+use crate::minimum_cost_flow::algorithms::macros::impl_minimum_cost_flow_solver;
 
-#[derive(Default)]
 pub struct PrimalDual<F> {
     rn: ResidualNetwork<F>,
 
     // maximum flow(dinic)
     que: VecDeque<NodeId>,
-    distances: Vec<usize>,
-    current_edge: Vec<usize>,
-}
+    distances: Box<[usize]>,
+    current_edge: Box<[usize]>,
 
-impl<F> MinimumCostFlowSolver<F> for PrimalDual<F>
-where
-    F: CostNum,
-{
-    fn solve(
-        &mut self,
-        graph: &Graph<Directed, MinimumCostFlowNode<F>, MinimumCostFlowEdge<F>>,
-    ) -> Result<MinimumCostFlowResult<F>, Status> {
-        self.run(graph)
-    }
+    // extended network
+    source: NodeId,
+    sink: NodeId,
 }
 
 impl<F> PrimalDual<F>
 where
     F: CostNum,
 {
-    pub fn run(
-        &mut self,
-        graph: &Graph<Directed, MinimumCostFlowNode<F>, MinimumCostFlowEdge<F>>,
-    ) -> Result<MinimumCostFlowResult<F>, Status> {
-        validate_balance(graph)?;
-        validate_infeasible(graph)?;
-
-        if let Some(res) = trivial_solution_if_any(graph) {
-            return res;
-        }
-
+    pub fn new(graph: &Graph<Directed, MinimumCostFlowNode<F>, MinimumCostFlowEdge<F>>) -> Self {
         let nn = NormalizedNetwork::new(graph);
 
         // transforms the minimum cost flow problem into a problem with a single excess node and a single deficit node.
-        let (source, sink, artificial_edges, excess_fix) =
-            construct_extend_network_one_supply_one_demand(&nn);
-        self.rn.build(
-            &nn,
-            Some(&[source, sink]),
-            Some(&artificial_edges),
-            Some(&excess_fix),
-        );
+        let (source, sink, artificial_edges, excess_fix) = construct_extend_network_one_supply_one_demand(&nn);
+        let rn = ResidualNetwork::new(&nn, Some(&[source, sink]), Some(&artificial_edges), Some(&excess_fix));
+        let num_nodes = rn.num_nodes;
+        
+        PrimalDual {
+            rn,
+            que: VecDeque::new(),
+            distances: vec![0; num_nodes].into_boxed_slice(),
+            current_edge: vec![0; num_nodes].into_boxed_slice(),
+            source,
+            sink,
+        }
+    }
 
-        self.distances.resize(self.rn.num_nodes, 0);
-        self.current_edge.resize(self.rn.num_nodes, 0);
+    fn run(&mut self) -> Result<MinimumCostFlowResult<F>, Status> {
+        // validate_balance(graph)?;
+        // validate_infeasible(graph)?;
 
-        while self.rn.excesses[source.index()] > F::zero() {
-            if !self.dual(source, sink) {
+        // if let Some(res) = trivial_solution_if_any(graph) {
+        //     return res;
+        // }
+
+        while self.rn.excesses[self.source.index()] > F::zero() {
+            if !self.dual(self.source, self.sink) {
                 break;
             }
-            self.primal(source, sink);
+            self.primal(self.source, self.sink);
         }
 
         // graph.remove_artificial_sub_graph(&artificial_nodes, &artificial_edges);
-        if self.rn.excesses[source.index()] != F::zero()
-            || self.rn.excesses[sink.index()] != F::zero()
-        {
+        if self.rn.excesses[self.source.index()] != F::zero() || self.rn.excesses[self.sink.index()] != F::zero() {
             return Err(Status::Infeasible);
         }
 
@@ -114,8 +104,7 @@ where
                         continue;
                     }
                     let to = self.rn.to[edge_index.index()];
-                    if dist[to.index()].is_none()
-                        || dist[to.index()].unwrap() > d + self.rn.reduced_cost(u, edge_index)
+                    if dist[to.index()].is_none() || dist[to.index()].unwrap() > d + self.rn.reduced_cost(u, edge_index)
                     {
                         dist[to.index()] = Some(d + self.rn.reduced_cost(u, edge_index));
                         bh.push((-dist[to.index()].unwrap(), to));
@@ -135,10 +124,7 @@ where
     }
 
     fn primal(&mut self, source: NodeId, sink: NodeId) {
-        assert!(
-            self.rn.excesses[source.index()] > F::zero()
-                && self.rn.excesses[sink.index()] < F::zero()
-        );
+        assert!(self.rn.excesses[source.index()] > F::zero() && self.rn.excesses[sink.index()] < F::zero());
 
         let mut flow = F::zero();
         while self.rn.excesses[source.index()] > F::zero() {
@@ -226,7 +212,8 @@ where
     #[inline]
     fn is_admissible_edge(&self, from: NodeId, arc_id: ArcId) -> bool {
         self.rn.residual_capacity(arc_id) > F::zero()
-            && self.distances[from.index()]
-                == self.distances[self.rn.to[arc_id.index()].index()] + 1
+            && self.distances[from.index()] == self.distances[self.rn.to[arc_id.index()].index()] + 1
     }
 }
+
+impl_minimum_cost_flow_solver!(PrimalDual, run);
