@@ -33,7 +33,7 @@ where
         Self { rn }
     }
 
-    fn run(&mut self) -> Result<MinimumCostFlowResult<F>, Status> {
+    fn run(&mut self) -> Result<F, Status> {
         validate_balance(&self.rn)?;
         validate_infeasible(&self.rn)?;
 
@@ -65,7 +65,7 @@ where
             return Err(Status::Infeasible);
         }
 
-        Ok(self.rn.make_minimum_cost_flow_result_in_original_graph())
+        Ok(self.rn.make_minimum_cost_flow_objective_value_in_original_graph())
     }
 
     fn calculate_distance(&mut self, s: NodeId) -> Option<(NodeId, Vec<bool>, Vec<Option<F>>, Vec<Option<ArcId>>)> {

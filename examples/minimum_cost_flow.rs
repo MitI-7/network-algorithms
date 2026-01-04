@@ -18,7 +18,7 @@ fn primal_network_simplex() {
     graph.get_node_mut(nodes[3]).unwrap().data.b = -5;
     graph.get_node_mut(nodes[4]).unwrap().data.b = -15;
 
-    match SuccessiveShortestPath::new(&graph).solve() {
+    match SuccessiveShortestPath::new(&graph).minimum_cost_flow() {
         Ok(result) => {
             println!("minimum cost:{}", result.objective_value);
             for edge_id in edges {

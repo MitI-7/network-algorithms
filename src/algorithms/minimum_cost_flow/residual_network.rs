@@ -142,8 +142,24 @@ where
         }
     }
 
-    pub fn make_minimum_cost_flow_result_in_original_graph(&self) -> MinimumCostFlowResult<F> {
+    pub fn make_minimum_cost_flow_objective_value_in_original_graph(&self) -> F {
         let mut objective_value = F::zero();
+        for edge_id in 0..self.num_edges_original_graph {
+            let arc_id = self.edge_id_to_arc_id[edge_id];
+
+            let flow = self.upper[arc_id.index()] - self.residual_capacity[arc_id.index()];
+            if self.is_reversed[edge_id] {
+                let original_flow = self.upper[arc_id.index()] + self.lower[edge_id] - flow;
+                objective_value += original_flow * -self.cost[arc_id.index()];
+            } else {
+                let original_flow = flow + self.lower[edge_id];
+                objective_value += original_flow * self.cost[arc_id.index()];
+            };
+        }
+        objective_value
+    }
+
+    pub fn make_minimum_cost_flow_in_original_graph(&self) -> Vec<F> {
         let mut flows = Vec::with_capacity(self.num_edges_original_graph);
         for edge_id in 0..self.num_edges_original_graph {
             let arc_id = self.edge_id_to_arc_id[edge_id];
@@ -152,14 +168,12 @@ where
             if self.is_reversed[edge_id] {
                 let original_flow = self.upper[arc_id.index()] + self.lower[edge_id] - flow;
                 flows.push(original_flow);
-                objective_value += original_flow * -self.cost[arc_id.index()];
             } else {
                 let original_flow = flow + self.lower[edge_id];
                 flows.push(original_flow);
-                objective_value += original_flow * self.cost[arc_id.index()];
             };
         }
-        MinimumCostFlowResult { objective_value, flows }
+        flows
     }
 
     #[inline]

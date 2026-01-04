@@ -11,5 +11,6 @@ where
     F: CostNum,
 {
     fn new(graph: &Graph<Directed, MinimumCostFlowNode<F>, MinimumCostFlowEdge<F>>) -> Self;
-    fn solve(&mut self) -> Result<MinimumCostFlowResult<F>, Status>;
+    fn minimum_cost_flow(&mut self) -> Result<MinimumCostFlowResult<F>, Status>;
+    fn minimum_cost_flow_value(&mut self) -> Result<F, Status>;
 }

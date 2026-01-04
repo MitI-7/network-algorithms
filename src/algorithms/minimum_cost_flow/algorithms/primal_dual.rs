@@ -60,7 +60,7 @@ where
         }
     }
 
-    fn run(&mut self) -> Result<MinimumCostFlowResult<F>, Status> {
+    fn run(&mut self) -> Result<F, Status> {
         validate_balance(&self.rn)?;
         validate_infeasible(&self.rn)?;
 
@@ -75,12 +75,11 @@ where
             self.primal(self.source, self.sink);
         }
 
-        // graph.remove_artificial_sub_graph(&artificial_nodes, &artificial_edges);
         if self.rn.excesses[self.source.index()] != F::zero() || self.rn.excesses[self.sink.index()] != F::zero() {
             return Err(Status::Infeasible);
         }
 
-        Ok(self.rn.make_minimum_cost_flow_result_in_original_graph())
+        Ok(self.rn.make_minimum_cost_flow_objective_value_in_original_graph())
     }
 
     // update potentials

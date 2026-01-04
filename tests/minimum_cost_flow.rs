@@ -40,11 +40,11 @@ impl Solver {
             // Solver::OutOfKilter => Box::new(OutOfKilter::default()),
             Solver::PrimalDual => {
                 let mut solver = PrimalDual::new(graph);
-                solver.solve()
+                solver.minimum_cost_flow()
             },
             Solver::SuccessiveShortestPath => {
                 let mut solver = SuccessiveShortestPath::new(graph);;
-                solver.solve()
+                solver.minimum_cost_flow()
             },
             // Solver::DualNetworkSimplex => Box::new(DualNetworkSimplex::<F, P>::default()),
             // Solver::ParametricNetworkSimplex => Box::new(ParametricNetworkSimplex::default()),
