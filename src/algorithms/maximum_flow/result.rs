@@ -5,5 +5,5 @@ pub struct MaximumFlowResult<F> {
 
 pub struct MinimumCutResult<F> {
     pub objective_value: F,
-    pub minimum_cut: Vec<bool>,
+    pub source_side: Vec<bool>,
 }

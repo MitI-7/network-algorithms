@@ -20,7 +20,7 @@ macro_rules! impl_maximum_flow_solver {
 
             fn minimum_cut(&mut self, source: NodeId, sink: NodeId) -> Result<MinimumCutResult<F>, Status> {
                 let objective_value = self.$run(source, sink)?;
-                Ok(MinimumCutResult { objective_value, minimum_cut: self.rn.reachable_from_source(source) })
+                Ok(MinimumCutResult { objective_value, source_side: self.rn.reachable_from_source(source) })
             }
 
             fn minimum_cut_value(&mut self, source: NodeId, sink: NodeId) -> Result<F, Status> {

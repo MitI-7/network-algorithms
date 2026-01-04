@@ -44,14 +44,14 @@ where
 
             // 2) parent 更新
             for v_idx in (s_idx + 1)..n {
-                if parent[v_idx] == t && res.minimum_cut[v_idx] {
+                if parent[v_idx] == t && res.source_side[v_idx] {
                     parent[v_idx] = s;
                 }
             }
 
             // 3) swap 規則
             let t_idx = t.index();
-            if t != root && res.minimum_cut[parent[t_idx].index()] {
+            if t != root && res.source_side[parent[t_idx].index()] {
                 let pt = parent[t_idx];
                 parent[s_idx] = pt;
                 parent[t_idx] = s;
