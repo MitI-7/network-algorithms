@@ -67,7 +67,7 @@ where
             }
 
             if let Some(d) = self.dfs(to, sink, flow.min(residual_capacity)) {
-                self.rn.push_flow(u, arc_id, d, false);
+                self.rn.push_flow_without_excess(u, arc_id, d);
                 return Some(d);
             }
         }

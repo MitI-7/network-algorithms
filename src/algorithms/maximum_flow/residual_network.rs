@@ -44,7 +44,6 @@ where
             excesses: vec![F::zero(); graph.num_nodes()].into_boxed_slice(),
             distances_to_sink: vec![0; graph.num_nodes()].into_boxed_slice(),
             que: VecDeque::new(),
-            // phantom_data: PhantomData,
         };
         rn.build(graph);
 
@@ -97,14 +96,16 @@ where
     }
 
     #[inline]
-    pub(crate) fn push_flow(&mut self, u: NodeId, arc_id: ArcId, flow: F, fix_excess: bool) {
+    pub(crate) fn push_flow(&mut self, u: NodeId, arc_id: ArcId, flow: F) {
+        self.push_flow_without_excess(u, arc_id, flow);
+        self.excesses[u.index()] -= flow;
+        self.excesses[self.to[arc_id.index()].index()] += flow;
+    }
+
+    #[inline]
+    pub(crate) fn push_flow_without_excess(&mut self, u: NodeId, arc_id: ArcId, flow: F) {
         self.residual_capacities[arc_id.index()] -= flow;
         self.residual_capacities[self.rev[arc_id.index()].index()] += flow;
-
-        if fix_excess {
-            self.excesses[u.index()] -= flow;
-            self.excesses[self.to[arc_id.index()].index()] += flow;
-        }
     }
 
     pub(crate) fn update_distances_to_sink(&mut self, source: NodeId, sink: NodeId) {

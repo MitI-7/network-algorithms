@@ -95,7 +95,7 @@ where
             }
 
             if let Some(d) = self.dfs(v, sink, residual_capacity.min(upper - res)) {
-                self.rn.push_flow(u, arc_id, d, false);
+                self.rn.push_flow_without_excess(u, arc_id, d);
                 res += d;
                 if res == upper {
                     return Some(res);

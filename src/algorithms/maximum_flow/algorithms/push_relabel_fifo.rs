@@ -117,7 +117,7 @@ where
 
         for arc_id in self.rn.neighbors(source) {
             let delta = self.rn.residual_capacities[arc_id.index()];
-            self.rn.push_flow(source, arc_id, delta, false);
+            self.rn.push_flow_without_excess(source, arc_id, delta);
             self.rn.excesses[self.rn.to[arc_id.index()].index()] += delta;
         }
 
@@ -168,7 +168,7 @@ where
         let to = self.rn.to[arc_id.index()];
         let delta = self.rn.excesses[u.index()].min(self.rn.residual_capacities[arc_id.index()]);
         if self.rn.is_admissible_arc(u, arc_id) && delta > F::zero() {
-            self.rn.push_flow(u, arc_id, delta, true);
+            self.rn.push_flow(u, arc_id, delta);
             if self.rn.excesses[to.index()] == delta {
                 self.active_nodes.push_back(to);
             }
@@ -242,7 +242,7 @@ where
 
             let delta = self.dfs(to, source, flow.min(residual_capacity), visited);
             if delta > F::zero() {
-                self.rn.push_flow(u, i, delta, true);
+                self.rn.push_flow(u, i, delta);
                 return delta;
             }
         }
