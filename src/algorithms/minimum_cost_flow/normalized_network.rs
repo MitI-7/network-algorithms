@@ -21,7 +21,7 @@ where
     F: CostNum,
 {
     base: &'a Graph<Directed, MinimumCostFlowNode<F>, MinimumCostFlowEdge<F>>,
-    b: Vec<F>, // 正規化後の供給需要
+    b: Vec<F>,
 }
 
 impl<'a, F> NormalizedNetwork<'a, F>
@@ -35,7 +35,6 @@ where
             b.push(base.get_node(NodeId(u)).unwrap().data.b);
         }
 
-        // lower除去 + cost非負化（負コスト反転）に対応した b 更新
         for e in base.edges() {
             let u = e.u.index();
             let v = e.v.index();
@@ -44,11 +43,9 @@ where
             let cost = e.data.cost;
 
             if cost >= F::zero() {
-                // x = lower + y
                 b[u] = b[u] - lower;
                 b[v] = b[v] + lower;
             } else {
-                // x = upper - y   （負コスト辺は上限まで流して反転）
                 b[u] = b[u] - upper;
                 b[v] = b[v] + upper;
             }
