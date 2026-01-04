@@ -89,13 +89,6 @@ where
         }
     }
 
-    pub(crate) fn get_flows(&self, residual_capacities: &[F]) -> Vec<F> {
-        self.edge_id_to_arc_id
-            .iter()
-            .map(|&arc_id| self.upper[arc_id.index()] - residual_capacities[arc_id.index()])
-            .collect()
-    }
-
     #[inline]
     pub(crate) fn neighbors(&self, u: NodeId) -> ArcIdRange {
         ArcIdRange { cur: self.start[u.index()], end: self.start[u.index() + 1] }
@@ -140,6 +133,13 @@ where
     pub(crate) fn is_admissible_arc(&self, from: NodeId, arc_id: ArcId) -> bool {
         self.residual_capacities[arc_id.index()] > F::zero()
             && self.distances_to_sink[from.index()] == self.distances_to_sink[self.to[arc_id.index()].index()] + 1
+    }
+
+    pub(crate) fn get_flows(&self) -> Vec<F> {
+        self.edge_id_to_arc_id
+            .iter()
+            .map(|&arc_id| self.upper[arc_id.index()] - self.residual_capacities[arc_id.index()])
+            .collect()
     }
 
     pub(crate) fn reachable_from_source(&self, source: NodeId) -> Vec<bool> {
