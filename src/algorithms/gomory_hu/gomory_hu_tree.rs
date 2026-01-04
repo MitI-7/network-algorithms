@@ -38,22 +38,20 @@ where
             let t = parent[s_idx];
 
             // 1) s-t mincut (= maxflow)
-            let res = self.solver.solve(s, t)?;
-
-            let cut_side = self.solver.rn.reachable_from_source(s);
+            let res = self.solver.minimum_cut(s, t)?;
 
             let w = res.objective_value;
 
             // 2) parent 更新
             for v_idx in (s_idx + 1)..n {
-                if parent[v_idx] == t && cut_side[v_idx] {
+                if parent[v_idx] == t && res.minimum_cut[v_idx] {
                     parent[v_idx] = s;
                 }
             }
 
             // 3) swap 規則
             let t_idx = t.index();
-            if t != root && cut_side[parent[t_idx].index()] {
+            if t != root && res.minimum_cut[parent[t_idx].index()] {
                 let pt = parent[t_idx];
                 parent[s_idx] = pt;
                 parent[t_idx] = s;

@@ -3,7 +3,7 @@ use crate::{
         algorithms::{macros::impl_maximum_flow_solver, solver::MaximumFlowSolver},
         edge::MaximumFlowEdge,
         residual_network::ResidualNetwork,
-        result::MaxFlowResult,
+        result::{MaximumFlowResult, MinimumCutResult},
         status::Status,
         validate::validate_input,
     },
@@ -27,7 +27,7 @@ where
         Self { rn, visited: vec![false; num_nodes].into_boxed_slice(), cutoff: None}
     }
 
-    pub(crate) fn run(&mut self, source: NodeId, sink: NodeId) -> Result<MaxFlowResult<F>, Status> {
+    pub(crate) fn run(&mut self, source: NodeId, sink: NodeId) -> Result<F, Status> {
         validate_input(&self.rn, source, sink)?;
         // initialize
         self.rn.residual_capacities.copy_from_slice(&self.rn.upper);
@@ -50,7 +50,7 @@ where
             }
         }
 
-        Ok(MaxFlowResult { objective_value, flows: self.rn.get_flows(&self.rn.residual_capacities) })
+        Ok(objective_value)
     }
 
     fn dfs(&mut self, u: NodeId, sink: NodeId, flow: F) -> Option<F> {

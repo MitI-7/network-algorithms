@@ -52,19 +52,19 @@ impl Solver {
         skip_for_libreoj && path.to_str().map_or(false, |s| s.contains("LibreOJ"))
     }
 
-    pub fn run(&self, graph: &MaximumFlowGraph<i64>, s: NodeId, t: NodeId) -> Result<MaxFlowResult<i64>, Status> {
+    pub fn run(&self, graph: &MaximumFlowGraph<i64>, s: NodeId, t: NodeId) -> Result<MaximumFlowResult<i64>, Status> {
         match self {
             Solver::Dinic => {
                 let mut solver = Dinic::new(graph);
-                solver.solve(s, t)
+                solver.maximum_flow(s, t)
             }
             Solver::FordFulkerson => {
                 let mut solver = FordFulkerson::new(graph);
-                solver.solve(s, t)
+                solver.maximum_flow(s, t)
             }
             Solver::PushRelabelFIFO => {
                 let mut solver = PushRelabelFifo::new(graph);
-                solver.solve(s, t)
+                solver.maximum_flow(s, t)
             }
         }
     }

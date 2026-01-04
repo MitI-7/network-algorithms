@@ -3,7 +3,7 @@ use crate::{
         algorithms::{macros::impl_maximum_flow_solver, solver::MaximumFlowSolver},
         edge::MaximumFlowEdge,
         residual_network::ResidualNetwork,
-        result::MaxFlowResult,
+        result::{MaximumFlowResult, MinimumCutResult},
         status::Status,
         validate::validate_input,
     },
@@ -47,7 +47,7 @@ where
         }
     }
 
-    fn run(&mut self, source: NodeId, sink: NodeId) -> Result<MaxFlowResult<F>, Status> {
+    fn run(&mut self, source: NodeId, sink: NodeId) -> Result<F, Status> {
         validate_input(&self.rn, source, sink)?;
         // initialize
         self.rn.residual_capacities.copy_from_slice(&self.rn.upper);
@@ -83,14 +83,7 @@ where
             // self.rn.set_flow(graph);
         }
 
-        // remove dummy source & dummy edge
-        // graph.pop_node();
-        // graph.pop_edge();
-
-        Ok(MaxFlowResult {
-            objective_value: self.rn.excesses[sink.index()],
-            flows: self.rn.get_flows(&self.rn.residual_capacities),
-        })
+        Ok(self.rn.excesses[sink.index()])
     }
 
     pub fn set_value_only(mut self, value_only: bool) -> Self {
