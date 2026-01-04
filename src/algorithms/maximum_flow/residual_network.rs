@@ -102,7 +102,7 @@ where
     }
 
     #[inline]
-    pub(crate) fn push_flow_without_excess(&mut self, u: NodeId, arc_id: ArcId, flow: F) {
+    pub(crate) fn push_flow_without_excess(&mut self, _u: NodeId, arc_id: ArcId, flow: F) {
         self.residual_capacities[arc_id.index()] -= flow;
         self.residual_capacities[self.rev[arc_id.index()].index()] += flow;
     }

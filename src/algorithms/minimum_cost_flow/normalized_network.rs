@@ -43,11 +43,11 @@ where
             let cost = e.data.cost;
 
             if cost >= F::zero() {
-                b[u] = b[u] - lower;
-                b[v] = b[v] + lower;
+                b[u] -= lower;
+                b[v] += lower;
             } else {
-                b[u] = b[u] - upper;
-                b[v] = b[v] + upper;
+                b[u] -= upper;
+                b[v] += upper;
             }
         }
 
