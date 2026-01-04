@@ -14,4 +14,5 @@ pub trait MaximumFlowSolver<F: FlowNum> {
     fn maximum_flow_value(&mut self, source: NodeId, sink: NodeId) -> Result<F, Status>;
     fn minimum_cut(&mut self, source: NodeId, sink: NodeId) -> Result<MinimumCutResult<F>, Status>;
     fn minimum_cut_value(&mut self, source: NodeId, sink: NodeId) -> Result<F, Status>;
+    fn maximum_flow_minimum_cut(&mut self, source: NodeId, sink: NodeId) -> Result<(MaximumFlowResult<F>, MinimumCutResult<F>), Status>;
 }
