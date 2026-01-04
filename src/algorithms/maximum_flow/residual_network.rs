@@ -72,14 +72,20 @@ where
 
             self.edge_id_to_arc_id[edge_index] = arc_id_u;
 
+            let upper = e.data.upper;
+            let rev_init = if D::IS_DIRECTED { F::zero() } else { upper };
+
             // u -> v
             self.to[arc_id_u.index()] = v;
             self.rev[arc_id_u.index()] = arc_id_v;
-            self.upper[arc_id_u.index()] = e.data.upper;
+            self.upper[arc_id_u.index()] = upper;
+            self.residual_capacities[arc_id_u.index()] = upper;
 
             // v -> u
             self.to[arc_id_v.index()] = u;
             self.rev[arc_id_v.index()] = arc_id_u;
+            self.upper[arc_id_v.index()] = rev_init;
+            self.residual_capacities[arc_id_v.index()] = rev_init;
         }
     }
 
