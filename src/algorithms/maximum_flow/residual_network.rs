@@ -141,4 +141,26 @@ where
         self.residual_capacities[arc_id.index()] > F::zero()
             && self.distances_to_sink[from.index()] == self.distances_to_sink[self.to[arc_id.index()].index()] + 1
     }
+
+    pub(crate) fn reachable_from_source(&self, source: NodeId) -> Vec<bool> {
+        let mut seen = vec![false; self.num_nodes];
+        let mut que = VecDeque::new();
+
+        seen[source.index()] = true;
+        que.push_back(source);
+
+        while let Some(u) = que.pop_front() {
+            for arc_id in self.neighbors(u) {
+                if self.residual_capacities[arc_id.index()] <= F::zero() {
+                    continue;
+                }
+                let v = self.to[arc_id.index()];
+                if !seen[v.index()] {
+                    seen[v.index()] = true;
+                    que.push_back(v);
+                }
+            }
+        }
+        seen
+    }
 }

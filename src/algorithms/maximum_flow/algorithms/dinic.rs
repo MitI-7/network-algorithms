@@ -17,7 +17,7 @@ use crate::{
 use std::collections::VecDeque;
 
 pub struct Dinic<F> {
-    rn: ResidualNetwork<F>,
+    pub(crate) rn: ResidualNetwork<F>,
     current_edge: Box<[usize]>,
     distances_to_sink: Box<[usize]>,
     que: VecDeque<NodeId>,
