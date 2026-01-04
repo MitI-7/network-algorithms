@@ -10,23 +10,21 @@ use crate::{
     core::numeric::FlowNum,
     graph::{direction::Directed, graph::Graph, ids::NodeId},
 };
-use std::marker::PhantomData;
 
-pub struct FordFulkerson<N, F> {
-    rn: ResidualNetwork<N, F>,
+pub struct FordFulkerson<F> {
+    rn: ResidualNetwork<F>,
     visited: Box<[bool]>,
     cutoff: Option<F>,
-    phantom: PhantomData<N>,
 }
 
-impl<N, F> FordFulkerson<N, F>
+impl<F> FordFulkerson<F>
 where
     F: FlowNum,
 {
-    fn new(graph: &Graph<Directed, N, MaximumFlowEdge<F>>) -> Self {
+    fn new<N>(graph: &Graph<Directed, N, MaximumFlowEdge<F>>) -> Self {
         let rn = ResidualNetwork::new(graph);
         let num_nodes = rn.num_nodes;
-        Self { rn, visited: vec![false; num_nodes].into_boxed_slice(), cutoff: None, phantom: PhantomData }
+        Self { rn, visited: vec![false; num_nodes].into_boxed_slice(), cutoff: None}
     }
 
     pub(crate) fn run(&mut self, source: NodeId, sink: NodeId) -> Result<MaxFlowResult<F>, Status> {

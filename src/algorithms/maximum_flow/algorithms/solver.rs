@@ -4,7 +4,7 @@ use crate::{
     graph::{direction::Directed, graph::Graph, ids::NodeId},
 };
 
-pub trait MaximumFlowSolver<N, F: FlowNum> {
-    fn new(graph: &Graph<Directed, N, MaximumFlowEdge<F>>) -> Self;
+pub trait MaximumFlowSolver<F: FlowNum> {
+    fn new<N>(graph: &Graph<Directed, N, MaximumFlowEdge<F>>) -> Self;
     fn solve(&mut self, source: NodeId, sink: NodeId) -> Result<MaxFlowResult<F>, Status>;
 }

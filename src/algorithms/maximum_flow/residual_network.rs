@@ -1,18 +1,17 @@
+use crate::direction::Direction;
 use crate::{
     algorithms::maximum_flow::edge::MaximumFlowEdge,
     core::numeric::FlowNum,
     graph::{
-        direction::Directed,
         graph::Graph,
         ids::{ArcId, NodeId},
         iter::ArcIdRange,
     },
 };
 use std::collections::VecDeque;
-use std::marker::PhantomData;
 
 #[derive(Default)]
-pub(crate) struct ResidualNetwork<N, F> {
+pub(crate) struct ResidualNetwork<F> {
     pub(crate) num_nodes: usize,
     pub(crate) num_edges: usize,
     pub(crate) edge_id_to_arc_id: Box<[ArcId]>,
@@ -26,14 +25,13 @@ pub(crate) struct ResidualNetwork<N, F> {
     pub(crate) excesses: Box<[F]>,
     pub(crate) distances_to_sink: Box<[usize]>,
     que: VecDeque<NodeId>,
-    phantom_data: PhantomData<N>,
 }
 
-impl<N, F> ResidualNetwork<N, F>
+impl<F> ResidualNetwork<F>
 where
     F: FlowNum,
 {
-    pub fn new(graph: &Graph<Directed, N, MaximumFlowEdge<F>>) -> Self {
+    pub fn new<D: Direction, N>(graph: &Graph<D, N, MaximumFlowEdge<F>>) -> Self {
         let mut rn = Self {
             num_nodes: graph.num_nodes(),
             num_edges: graph.num_edges(),
@@ -46,14 +44,14 @@ where
             excesses: vec![F::zero(); graph.num_nodes()].into_boxed_slice(),
             distances_to_sink: vec![0; graph.num_nodes()].into_boxed_slice(),
             que: VecDeque::new(),
-            phantom_data: PhantomData,
+            // phantom_data: PhantomData,
         };
         rn.build(graph);
 
         rn
     }
 
-    fn build(&mut self, graph: &Graph<Directed, N, MaximumFlowEdge<F>>) {
+    fn build<D: Direction, N>(&mut self, graph: &Graph<D, N, MaximumFlowEdge<F>>) {
         let mut degree = vec![0; self.num_nodes].into_boxed_slice();
 
         for edge in graph.edges() {

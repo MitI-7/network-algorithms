@@ -1,10 +1,10 @@
 macro_rules! impl_maximum_flow_solver {
     ( $ solver:ident, $run:ident) => {
-        impl<N, F> MaximumFlowSolver<N, F> for $solver<N, F>
+        impl<F> MaximumFlowSolver<F> for $solver<F>
         where
             F: FlowNum,
         {
-            fn new(graph: &Graph<Directed, N, MaximumFlowEdge<F>>) -> Self {
+            fn new<N>(graph: &Graph<Directed, N, MaximumFlowEdge<F>>) -> Self {
                 Self::new(graph)
             }
 

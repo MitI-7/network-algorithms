@@ -1,4 +1,4 @@
-mod edge;
+pub mod edge;
 pub mod graph;
 pub mod prelude;
 pub mod residual_network;

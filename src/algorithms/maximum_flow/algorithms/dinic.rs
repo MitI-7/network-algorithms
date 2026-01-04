@@ -14,22 +14,21 @@ use crate::{
         ids::{ArcId, NodeId},
     },
 };
-use std::{collections::VecDeque, marker::PhantomData};
+use std::collections::VecDeque;
 
-pub struct Dinic<N, F> {
-    rn: ResidualNetwork<N, F>,
+pub struct Dinic<F> {
+    rn: ResidualNetwork<F>,
     current_edge: Box<[usize]>,
     distances_to_sink: Box<[usize]>,
     que: VecDeque<NodeId>,
     cutoff: Option<F>,
-    phantom: PhantomData<N>,
 }
 
-impl<N, F> Dinic<N, F>
+impl<F> Dinic<F>
 where
     F: FlowNum,
 {
-    fn new(graph: &Graph<Directed, N, MaximumFlowEdge<F>>) -> Self {
+    fn new<N>(graph: &Graph<Directed, N, MaximumFlowEdge<F>>) -> Self {
         let rn = ResidualNetwork::new(graph);
         let num_nodes = rn.num_nodes;
 
@@ -39,7 +38,6 @@ where
             distances_to_sink: vec![0; num_nodes].into_boxed_slice(),
             que: VecDeque::new(),
             cutoff: None,
-            phantom: PhantomData,
         }
     }
 

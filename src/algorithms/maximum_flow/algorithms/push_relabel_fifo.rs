@@ -14,10 +14,10 @@ use crate::{
         ids::{ArcId, NodeId},
     },
 };
-use std::{collections::VecDeque, marker::PhantomData};
+use std::collections::VecDeque;
 
-pub struct PushRelabelFifo<N, F> {
-    rn: ResidualNetwork<N, F>,
+pub struct PushRelabelFifo<F> {
+    rn: ResidualNetwork<F>,
     global_relabel_freq: f64,
     value_only: bool,
     threshold: usize,
@@ -25,14 +25,13 @@ pub struct PushRelabelFifo<N, F> {
     active_nodes: VecDeque<NodeId>,
     current_edge: Box<[usize]>,
     distance_count: Box<[usize]>,
-    phantom: PhantomData<N>,
 }
 
-impl<N, F> PushRelabelFifo<N, F>
+impl<F> PushRelabelFifo<F>
 where
     F: FlowNum,
 {
-    fn new(graph: &Graph<Directed, N, MaximumFlowEdge<F>>) -> Self {
+    fn new<N>(graph: &Graph<Directed, N, MaximumFlowEdge<F>>) -> Self {
         let rn = ResidualNetwork::new(graph);
         let num_nodes = rn.num_nodes;
 
@@ -45,7 +44,6 @@ where
             active_nodes: VecDeque::new(),
             current_edge: vec![0_usize; num_nodes].into_boxed_slice(),
             distance_count: vec![0_usize; num_nodes + 1].into_boxed_slice(),
-            phantom: PhantomData,
         }
     }
 

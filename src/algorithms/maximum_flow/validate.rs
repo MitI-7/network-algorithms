@@ -4,8 +4,8 @@ use crate::{
     maximum_flow::{residual_network::ResidualNetwork, status::Status},
 };
 
-pub fn validate_input<N, F: FlowNum>(
-    rn: &ResidualNetwork<N, F>,
+pub fn validate_input<F: FlowNum>(
+    rn: &ResidualNetwork<F>,
     source: NodeId,
     sink: NodeId,
 ) -> Result<(), Status> {
