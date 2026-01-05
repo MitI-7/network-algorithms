@@ -13,7 +13,7 @@ use crate::{
     graph::{
         direction::Directed,
         graph::Graph,
-        ids::{ArcId, NodeId},
+        ids::{ArcId, INVALID_ARC_ID, INVALID_NODE_ID, NodeId},
     },
 };
 
@@ -49,7 +49,7 @@ where
             return res;
         }
 
-        let mut prev = vec![(NodeId(usize::MAX), ArcId(usize::MAX)); self.rn.num_nodes];
+        let mut prev = vec![(INVALID_NODE_ID, INVALID_ARC_ID); self.rn.num_nodes];
         while let Some(start) = self.find_negative_cycle(&mut prev) {
             let (mut v, idx) = prev[start.index()];
             let mut delta = self.rn.residual_capacity(idx);
@@ -83,7 +83,7 @@ where
     }
 
     fn find_negative_cycle(&mut self, prev: &mut [(NodeId, ArcId)]) -> Option<NodeId> {
-        let mut start = NodeId(usize::MAX);
+        let mut start = INVALID_NODE_ID;
         self.dist.fill(F::zero());
         for _ in 0..self.rn.num_nodes {
             let mut updated = false;
@@ -91,7 +91,9 @@ where
                 for arc_id in self.rn.neighbors(u) {
                     let to = self.rn.to[arc_id.index()];
                     let cost = self.rn.cost[arc_id.index()];
-                    if self.rn.residual_capacity(arc_id) > F::zero() && self.dist[u.index()] + cost < self.dist[to.index()] {
+                    if self.rn.residual_capacity(arc_id) > F::zero()
+                        && self.dist[u.index()] + cost < self.dist[to.index()]
+                    {
                         self.dist[to.index()] = self.dist[u.index()] + cost;
                         prev[to.index()] = (u, arc_id);
                         start = u;

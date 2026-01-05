@@ -3,7 +3,7 @@ use crate::graph::iter::ArcIdRange;
 use crate::{
     algorithms::minimum_cost_flow::normalized_network::{NormalizedEdge, NormalizedNetwork},
     core::numeric::CostNum,
-    graph::ids::NodeId,
+    graph::ids::{INVALID_ARC_ID, INVALID_NODE_ID, NodeId},
 };
 use std::{cmp::Reverse, collections::BinaryHeap};
 
@@ -48,13 +48,13 @@ where
         let mut rn = Self {
             num_nodes,
             num_edges,
-            edge_id_to_arc_id: vec![ArcId(usize::MAX); num_edges].into_boxed_slice(),
+            edge_id_to_arc_id: vec![INVALID_ARC_ID; num_edges].into_boxed_slice(),
 
             start: vec![0; num_nodes + 1].into_boxed_slice(),
-            to: vec![NodeId(usize::MAX); num_edges * 2].into_boxed_slice(),
+            to: vec![INVALID_NODE_ID; num_edges * 2].into_boxed_slice(),
             upper: vec![F::zero(); num_edges * 2].into_boxed_slice(),
             cost: vec![F::zero(); num_edges * 2].into_boxed_slice(),
-            rev: vec![ArcId(usize::MAX); num_edges * 2].into_boxed_slice(),
+            rev: vec![INVALID_ARC_ID; num_edges * 2].into_boxed_slice(),
 
             residual_capacity: vec![F::zero(); num_edges * 2].into_boxed_slice(),
             excesses: vec![F::zero(); num_nodes].into_boxed_slice(),

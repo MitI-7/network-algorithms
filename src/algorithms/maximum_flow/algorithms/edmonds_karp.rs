@@ -11,7 +11,7 @@ use crate::{
     graph::{
         direction::Directed,
         graph::Graph,
-        ids::{ArcId, NodeId},
+        ids::{INVALID_ARC_ID, INVALID_NODE_ID, NodeId},
     },
 };
 use std::collections::VecDeque;
@@ -33,8 +33,8 @@ where
 
     fn run(&mut self, source: NodeId, sink: NodeId) -> Result<F, Status> {
         validate_input(&self.rn, source, sink)?;
-        
-        let mut prev = vec![(NodeId(usize::MAX), ArcId(usize::MAX)); self.rn.num_nodes];
+
+        let mut prev = vec![(INVALID_NODE_ID, INVALID_ARC_ID); self.rn.num_nodes];
         let mut visited = vec![false; self.rn.num_nodes];
         let mut residual = self.cutoff.unwrap_or_else(|| {
             self.rn
@@ -43,7 +43,7 @@ where
         });
         let mut flow = F::zero();
         while residual > F::zero() {
-            prev.fill((NodeId(usize::MAX), ArcId(usize::MAX)));
+            prev.fill((INVALID_NODE_ID, INVALID_ARC_ID));
             visited.fill(false);
 
             // bfs

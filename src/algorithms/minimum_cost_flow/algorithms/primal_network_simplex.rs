@@ -16,7 +16,7 @@ use crate::{
     graph::{
         direction::Directed,
         graph::Graph,
-        ids::{EdgeId, NodeId},
+        ids::{EdgeId, INVALID_EDGE_ID, INVALID_NODE_ID, NodeId},
     },
 };
 
@@ -66,7 +66,7 @@ where
 
     fn run(&mut self) -> Result<F, Status> {
         (self.st.root, self.st.parent[self.root.index()], self.st.parent_edge_id[self.root.index()]) =
-            (self.root, NodeId(usize::MAX), EdgeId(usize::MAX));
+            (self.root, INVALID_NODE_ID, INVALID_EDGE_ID);
 
         self.make_initial_spanning_tree_structure(self.inf_cost);
         debug_assert!(self.st.validate_num_successors(self.st.root));
@@ -149,7 +149,7 @@ where
         };
 
         let (mut leaving_edge_id, mut mini_delta, mut t2_now_root, mut t2_new_root) =
-            (entering_edge_id, self.st.upper[entering_edge_id.index()], NodeId(usize::MAX), NodeId(usize::MAX));
+            (entering_edge_id, self.st.upper[entering_edge_id.index()], INVALID_NODE_ID, INVALID_NODE_ID);
 
         let apex = {
             let (mut u, mut v) = (from, to);
@@ -218,7 +218,7 @@ where
         self.st
             .attach_tree(t1_new_root, new_attach_node, t2_new_root, entering_edge_id);
         self.st.root = t1_new_root;
-        assert_eq!(self.st.parent[self.st.root.index()], NodeId(usize::MAX));
+        assert_eq!(self.st.parent[self.st.root.index()], INVALID_NODE_ID);
     }
 
     fn make_minimum_cost_flow_in_original_graph(&self) -> Vec<F> {

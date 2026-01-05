@@ -4,7 +4,7 @@ use crate::{
     core::numeric::FlowNum,
     graph::{
         graph::Graph,
-        ids::{ArcId, NodeId},
+        ids::{ArcId, INVALID_ARC_ID, INVALID_NODE_ID, NodeId},
         iter::ArcIdRange,
     },
 };
@@ -35,11 +35,11 @@ where
         let mut rn = Self {
             num_nodes: graph.num_nodes(),
             num_edges: graph.num_edges(),
-            edge_id_to_arc_id: vec![ArcId(usize::MAX); graph.num_edges()].into_boxed_slice(),
+            edge_id_to_arc_id: vec![INVALID_ARC_ID; graph.num_edges()].into_boxed_slice(),
             start: vec![0; graph.num_nodes() + 1].into_boxed_slice(),
             upper: vec![F::zero(); graph.num_edges() * 2].into_boxed_slice(),
-            to: vec![NodeId(usize::MAX); graph.num_edges() * 2].into_boxed_slice(),
-            rev: vec![ArcId(usize::MAX); graph.num_edges() * 2].into_boxed_slice(),
+            to: vec![INVALID_NODE_ID; graph.num_edges() * 2].into_boxed_slice(),
+            rev: vec![INVALID_ARC_ID; graph.num_edges() * 2].into_boxed_slice(),
             residual_capacities: vec![F::zero(); graph.num_edges() * 2].into_boxed_slice(),
             excesses: vec![F::zero(); graph.num_nodes()].into_boxed_slice(),
             distances_to_sink: vec![0; graph.num_nodes()].into_boxed_slice(),

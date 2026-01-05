@@ -1,6 +1,6 @@
 use crate::algorithms::minimum_cost_flow::spanning_tree_structure::{EdgeState, SpanningTreeStructure};
 use crate::core::numeric::CostNum;
-use crate::ids::EdgeId;
+use crate::ids::{EdgeId, INVALID_EDGE_ID};
 
 pub trait PivotRule<Flow> {
     fn initialize(&mut self, num_edges: usize);
@@ -201,7 +201,7 @@ where
 
         Self {
             current_edge_id: EdgeId(0),
-            candidates: vec![EdgeId(usize::MAX); candidate_list_size].into_boxed_slice(),
+            candidates: vec![INVALID_EDGE_ID; candidate_list_size].into_boxed_slice(),
             candidate_list_size,
             current_size: 0,
             minor_count_limit: minor_limit,
@@ -230,7 +230,7 @@ where
         let minor_limit = min_minor_limit.max((minor_limit_factor * candidate_list_size as f64) as usize);
 
         self.current_edge_id = EdgeId(0);
-        self.candidates = vec![EdgeId(usize::MAX); candidate_list_size].into_boxed_slice();
+        self.candidates = vec![INVALID_EDGE_ID; candidate_list_size].into_boxed_slice();
         self.candidate_list_size = candidate_list_size;
         self.current_size = 0;
         self.minor_count_limit = minor_limit;
@@ -349,7 +349,7 @@ where
             current_edge_id: EdgeId(0),
             block_size,
             head_length,
-            candidates: vec![(EdgeId(usize::MAX), Flow::zero()); head_length + block_size].into_boxed_slice(),
+            candidates: vec![(INVALID_EDGE_ID, Flow::zero()); head_length + block_size].into_boxed_slice(),
             current_size: 0,
             initialized: true,
         }
@@ -375,7 +375,7 @@ where
         self.current_edge_id = EdgeId(0);
         self.block_size = block_size;
         self.head_length = head_length;
-        self.candidates = vec![(EdgeId(usize::MAX), Flow::zero()); head_length + block_size].into_boxed_slice();
+        self.candidates = vec![(INVALID_EDGE_ID, Flow::zero()); head_length + block_size].into_boxed_slice();
         self.current_size = 0;
         self.initialized = true;
     }

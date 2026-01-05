@@ -30,3 +30,7 @@ impl ArcId {
         self.0
     }
 }
+
+pub const INVALID_NODE_ID: NodeId = NodeId(usize::MAX);
+pub const INVALID_EDGE_ID: EdgeId = EdgeId(usize::MAX);
+pub const INVALID_ARC_ID: ArcId = ArcId(usize::MAX);
