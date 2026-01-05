@@ -1,5 +1,3 @@
-use crate::minimum_cost_flow::normalized_network::NormalizedEdge;
-use crate::minimum_cost_flow::prelude::PrimalDual;
 use crate::{
     algorithms::minimum_cost_flow::{
         algorithms::{macros::impl_minimum_cost_flow_solver, solver::MinimumCostFlowSolver},
@@ -91,7 +89,7 @@ where
                 self.rn.residual_capacity[arc_id.index()] == self.rn.upper[arc_id.index()]
             })
         {
-            Ok(self.rn.make_minimum_cost_flow_objective_value_in_original_graph())
+            Ok(self.rn.calculate_objective_value_in_original_graph())
         } else {
             Err(Status::Infeasible)
         }
@@ -164,6 +162,10 @@ where
                 break;
             }
         }
+    }
+
+    fn make_minimum_cost_flow_in_original_graph(&self) -> Vec<F> {
+        self.rn.make_minimum_cost_flow_in_original_graph()
     }
 }
 

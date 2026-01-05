@@ -1,10 +1,24 @@
-use crate::core::graph::Graph;
-use crate::algorithms::minimum_cost_flow::MinimumCostFlowNum;
+use crate::minimum_cost_flow::normalized_network::NormalizedEdge;
+use crate::{
+    algorithms::minimum_cost_flow::{
+        algorithms::{macros::impl_minimum_cost_flow_solver, solver::MinimumCostFlowSolver},
+        edge::MinimumCostFlowEdge,
+        node::MinimumCostFlowNode,
+        normalized_network::NormalizedNetwork,
+        residual_network::{ResidualNetwork, construct_extend_network_one_supply_one_demand},
+        result::MinimumCostFlowResult,
+        status::Status,
+        validate::{trivial_solution_if_any, validate_balance, validate_infeasible},
+    },
+    core::numeric::CostNum,
+    graph::{
+        direction::Directed,
+        graph::Graph,
+        ids::{ArcId, NodeId},
+    },
+};
 use std::cmp::Reverse;
-use std::collections::BinaryHeap;
-use crate::core::direction::Directed;
-use crate::edge::capacity_cost::CapCostEdge;
-use crate::node::excess::ExcessNode;
+use std::collections::{BinaryHeap, VecDeque};
 
 #[derive(Clone, Default, PartialEq, Debug)]
 pub enum EdgeState {
@@ -14,82 +28,134 @@ pub enum EdgeState {
     Tree,
 }
 
-#[derive(Default)]
-pub struct SpanningTreeStructure<Flow> {
+pub struct SpanningTreeStructure<F> {
     pub(crate) num_nodes: usize,
     pub(crate) num_edges: usize,
-    pub(crate) excesses: Box<[Flow]>,
+    pub(crate) excesses: Box<[F]>,
 
     // node
     pub parent: Box<[usize]>,
     pub parent_edge_id: Box<[usize]>,
-    pub potential: Box<[Flow]>,
+    pub potential: Box<[F]>,
 
     // edge
     pub from: Box<[usize]>,
     pub to: Box<[usize]>,
-    pub upper: Box<[Flow]>,
-    pub cost: Box<[Flow]>,
-    pub flow: Box<[Flow]>,
+    pub upper: Box<[F]>,
+    pub cost: Box<[F]>,
+    pub flow: Box<[F]>,
     pub state: Box<[EdgeState]>,
+    pub(crate) is_reversed: Box<[bool]>,
 
     // tree structure
     pub(crate) root: usize,
-    pub(crate) next_node_dft: Box<[usize]>,       // next nodes in depth-first thread
-    pub(crate) prev_node_dft: Box<[usize]>,       // previous nodes in depth-first thread
+    pub(crate) next_node_dft: Box<[usize]>, // next nodes in depth-first thread
+    pub(crate) prev_node_dft: Box<[usize]>, // previous nodes in depth-first thread
     pub(crate) last_descendent_dft: Box<[usize]>, // last descendants in depth-first thread
-    pub(crate) num_successors: Box<[usize]>,      // the number of successors of the node in the tree
+    pub(crate) num_successors: Box<[usize]>, // the number of successors of the node in the tree
+
+    pub(crate) _num_nodes_original_graph: usize,
+    pub(crate) num_edges_original_graph: usize,
+    pub(crate) lower_in_original_graph: Box<[F]>,
 }
 
 #[allow(dead_code)]
-impl<Flow> SpanningTreeStructure<Flow>
+impl<F> SpanningTreeStructure<F>
 where
-    Flow: MinimumCostFlowNum,
+    F: CostNum,
 {
-    pub(crate) fn build(&mut self, graph: &mut Graph<Directed, ExcessNode<Flow>, CapCostEdge<Flow>>) {
-        (self.num_nodes, self.num_edges) = (graph.num_nodes(), graph.num_edges());
-        // self.excesses = graph.excesses.clone().into_boxed_slice();
-        // self.excesses = graph.b.clone().into_boxed_slice();
-        let mut e = Vec::new();
-        for u in 0..self.num_nodes {
-            e.push(graph.nodes[u].b);
+    pub fn new(
+        graph: &NormalizedNetwork<F>,
+        artificial_nodes: Option<&[NodeId]>,
+        artificial_edges: Option<&[NormalizedEdge<F>]>,
+        initial_flows: Option<&[F]>,
+        fix_excesses: Option<&[F]>,
+    ) -> Self {
+        let num_nodes = graph.num_nodes() + artificial_nodes.unwrap_or(&[]).len();
+        let num_edges = graph.num_edges() + artificial_edges.unwrap_or(&[]).len();
+
+        let mut st = Self {
+            num_nodes,
+            num_edges,
+            excesses: vec![F::zero(); num_nodes].into_boxed_slice(),
+
+            parent: vec![usize::MAX; num_nodes].into_boxed_slice(),
+            parent_edge_id: vec![usize::MAX; num_nodes].into_boxed_slice(),
+            potential: vec![F::zero(); num_nodes].into_boxed_slice(),
+
+            from: vec![0; num_edges].into_boxed_slice(),
+            to: vec![0; num_edges].into_boxed_slice(),
+            upper: vec![F::zero(); num_edges].into_boxed_slice(),
+            cost: vec![F::zero(); num_edges].into_boxed_slice(),
+            flow: vec![F::zero(); num_edges].into_boxed_slice(),
+            state: vec![EdgeState::Lower; num_edges].into_boxed_slice(),
+            is_reversed: vec![false; num_edges].into_boxed_slice(),
+
+            root: usize::MAX,
+            next_node_dft: vec![usize::MAX; num_nodes].into_boxed_slice(),
+            prev_node_dft: vec![usize::MAX; num_nodes].into_boxed_slice(),
+            last_descendent_dft: vec![usize::MAX; num_nodes].into_boxed_slice(),
+            num_successors: vec![0; num_nodes].into_boxed_slice(),
+
+            _num_nodes_original_graph: graph.num_nodes(),
+            num_edges_original_graph: graph.num_edges(),
+            lower_in_original_graph: vec![F::zero(); num_edges * 2].into_boxed_slice(),
+        };
+
+        st.build(graph, artificial_nodes, artificial_edges, initial_flows, fix_excesses);
+        st
+    }
+    fn build(
+        &mut self,
+        graph: &NormalizedNetwork<F>,
+        _artificial_nodes: Option<&[NodeId]>,
+        artificial_edges: Option<&[NormalizedEdge<F>]>,
+        initial_flows: Option<&[F]>,
+        fix_excesses: Option<&[F]>,
+    ) {
+        // // self.excesses = graph.excesses.clone().into_boxed_slice();
+        // // self.excesses = graph.b.clone().into_boxed_slice();
+        // let mut e = Vec::new();
+        // for u in 0..self.num_nodes {
+        //     e.push(graph.excesses()[u]);
+        // }
+        // self.excesses = e.into_boxed_slice();
+
+        for (u, e) in graph.excesses().iter().enumerate() {
+            self.excesses[u] = *e;
         }
-        self.excesses = e.into_boxed_slice();
 
-        self.parent = vec![usize::MAX; self.num_nodes].into_boxed_slice();
-        self.parent_edge_id = vec![usize::MAX; self.num_nodes].into_boxed_slice();
-        self.potential = vec![Flow::zero(); self.num_nodes].into_boxed_slice();
-
-        self.from = vec![0; self.num_edges].into_boxed_slice();
-        self.to = vec![0; self.num_edges].into_boxed_slice();
-        self.upper = vec![Flow::zero(); self.num_edges].into_boxed_slice();
-        self.cost = vec![Flow::zero(); self.num_edges].into_boxed_slice();
-        self.flow = vec![Flow::zero(); self.num_edges].into_boxed_slice();
-        self.state = vec![EdgeState::Lower; self.num_edges].into_boxed_slice();
-
-        for (i, edge) in graph.edges.iter().enumerate() {
-            assert!(edge.data.upper >= Flow::zero() && edge.data.cost >= Flow::zero());
-            self.from[i] = edge.u.index();
-            self.to[i] = edge.v.index();
-            self.flow[i] = edge.data.flow;
-            self.upper[i] = edge.data.upper;
-            self.cost[i] = edge.data.cost;
-            self.state[i] = EdgeState::Lower;
+        if let Some(fix) = fix_excesses {
+            for u in 0..self.num_nodes {
+                self.excesses[u] += fix[u];
+            }
         }
 
-        self.root = usize::MAX;
-        self.next_node_dft = vec![usize::MAX; self.num_nodes].into_boxed_slice();
-        self.prev_node_dft = vec![usize::MAX; self.num_nodes].into_boxed_slice();
-        self.last_descendent_dft = vec![usize::MAX; self.num_nodes].into_boxed_slice();
-        self.num_successors = vec![0; self.num_nodes].into_boxed_slice();
+        for (edge_id, edge) in graph
+            .iter_edges()
+            .chain(artificial_edges.into_iter().flatten().copied())
+            .enumerate()
+        {
+            assert!(edge.upper >= F::zero() && edge.cost >= F::zero());
+            let initial_flow = initial_flows.map_or(F::zero(), |init| init[edge_id]);
+
+            self.from[edge_id] = edge.u.index();
+            self.to[edge_id] = edge.v.index();
+            self.flow[edge_id] = initial_flow;
+            self.upper[edge_id] = edge.upper;
+            self.cost[edge_id] = edge.cost;
+            self.state[edge_id] = EdgeState::Lower;
+            self.is_reversed[edge_id] = edge.is_reversed;
+            self.lower_in_original_graph[edge_id] = edge.lower;
+        }
     }
 
     #[inline]
-    pub(crate) fn reduced_cost(&self, edge_id: usize) -> Flow {
+    pub(crate) fn reduced_cost(&self, edge_id: usize) -> F {
         self.cost[edge_id] - self.potential[self.from[edge_id]] + self.potential[self.to[edge_id]]
     }
 
-    pub(crate) fn update_flow_in_path(&mut self, source: usize, sink: usize, delta: Flow) {
+    pub(crate) fn update_flow_in_path(&mut self, source: usize, sink: usize, delta: F) {
         let mut now = sink;
         while now != source {
             let (parent, edge_id) = (self.parent[now], self.parent_edge_id[now]);
@@ -100,7 +166,7 @@ where
         self.excesses[sink] += delta;
     }
 
-    pub(crate) fn update_flow_in_cycle(&mut self, entering_edge_id: usize, delta: Flow, apex: usize) {
+    pub(crate) fn update_flow_in_cycle(&mut self, entering_edge_id: usize, delta: F, apex: usize) {
         let delta = match self.state[entering_edge_id] {
             EdgeState::Upper => -delta,
             _ => delta,
@@ -109,13 +175,21 @@ where
 
         let mut now = self.from[entering_edge_id];
         while now != apex {
-            self.flow[self.parent_edge_id[now]] += if now == self.from[self.parent_edge_id[now]] { -delta } else { delta };
+            self.flow[self.parent_edge_id[now]] += if now == self.from[self.parent_edge_id[now]] {
+                -delta
+            } else {
+                delta
+            };
             now = self.parent[now];
         }
 
         let mut now = self.to[entering_edge_id];
         while now != apex {
-            self.flow[self.parent_edge_id[now]] += if now == self.from[self.parent_edge_id[now]] { delta } else { -delta };
+            self.flow[self.parent_edge_id[now]] += if now == self.from[self.parent_edge_id[now]] {
+                delta
+            } else {
+                -delta
+            };
             now = self.parent[now];
         }
     }
@@ -182,7 +256,11 @@ where
 
     // remove leaving_edge_id
     pub(crate) fn detach_tree(&mut self, _root: usize, sub_tree_root: usize, leaving_edge_id: usize) {
-        self.state[leaving_edge_id] = if self.is_lower(leaving_edge_id) { EdgeState::Lower } else { EdgeState::Upper };
+        self.state[leaving_edge_id] = if self.is_lower(leaving_edge_id) {
+            EdgeState::Lower
+        } else {
+            EdgeState::Upper
+        };
 
         // detach sub tree
         self.parent[sub_tree_root] = usize::MAX;
@@ -210,7 +288,13 @@ where
     // attach T2 under T1
     // O(1)
     // add entering_ege_id
-    pub(crate) fn attach_tree(&mut self, _root: usize, attach_node: usize, sub_tree_root: usize, entering_edge_id: usize) {
+    pub(crate) fn attach_tree(
+        &mut self,
+        _root: usize,
+        attach_node: usize,
+        sub_tree_root: usize,
+        entering_edge_id: usize,
+    ) {
         self.state[entering_edge_id] = EdgeState::Tree;
 
         let (p, q) = (attach_node, sub_tree_root); // p -> q
@@ -239,21 +323,21 @@ where
     }
 
     // dijkstra
-    pub(crate) fn shortest_path(&self, source: usize) -> (Vec<Flow>, Vec<Option<usize>>) {
+    pub(crate) fn shortest_path(&self, source: usize) -> (Vec<F>, Vec<Option<usize>>) {
         let mut graph = vec![Vec::new(); self.num_nodes];
-        let mut total_cost = Flow::zero();
+        let mut total_cost = F::zero();
         for edge_id in 0..self.num_edges {
             graph[self.from[edge_id]].push(edge_id);
-            assert!(self.cost[edge_id] >= Flow::zero());
+            assert!(self.cost[edge_id] >= F::zero());
             total_cost += self.cost[edge_id];
         }
 
-        let mut distances = vec![total_cost + Flow::one(); self.num_nodes];
+        let mut distances = vec![total_cost + F::one(); self.num_nodes];
         let mut prev_edge_id = vec![None; self.num_nodes];
         let mut seen = vec![false; self.num_nodes];
-        let mut bh = BinaryHeap::from([(Reverse(Flow::zero()), source)]);
+        let mut bh = BinaryHeap::from([(Reverse(F::zero()), source)]);
 
-        distances[source] = Flow::zero();
+        distances[source] = F::zero();
         while let Some((now_dist, u)) = bh.pop() {
             if seen[u] {
                 continue;
@@ -281,14 +365,14 @@ where
                 return false;
             }
         }
-        self.excesses.iter().all(|&excess| excess == Flow::zero())
+        self.excesses.iter().all(|&excess| excess == F::zero())
     }
 
     pub fn satisfy_optimality_conditions(&self) -> bool {
         (0..self.num_edges).all(|edge_id| match self.state[edge_id] {
-            EdgeState::Tree => self.reduced_cost(edge_id) == Flow::zero(),
-            EdgeState::Lower => self.upper[edge_id] == Flow::zero() || self.reduced_cost(edge_id) >= Flow::zero(),
-            EdgeState::Upper => self.upper[edge_id] == Flow::zero() || self.reduced_cost(edge_id) <= Flow::zero(),
+            EdgeState::Tree => self.reduced_cost(edge_id) == F::zero(),
+            EdgeState::Lower => self.upper[edge_id] == F::zero() || self.reduced_cost(edge_id) >= F::zero(),
+            EdgeState::Upper => self.upper[edge_id] == F::zero() || self.reduced_cost(edge_id) <= F::zero(),
         })
     }
 
@@ -317,18 +401,18 @@ where
     }
 
     pub fn is_feasible(&self, edge_id: usize) -> bool {
-        Flow::zero() <= self.flow[edge_id] && self.flow[edge_id] <= self.upper[edge_id]
+        F::zero() <= self.flow[edge_id] && self.flow[edge_id] <= self.upper[edge_id]
     }
 
     pub fn is_lower(&self, edge_id: usize) -> bool {
-        self.flow[edge_id] == Flow::zero()
+        self.flow[edge_id] == F::zero()
     }
 
     pub fn is_upper(&self, edge_id: usize) -> bool {
         self.flow[edge_id] == self.upper[edge_id]
     }
 
-    pub fn residual_capacity(&self, edge_id: usize) -> Flow {
+    pub fn residual_capacity(&self, edge_id: usize) -> F {
         self.upper[edge_id] - self.flow[edge_id]
     }
 
@@ -336,4 +420,36 @@ where
         debug_assert!(u == self.from[edge_id] || u == self.to[edge_id]);
         u ^ self.to[edge_id] ^ self.from[edge_id]
     }
+
+    pub fn calculate_objective_value_in_original_graph(&self) -> F {
+        let mut objective_value = F::zero();
+        for edge_id in 0..self.num_edges_original_graph {
+            let flow = self.flow[edge_id];
+            if self.is_reversed[edge_id] {
+                let original_flow = self.upper[edge_id] + self.lower_in_original_graph[edge_id] - flow;
+                objective_value += original_flow * -self.cost[edge_id];
+            } else {
+                let original_flow = flow + self.lower_in_original_graph[edge_id];
+                objective_value += original_flow * self.cost[edge_id];
+            };
+        }
+        objective_value
+    }
+
+    pub fn make_minimum_cost_flow_in_original_graph(&self) -> Vec<F> {
+        let mut flows = Vec::with_capacity(self.num_edges_original_graph);
+        for edge_id in 0..self.num_edges_original_graph {
+
+            let flow = self.flow[edge_id];
+            if self.is_reversed[edge_id] {
+                let original_flow = self.upper[edge_id] + self.lower_in_original_graph[edge_id] - flow;
+                flows.push(original_flow);
+            } else {
+                let original_flow = flow + self.lower_in_original_graph[edge_id];
+                flows.push(original_flow);
+            };
+        }
+        flows
+    }
+
 }

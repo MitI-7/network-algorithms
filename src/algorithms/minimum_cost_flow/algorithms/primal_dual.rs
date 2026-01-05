@@ -79,7 +79,7 @@ where
             return Err(Status::Infeasible);
         }
 
-        Ok(self.rn.make_minimum_cost_flow_objective_value_in_original_graph())
+        Ok(self.rn.calculate_objective_value_in_original_graph())
     }
 
     // update potentials
@@ -217,6 +217,10 @@ where
     fn is_admissible_edge(&self, from: NodeId, arc_id: ArcId) -> bool {
         self.rn.residual_capacity(arc_id) > F::zero()
             && self.distances[from.index()] == self.distances[self.rn.to[arc_id.index()].index()] + 1
+    }
+
+    fn make_minimum_cost_flow_in_original_graph(&self) -> Vec<F> {
+        self.rn.make_minimum_cost_flow_in_original_graph()
     }
 }
 

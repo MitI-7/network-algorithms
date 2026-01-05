@@ -65,7 +65,7 @@ where
             return Err(Status::Infeasible);
         }
 
-        Ok(self.rn.make_minimum_cost_flow_objective_value_in_original_graph())
+        Ok(self.rn.calculate_objective_value_in_original_graph())
     }
 
     fn calculate_distance(&mut self, s: NodeId) -> Option<(NodeId, Vec<bool>, Vec<Option<F>>, Vec<Option<ArcId>>)> {
@@ -138,6 +138,10 @@ where
 
         self.rn.excesses[t.index()] += delta;
         self.rn.excesses[s.index()] -= delta;
+    }
+
+    fn make_minimum_cost_flow_in_original_graph(&self) -> Vec<F> {
+        self.rn.make_minimum_cost_flow_in_original_graph()
     }
 }
 

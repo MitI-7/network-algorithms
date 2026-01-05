@@ -1,6 +1,6 @@
 use crate::minimum_cost_flow::residual_network::ResidualNetwork;
 use crate::{
-    algorithms::minimum_cost_flow::{result::MinimumCostFlowResult, status::Status},
+    algorithms::minimum_cost_flow::status::Status,
     core::numeric::CostNum,
 };
 

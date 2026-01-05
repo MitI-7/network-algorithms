@@ -12,7 +12,7 @@ macro_rules! impl_minimum_cost_flow_solver {
                 let objective_value = self.$run()?;
                 Ok(MinimumCostFlowResult {
                     objective_value,
-                    flows: self.rn.make_minimum_cost_flow_in_original_graph()
+                    flows: self.make_minimum_cost_flow_in_original_graph()
                 })
             }
 

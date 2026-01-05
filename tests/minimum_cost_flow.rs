@@ -1,3 +1,4 @@
+use network_algorithms::minimum_cost_flow::prelude::*;
 use network_algorithms::{ids::NodeId, minimum_cost_flow::prelude::*};
 use rstest::rstest;
 use std::{fs::read_to_string, path::PathBuf};
@@ -10,7 +11,7 @@ enum Solver {
     SuccessiveShortestPath,
     // DualNetworkSimplex,
     // ParametricNetworkSimplex,
-    // PrimalNetworkSimplex,
+    PrimalNetworkSimplex,
 }
 
 impl Solver {
@@ -42,7 +43,7 @@ impl Solver {
             Solver::SuccessiveShortestPath => SuccessiveShortestPath::new(graph).minimum_cost_flow(),
             // Solver::DualNetworkSimplex => Box::new(DualNetworkSimplex::<F, P>::default()),
             // Solver::ParametricNetworkSimplex => Box::new(ParametricNetworkSimplex::default()),
-            // Solver::PrimalNetworkSimplex => Box::new(PrimalNetworkSimplex::<F, P>::default()),
+            Solver::PrimalNetworkSimplex => PrimalNetworkSimplex::new(graph).minimum_cost_flow(),
         }
     }
 }
@@ -55,7 +56,7 @@ impl Solver {
 #[case::ssp(Solver::SuccessiveShortestPath)]
 // #[case::ns_dual(Solver::DualNetworkSimplex)]
 // #[case::ns_parametric(Solver::ParametricNetworkSimplex)]
-// #[case::ns_primal(Solver::PrimalNetworkSimplex)]
+#[case::ns_primal(Solver::PrimalNetworkSimplex)]
 fn minimum_cost_flow(#[files("tests/minimum_cost_flow/*/*.txt")] path: PathBuf, #[case] solver: Solver) {
     if solver.should_skip(&path) {
         return;
