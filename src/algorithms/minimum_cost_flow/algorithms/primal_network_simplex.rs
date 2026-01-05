@@ -14,7 +14,7 @@ use crate::{
         status::Status,
     },
     core::numeric::CostNum,
-    graph::{direction::Directed, graph::Graph, ids::NodeId},
+    graph::{direction::Directed, graph::Graph, ids::{NodeId, EdgeId}},
 };
 
 pub struct PrimalNetworkSimplex<F, P = BlockSearchPivotRule<F>> {
@@ -63,7 +63,7 @@ where
 
     fn run(&mut self) -> Result<F, Status> {
         (self.st.root, self.st.parent[self.root.index()], self.st.parent_edge_id[self.root.index()]) =
-            (self.root, NodeId(usize::MAX), usize::MAX);
+            (self.root, NodeId(usize::MAX), EdgeId(usize::MAX));
 
         self.make_initial_spanning_tree_structure(self.inf_cost);
         debug_assert!(self.st.validate_num_successors(self.st.root));
@@ -100,8 +100,8 @@ where
         }
     }
 
-    fn calculate_violation(edge_id: usize, st: &SpanningTreeStructure<F>) -> F {
-        match st.state[edge_id] {
+    fn calculate_violation(edge_id: EdgeId, st: &SpanningTreeStructure<F>) -> F {
+        match st.state[edge_id.index()] {
             EdgeState::Upper => st.reduced_cost(edge_id),
             _ => -st.reduced_cost(edge_id),
         }
@@ -110,16 +110,17 @@ where
     fn make_initial_spanning_tree_structure(&mut self, inf_cost: F) {
         let mut prev_node = self.st.root;
         for edge_id in self.st.num_edges_original_graph..self.st.num_edges {
-            let u = if self.st.from[edge_id] == self.st.root {
-                self.st.to[edge_id]
+            let edge_id = EdgeId(edge_id);
+            let u = if self.st.from[edge_id.index()] == self.st.root {
+                self.st.to[edge_id.index()]
             } else {
-                self.st.from[edge_id]
+                self.st.from[edge_id.index()]
             };
 
-            if self.st.from[edge_id] == u {
-                (self.st.potential[u.index()], self.st.state[edge_id]) = (inf_cost, EdgeState::Tree);
+            if self.st.from[edge_id.index()] == u {
+                (self.st.potential[u.index()], self.st.state[edge_id.index()]) = (inf_cost, EdgeState::Tree);
             } else {
-                (self.st.potential[u.index()], self.st.state[edge_id]) = (-inf_cost, EdgeState::Tree);
+                (self.st.potential[u.index()], self.st.state[edge_id.index()]) = (-inf_cost, EdgeState::Tree);
             }
 
             (self.st.parent[u.index()], self.st.parent_edge_id[u.index()]) = (self.st.root, edge_id);
@@ -138,15 +139,15 @@ where
     }
 
     // keep strongly feasible solution
-    fn select_leaving_edge(&self, entering_edge_id: usize) -> (usize, NodeId, F, NodeId, NodeId) {
-        let (from, to) = match self.st.state[entering_edge_id] {
-            EdgeState::Tree => panic!("state of entering edge {entering_edge_id} is invalid."),
-            EdgeState::Lower => (self.st.from[entering_edge_id], self.st.to[entering_edge_id]),
-            EdgeState::Upper => (self.st.to[entering_edge_id], self.st.from[entering_edge_id]),
+    fn select_leaving_edge(&self, entering_edge_id: EdgeId) -> (EdgeId, NodeId, F, NodeId, NodeId) {
+        let (from, to) = match self.st.state[entering_edge_id.index()] {
+            EdgeState::Tree => panic!("state of entering edge {} is invalid.", entering_edge_id.index()),
+            EdgeState::Lower => (self.st.from[entering_edge_id.index()], self.st.to[entering_edge_id.index()]),
+            EdgeState::Upper => (self.st.to[entering_edge_id.index()], self.st.from[entering_edge_id.index()]),
         };
 
         let (mut leaving_edge_id, mut mini_delta, mut t2_now_root, mut t2_new_root) =
-            (entering_edge_id, self.st.upper[entering_edge_id], NodeId(usize::MAX), NodeId(usize::MAX));
+            (entering_edge_id, self.st.upper[entering_edge_id.index()], NodeId(usize::MAX), NodeId(usize::MAX));
 
         let apex = {
             let (mut u, mut v) = (from, to);
@@ -155,10 +156,10 @@ where
 
                 if u_num <= v_num {
                     let edge_id = self.st.parent_edge_id[u.index()];
-                    let delta = if u == self.st.to[edge_id] {
+                    let delta = if u == self.st.to[edge_id.index()] {
                         self.st.residual_capacity(edge_id)
                     } else {
-                        self.st.flow[edge_id]
+                        self.st.flow[edge_id.index()]
                     };
 
                     // search first blocking arc
@@ -170,10 +171,10 @@ where
 
                 if v_num <= u_num {
                     let edge_id = self.st.parent_edge_id[v.index()];
-                    let delta = if v == self.st.from[edge_id] {
+                    let delta = if v == self.st.from[edge_id.index()] {
                         self.st.residual_capacity(edge_id)
                     } else {
-                        self.st.flow[edge_id]
+                        self.st.flow[edge_id.index()]
                     };
 
                     // search last blocking arc
@@ -189,12 +190,12 @@ where
         (leaving_edge_id, apex, mini_delta, t2_now_root, t2_new_root)
     }
 
-    fn pivot(&mut self, leaving_edge_id: usize, entering_edge_id: usize, t2_now_root: NodeId, t2_new_root: NodeId) {
+    fn pivot(&mut self, leaving_edge_id: EdgeId, entering_edge_id: EdgeId, t2_now_root: NodeId, t2_new_root: NodeId) {
         if leaving_edge_id == entering_edge_id {
-            self.st.state[entering_edge_id] = match self.st.state[entering_edge_id] {
+            self.st.state[entering_edge_id.index()] = match self.st.state[entering_edge_id.index()] {
                 EdgeState::Upper => EdgeState::Lower,
                 EdgeState::Lower => EdgeState::Upper,
-                _ => panic!("state of entering edge {entering_edge_id} is invalid."),
+                _ => panic!("state of entering edge {} is invalid.", entering_edge_id.index()),
             };
             return;
         }
