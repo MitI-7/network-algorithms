@@ -10,27 +10,16 @@ use std::ops::{Deref, DerefMut};
 
 pub struct MinimumCostFlowGraph<F>(Graph<Directed, MinimumCostFlowNode<F>, MinimumCostFlowEdge<F>>);
 
-impl<F> MinimumCostFlowGraph<F>
-where
-    F: Default,
-{
+impl<F> MinimumCostFlowGraph<F> {
     pub fn new() -> Self {
         Self(Graph::new_directed())
     }
 
-    pub fn add_edge(
-        &mut self,
-        u: NodeId,
-        v: NodeId,
-        lower: F,
-        upper: F,
-        cost: F,
-    ) -> Option<EdgeId> {
+    pub fn add_edge(&mut self, u: NodeId, v: NodeId, lower: F, upper: F, cost: F) -> Option<EdgeId> {
         if u.index() >= self.num_nodes() || v.index() >= self.num_nodes() {
             return None;
         }
-        self.0
-            .add_edge(u, v, MinimumCostFlowEdge { lower, upper, cost })
+        self.0.add_edge(u, v, MinimumCostFlowEdge { lower, upper, cost })
     }
 
     pub fn set_excess(&mut self, u: NodeId, b: F) {
@@ -50,15 +39,3 @@ impl<F> DerefMut for MinimumCostFlowGraph<F> {
         &mut self.0
     }
 }
-
-// 相互変換
-// impl<F> From<Graph<Directed, (), MaximumFlowEdge<F>>> for MaximumFlowGraph<F> {
-//     fn from(g: Graph<Directed, (), MaximumFlowEdge<F>>) -> Self {
-//         Self(g)
-//     }
-// }
-// impl<F> From<MaximumFlowGraph<F>> for Graph<Directed, (), MaximumFlowEdge<F>> {
-//     fn from(g: MaximumFlowGraph<F>) -> Self {
-//         g.0
-//     }
-// }

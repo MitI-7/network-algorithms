@@ -95,6 +95,11 @@ where
     }
 
     #[inline]
+    pub(crate) fn residual_capacity(&self, arc_id: ArcId) -> F {
+        self.residual_capacities[arc_id.index()]
+    }
+
+    #[inline]
     pub(crate) fn push_flow(&mut self, u: NodeId, arc_id: ArcId, flow: F) {
         self.push_flow_without_excess(u, arc_id, flow);
         self.excesses[u.index()] -= flow;

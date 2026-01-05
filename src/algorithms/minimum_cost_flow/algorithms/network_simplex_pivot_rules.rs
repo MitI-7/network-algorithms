@@ -13,7 +13,7 @@ pub trait PivotRule<Flow> {
 }
 
 pub struct BestEligibleArcPivotRule<Flow> {
-    _maker: std::marker::PhantomData<fn() -> Flow>,
+    _maker: std::marker::PhantomData<Flow>,
 }
 
 impl<Flow> PivotRule<Flow> for BestEligibleArcPivotRule<Flow>
@@ -47,7 +47,7 @@ where
 
 pub struct FirstEligibleArcPivotRule<Flow> {
     current_edge_id: EdgeId,
-    _maker: std::marker::PhantomData<fn() -> Flow>,
+    _maker: std::marker::PhantomData<Flow>,
 }
 
 impl<Flow> PivotRule<Flow> for FirstEligibleArcPivotRule<Flow>
@@ -177,7 +177,7 @@ pub struct CandidateListPivotRule<Flow> {
     minor_count: usize,
     current_size: usize,
     initialized: bool,
-    _maker: std::marker::PhantomData<fn() -> Flow>,
+    _maker: std::marker::PhantomData<Flow>,
 }
 
 impl<Flow> CandidateListPivotRule<Flow>
