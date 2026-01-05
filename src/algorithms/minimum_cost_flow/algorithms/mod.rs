@@ -1,3 +1,4 @@
+pub mod cycle_canceling;
 pub(crate) mod macros;
 pub mod network_simplex_pivot_rules;
 pub mod out_of_kilter;

@@ -5,7 +5,7 @@ use std::{fs::read_to_string, path::PathBuf};
 
 enum Solver {
     // CostScalingPushRelabel,
-    // NegativeCostCanceling,
+    CycleCanceling,
     OutOfKilter,
     PrimalDual,
     SuccessiveShortestPath,
@@ -16,28 +16,18 @@ enum Solver {
 
 impl Solver {
     pub fn should_skip(&self, path: &PathBuf) -> bool {
-        // let skip_for_lib = matches!(self, Solver::NegativeCostCanceling);
-        // let a = skip_for_lib && path.to_str().map_or(false, |s| s.contains("LibraryChecker"));
+        let skip_for_lib = matches!(self, Solver::CycleCanceling);
+        let a = skip_for_lib && path.to_str().map_or(false, |s| s.contains("LibraryChecker"));
         let skip_for_anti =
             // matches!(self, Solver::OutOfKilter | Solver::PrimalDual | Solver::SuccessiveShortestPath | Solver::ParametricNetworkSimplex);
             matches!(self, Solver::OutOfKilter | Solver::PrimalDual | Solver::SuccessiveShortestPath);
         let b = skip_for_anti && path.to_str().map_or(false, |s| s.contains("anti_ssp_00"));
-        // a || b
-        b
+        a || b
     }
-
-    // pub fn run(&self, graph: &MaximumFlowGraph<i64>, s: NodeId, t: NodeId) -> Result<MaxFlowResult<i64>, Status> {
-    //         match self {
-    //             Solver::Dinic => {
-    //                 let mut solver = Dinic::new(graph);
-    //                 solver.solve(s, t)
-    //             }
-
-    // pub fn build<F, P>(&self) -> Box<dyn MinimumCostFlowSolver<F>>
     pub fn solve(&self, graph: &MinimumCostFlowGraph<i128>) -> Result<MinimumCostFlowResult<i128>, Status> {
         match self {
             // Solver::CostScalingPushRelabel => Box::new(CostScalingPushRelabel::default()),
-            // Solver::NegativeCostCanceling => Box::new(CycleCanceling::default()),
+            Solver::CycleCanceling => CycleCanceling::new(graph).minimum_cost_flow(),
             Solver::OutOfKilter => OutOfKilter::new(graph).minimum_cost_flow(),
             Solver::PrimalDual => PrimalDual::new(graph).minimum_cost_flow(),
             Solver::SuccessiveShortestPath => SuccessiveShortestPath::new(graph).minimum_cost_flow(),
@@ -50,7 +40,7 @@ impl Solver {
 
 #[rstest]
 // #[case::cs(Solver::CostScalingPushRelabel)]
-// #[case::nc(Solver::NegativeCostCanceling)]
+#[case::cc(Solver::CycleCanceling)]
 #[case::ok(Solver::OutOfKilter)]
 #[case::pd(Solver::PrimalDual)]
 #[case::ssp(Solver::SuccessiveShortestPath)]
@@ -127,13 +117,13 @@ fn minimum_cost_flow(#[files("tests/minimum_cost_flow/*/*.txt")] path: PathBuf, 
 //
 #[rstest]
 // #[case::cs(Solver::CostScalingPushRelabel)]
-// #[case::nc(Solver::NegativeCostCanceling)]
+#[case::cc(Solver::CycleCanceling)]
 #[case::ok(Solver::OutOfKilter)]
 #[case::pd(Solver::PrimalDual)]
 #[case::ssp(Solver::SuccessiveShortestPath)]
 // #[case::ns_dual(Solver::DualNetworkSimplex)]
 // #[case::ns_parametric(Solver::ParametricNetworkSimplex)]
-// #[case::ns_primal(Solver::PrimalNetworkSimplex)]
+#[case::ns_primal(Solver::PrimalNetworkSimplex)]
 fn minimum_cost_flow_no_edges(#[case] solver: Solver) {
     let mut graph = MinimumCostFlowGraph::<i128>::new();
     let _nodes = graph.add_nodes(2);
@@ -146,13 +136,13 @@ fn minimum_cost_flow_no_edges(#[case] solver: Solver) {
 
 #[rstest]
 // #[case::cs(Solver::CostScalingPushRelabel)]
-// #[case::nc(Solver::NegativeCostCanceling)]
+#[case::cc(Solver::CycleCanceling)]
 #[case::ok(Solver::OutOfKilter)]
 #[case::pd(Solver::PrimalDual)]
 #[case::ssp(Solver::SuccessiveShortestPath)]
 // #[case::ns_dual(Solver::DualNetworkSimplex)]
 // #[case::ns_parametric(Solver::ParametricNetworkSimplex)]
-// #[case::ns_primal(Solver::PrimalNetworkSimplex)]
+#[case::ns_primal(Solver::PrimalNetworkSimplex)]
 fn minimum_cost_flow_no_nodes(#[case] solver: Solver) {
     let graph = MinimumCostFlowGraph::<i128>::new();
     let actual = solver.solve(&graph);

@@ -1,0 +1,124 @@
+use crate::{
+    algorithms::minimum_cost_flow::{
+        algorithms::{macros::impl_minimum_cost_flow_solver, solver::MinimumCostFlowSolver},
+        edge::MinimumCostFlowEdge,
+        node::MinimumCostFlowNode,
+        normalized_network::NormalizedNetwork,
+        residual_network::{ResidualNetwork, construct_extend_network_feasible_solution},
+        result::MinimumCostFlowResult,
+        status::Status,
+        validate::{trivial_solution_if_any, validate_balance, validate_infeasible},
+    },
+    core::numeric::CostNum,
+    graph::{
+        direction::Directed,
+        graph::Graph,
+        ids::{ArcId, NodeId},
+    },
+};
+
+pub struct CycleCanceling<F> {
+    rn: ResidualNetwork<F>,
+    dist: Box<[F]>,
+    visited: Box<[bool]>,
+}
+
+impl<F> CycleCanceling<F>
+where
+    F: CostNum,
+{
+    pub fn new(graph: &Graph<Directed, MinimumCostFlowNode<F>, MinimumCostFlowEdge<F>>) -> Self {
+        let nn = NormalizedNetwork::new(graph);
+
+        let (root, artificial_edges, initial_flows, excess_fix) = construct_extend_network_feasible_solution(&nn);
+        let rn =
+            ResidualNetwork::new(&nn, Some(&[root]), Some(&artificial_edges), Some(&initial_flows), Some(&excess_fix));
+        let num_nodes = rn.num_nodes;
+        CycleCanceling {
+            rn,
+            dist: vec![F::zero(); num_nodes].into_boxed_slice(),
+            visited: vec![false; num_nodes].into_boxed_slice(),
+        }
+    }
+
+    fn run(&mut self) -> Result<F, Status> {
+        validate_balance(&self.rn)?;
+        validate_infeasible(&self.rn)?;
+
+        if let Some(res) = trivial_solution_if_any(&self.rn) {
+            return res;
+        }
+
+        let mut prev = vec![(NodeId(usize::MAX), ArcId(usize::MAX)); self.rn.num_nodes];
+        while let Some(start) = self.find_negative_cycle(&mut prev) {
+            let (mut v, idx) = prev[start.index()];
+            let mut delta = self.rn.residual_capacity(idx);
+            let mut cycle = vec![idx];
+            while v != start {
+                let (u, idx) = prev[v.index()];
+                cycle.push(idx);
+                delta = delta.min(self.rn.residual_capacity(idx));
+                v = u;
+            }
+            assert!(delta > F::zero());
+
+            for idx in cycle {
+                let rev = self.rn.rev[idx.index()];
+                self.rn.residual_capacity[idx.index()] -= delta;
+                self.rn.residual_capacity[rev.index()] += delta;
+            }
+        }
+
+        if (self.rn.num_edges_original_graph..self.rn.num_edges)
+            .into_iter()
+            .all(|edge_id| {
+                let arc_id = self.rn.edge_id_to_arc_id[edge_id];
+                self.rn.residual_capacity[arc_id.index()] == self.rn.upper[arc_id.index()]
+            })
+        {
+            Ok(self.rn.calculate_objective_value_in_original_graph())
+        } else {
+            Err(Status::Infeasible)
+        }
+    }
+
+    fn find_negative_cycle(&mut self, prev: &mut [(NodeId, ArcId)]) -> Option<NodeId> {
+        let mut start = NodeId(usize::MAX);
+        self.dist.fill(F::zero());
+        for _ in 0..self.rn.num_nodes {
+            let mut updated = false;
+            for u in (0..self.rn.num_nodes).map(NodeId) {
+                for arc_id in self.rn.neighbors(u) {
+                    let to = self.rn.to[arc_id.index()];
+                    let cost = self.rn.cost[arc_id.index()];
+                    if self.rn.residual_capacity(arc_id) > F::zero() && self.dist[u.index()] + cost < self.dist[to.index()] {
+                        self.dist[to.index()] = self.dist[u.index()] + cost;
+                        prev[to.index()] = (u, arc_id);
+                        start = u;
+                        updated = true;
+                    }
+                }
+            }
+            if !updated {
+                return None;
+            }
+        }
+
+        let mut v = start;
+        self.visited.fill(false);
+        loop {
+            let (u, _) = prev[v.index()];
+            if self.visited[u.index()] {
+                return Some(v);
+            }
+            self.visited[u.index()] = true;
+            v = u;
+        }
+    }
+
+    fn make_minimum_cost_flow_in_original_graph(&self) -> Vec<F> {
+        self.rn.make_minimum_cost_flow_in_original_graph()
+    }
+}
+
+impl_minimum_cost_flow_solver!(CycleCanceling, run);
