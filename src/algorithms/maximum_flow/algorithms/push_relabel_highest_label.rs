@@ -1,4 +1,3 @@
-use std::collections::VecDeque;
 use crate::{
     algorithms::maximum_flow::{
         algorithms::{macros::impl_maximum_flow_solver, solver::MaximumFlowSolver},
@@ -11,9 +10,11 @@ use crate::{
     core::numeric::FlowNum,
     graph::{direction::Directed, graph::Graph, ids::NodeId},
 };
+use std::collections::VecDeque;
+use crate::ids::ArcId;
 
-pub struct PushRelabelHighestLabel<Flow> {
-    csr: CSR<Flow>,
+pub struct PushRelabelHighestLabel<F> {
+    rn: ResidualNetwork<F>,
     current_edge: Vec<usize>,
 
     global_relabel_freq: f64,
@@ -21,20 +22,22 @@ pub struct PushRelabelHighestLabel<Flow> {
     threshold: usize,
     work: usize,
 
-    buckets: Vec<Vec<usize>>, // buckets[i] = active nodes with distance i
+    buckets: Vec<Vec<NodeId>>, // buckets[i] = active nodes with distance i
     in_bucket: Vec<bool>,
     bucket_idx: usize,
 
     distance_count: Vec<usize>,
 }
 
-impl<Flow> Default for PushRelabelHighestLabel<Flow>
+impl<F> PushRelabelHighestLabel<F>
 where
-    Flow: Default,
+    F: FlowNum,
 {
-    fn default() -> Self {
+    fn new<N>(graph: &Graph<Directed, N, MaximumFlowEdge<F>>) -> Self {
+        let rn = ResidualNetwork::new(graph);
+        let num_nodes = rn.num_nodes;
         Self {
-            csr: CSR::default(),
+            rn,
             current_edge: Vec::new(),
 
             global_relabel_freq: 1.0,
@@ -49,22 +52,21 @@ where
             distance_count: Vec::new(),
         }
     }
-}
 
-impl<Flow> MaximumFlowSolver<Flow> for PushRelabelHighestLabel<Flow>
-where
-    Flow: FlowNum,
-{
-    fn solve(&mut self, graph: &mut Graph<Directed, (), CapEdge<Flow>>, source: NodeId, sink: NodeId, upper: Option<Flow>) -> Result<Flow, Status> {
+    pub fn set_value_only(mut self, value_only: bool) -> Self {
+        self.value_only = value_only;
+        self
+    }
+
+    pub fn set_global_relabel_freq(mut self, global_relabel_freq: f64) -> Self {
+        self.global_relabel_freq = global_relabel_freq;
+        self
+    }
+    
+    fn run(&mut self, source: NodeId, sink: NodeId) -> Result<F, Status> {
         validate_input(&self.rn, source, sink)?;
-
-        let delta: Flow = graph.edges.iter().filter(|e| e.u == source).fold(Flow::zero(), |acc, e| acc + e.data.upper);
-        let dummy_source = graph.add_node(); // dummy source
-        graph.add_edge(dummy_source, source, CapEdge{flow: Flow::zero(), upper: upper.unwrap_or(delta)}); // dummy edge
-        self.csr.build(graph);
-        let source = dummy_source;
-
-        self.pre_process(source.index(), sink.index());
+        
+        self.pre_process(source, sink);
         loop {
             if self.buckets[self.bucket_idx].is_empty() {
                 if self.bucket_idx == 0 {
@@ -75,205 +77,172 @@ where
             }
 
             let u = self.buckets[self.bucket_idx].pop().unwrap();
-            self.in_bucket[u] = false;
+            self.in_bucket[u.index()] = false;
             self.discharge(u);
 
             if self.work > self.threshold {
                 self.work = 0;
-                self.csr.update_distances_to_sink(source.index(), sink.index());
+                self.rn.update_distances_to_sink(source, sink);
                 self.distance_count.fill(0);
-                for u in 0..self.csr.num_nodes {
-                    self.distance_count[self.csr.distances_to_sink[u]] += 1;
+                for u in 0..self.rn.num_nodes {
+                    self.distance_count[self.rn.distances_to_sink[u]] += 1;
                 }
             }
         }
 
         if !self.value_only {
-            self.push_flow_excess_back_to_source(source.index(), sink.index());
-            self.csr.set_flow(graph);
+            self.push_flow_excess_back_to_source(source, sink);
         }
 
-        // remove dummy source & dummy edge
-        graph.pop_node();
-        graph.pop_edge();
-
-        Ok(self.csr.excesses[sink.index()])
-    }
-}
-
-impl<Flow> PushRelabelHighestLabel<Flow>
-where
-    Flow: FlowNum,
-{
-    pub fn set_value_only(mut self, value_only: bool) -> Self {
-        self.value_only = value_only;
-        self
+        Ok(self.rn.excesses[sink.index()])
     }
 
-    pub fn set_global_relabel_freq(mut self, global_relabel_freq: f64) -> Self {
-        self.global_relabel_freq = global_relabel_freq;
-        self
-    }
+    fn pre_process(&mut self, source: NodeId, sink: NodeId) {
+        self.rn.excesses.fill(F::zero());
+        self.current_edge = vec![0; self.rn.num_nodes];
+        self.buckets = vec![Vec::new(); self.rn.num_nodes];
+        self.in_bucket = vec![false; self.rn.num_nodes];
+        self.distance_count = vec![0; self.rn.num_nodes + 1];
 
-    fn new<N>(graph: &Graph<Directed, N, MaximumFlowEdge<F>>) -> Self {
-        let rn = ResidualNetwork::new(graph);
-        let num_nodes = rn.num_nodes;
+        self.rn.update_distances_to_sink(source, sink);
+        self.rn.distances_to_sink[source.index()] = self.rn.num_nodes;
 
-        Self {
-            rn,
-            current_edge: vec![0_usize; num_nodes].into_boxed_slice(),
-            distances_to_sink: vec![0; num_nodes].into_boxed_slice(),
-            que: VecDeque::new(),
-            cutoff: None,
-        }
-    }
-
-    pub fn solve(&mut self, graph: &mut Graph<Directed, (), CapEdge<Flow>>, source: NodeId, sink: NodeId, upper: Option<Flow>) -> Result<Flow, Status> {
-        <Self as MaximumFlowSolver<Flow>>::solve(self, graph, source, sink, upper)
-    }
-
-    fn pre_process(&mut self, source: usize, sink: usize) {
-        self.csr.excesses.fill(Flow::zero());
-        self.current_edge = vec![0; self.csr.num_nodes];
-        self.buckets = vec![Vec::new(); self.csr.num_nodes];
-        self.in_bucket = vec![false; self.csr.num_nodes];
-        self.distance_count = vec![0; self.csr.num_nodes + 1];
-
-        self.csr.update_distances_to_sink(source, sink);
-        self.csr.distances_to_sink[source] = self.csr.num_nodes;
-
-        for u in 0..self.csr.num_nodes {
-            self.distance_count[self.csr.distances_to_sink[u]] += 1;
-            self.current_edge[u] = self.csr.start[u];
+        for u in 0..self.rn.num_nodes {
+            self.distance_count[self.rn.distances_to_sink[u]] += 1;
+            self.current_edge[u] = self.rn.start[u];
         }
 
-        for edge_id in self.csr.neighbors(source) {
-            let delta = self.csr.residual_capacity(edge_id);
-            self.csr.push_flow(source, edge_id, delta, true);
-            self.csr.excesses[self.csr.to[edge_id]] += delta;
+        for arc_id in self.rn.neighbors(source) {
+            let delta = self.rn.residual_capacity(arc_id);
+            self.rn.push_flow_without_excess(source, arc_id, delta);
+            self.rn.excesses[self.rn.to[arc_id.index()].index()] += delta;
         }
 
-        for u in 0..self.csr.num_nodes {
-            if u != source && u != sink && self.csr.excesses[u] > Flow::zero() {
+        for u in (0..self.rn.num_nodes).map(NodeId) {
+            if u != source && u != sink && self.rn.excesses[u.index()] > F::zero() {
                 self.enqueue(u);
             }
         }
 
-        self.in_bucket[sink] = true;
+        self.in_bucket[sink.index()] = true;
 
         self.threshold = if self.global_relabel_freq <= 0.0 {
             usize::MAX
         } else {
-            (((self.csr.num_nodes + self.csr.num_edges) as f64) / self.global_relabel_freq).ceil() as usize
+            (((self.rn.num_nodes + self.rn.num_edges) as f64) / self.global_relabel_freq).ceil() as usize
         };
     }
 
-    fn enqueue(&mut self, u: usize) {
-        if self.in_bucket[u] || self.csr.excesses[u] <= Flow::zero() || self.csr.distances_to_sink[u] >= self.csr.num_nodes {
+    fn enqueue(&mut self, u: NodeId) {
+        if self.in_bucket[u.index()] || self.rn.excesses[u.index()] <= F::zero() || self.rn.distances_to_sink[u.index()] >= self.rn.num_nodes
+        {
             return;
         }
 
-        self.in_bucket[u] = true;
-        self.buckets[self.csr.distances_to_sink[u]].push(u);
-        self.bucket_idx = self.bucket_idx.max(self.csr.distances_to_sink[u]);
-        self.current_edge[u] = self.csr.start[u];
+        self.in_bucket[u.index()] = true;
+        self.buckets[self.rn.distances_to_sink[u.index()]].push(u);
+        self.bucket_idx = self.bucket_idx.max(self.rn.distances_to_sink[u.index()]);
+        self.current_edge[u.index()] = self.rn.start[u.index()];
     }
 
-    fn discharge(&mut self, u: usize) {
+    fn discharge(&mut self, u: NodeId) {
         // push
-        for i in self.current_edge[u]..self.csr.start[u + 1] {
-            self.current_edge[u] = i;
-            if self.csr.excesses[u] > Flow::zero() {
-                self.push(u, i);
+        for arc_id in (self.current_edge[u.index()]..self.rn.start[u.index() + 1]).map(ArcId) {
+            self.current_edge[u.index()] = arc_id.index();
+            if self.rn.excesses[u.index()] > F::zero() {
+                self.push(u, arc_id);
             }
 
-            if self.csr.excesses[u] == Flow::zero() {
+            if self.rn.excesses[u.index()] == F::zero() {
                 return;
             }
         }
 
         // relabel
-        if self.distance_count[self.csr.distances_to_sink[u]] == 1 {
-            self.gap_relabeling(self.csr.distances_to_sink[u]);
+        if self.distance_count[self.rn.distances_to_sink[u.index()]] == 1 {
+            self.gap_relabeling(self.rn.distances_to_sink[u.index()]);
         } else {
             self.relabel(u);
         }
     }
 
-    fn push(&mut self, u: usize, i: usize) {
-        let to = self.csr.to[i];
-        let delta = self.csr.excesses[u].min(self.csr.residual_capacity(i));
-        if self.csr.is_admissible_edge(u, i) && delta > Flow::zero() {
-            self.csr.push_flow(u, i, delta, false);
+    fn push(&mut self, u: NodeId, arc_id: ArcId) {
+        let to = self.rn.to[arc_id.index()];
+        let delta = self.rn.excesses[u.index()].min(self.rn.residual_capacity(arc_id));
+        if self.rn.is_admissible_arc(u, arc_id) && delta > F::zero() {
+            self.rn.push_flow(u, arc_id, delta);
             self.enqueue(to);
         }
     }
 
-    fn relabel(&mut self, u: usize) {
-        self.work += self.csr.start[u + 1] - self.csr.start[u]; // add outdegree of u
-        self.distance_count[self.csr.distances_to_sink[u]] -= 1;
+    fn relabel(&mut self, u: NodeId) {
+        self.work += self.rn.start[u.index() + 1] - self.rn.start[u.index()]; // add outdegree of u
+        self.distance_count[self.rn.distances_to_sink[u.index()]] -= 1;
 
-        self.csr.distances_to_sink[u] = self
-            .csr
+        self.rn.distances_to_sink[u.index()] = self
+            .rn
             .neighbors(u)
-            .filter(|&i| self.csr.residual_capacity(i) > Flow::zero())
-            .map(|i| self.csr.distances_to_sink[self.csr.to[i]] + 1)
+            .filter(|&i| self.rn.residual_capacity(i) > F::zero())
+            .map(|i| self.rn.distances_to_sink[self.rn.to[i.index()].index()] + 1)
             .min()
-            .unwrap_or(self.csr.num_nodes)
-            .min(self.csr.num_nodes);
+            .unwrap_or(self.rn.num_nodes)
+            .min(self.rn.num_nodes);
 
-        self.distance_count[self.csr.distances_to_sink[u]] += 1;
+        self.distance_count[self.rn.distances_to_sink[u.index()]] += 1;
         self.enqueue(u);
     }
 
     // gap relabeling heuristic
     fn gap_relabeling(&mut self, k: usize) {
-        for u in 0..self.csr.num_nodes {
-            if self.csr.distances_to_sink[u] >= k {
-                self.distance_count[self.csr.distances_to_sink[u]] -= 1;
-                self.csr.distances_to_sink[u] = self.csr.distances_to_sink[u].max(self.csr.num_nodes);
-                self.distance_count[self.csr.distances_to_sink[u]] += 1;
-                self.enqueue(u);
+        for u in 0..self.rn.num_nodes {
+            if self.rn.distances_to_sink[u] >= k {
+                self.distance_count[self.rn.distances_to_sink[u]] -= 1;
+                self.rn.distances_to_sink[u] = self.rn.distances_to_sink[u].max(self.rn.num_nodes);
+                self.distance_count[self.rn.distances_to_sink[u]] += 1;
+                self.enqueue(NodeId(u));
             }
         }
     }
 
-    fn push_flow_excess_back_to_source(&mut self, source: usize, sink: usize) {
-        for u in 0..self.csr.num_nodes {
+    fn push_flow_excess_back_to_source(&mut self, source: NodeId, sink: NodeId) {
+        for u in (0..self.rn.num_nodes).map(NodeId) {
             if u == source || u == sink {
                 continue;
             }
-            while self.csr.excesses[u] > Flow::zero() {
-                let mut visited = vec![false; self.csr.num_nodes];
-                self.current_edge.iter_mut().enumerate().for_each(|(u, e)| *e = self.csr.start[u]);
-                let d = self.dfs(u, source, self.csr.excesses[u], &mut visited);
-                self.csr.excesses[u] -= d;
-                self.csr.excesses[source] += d;
+            while self.rn.excesses[u.index()] > F::zero() {
+                let mut visited = vec![false; self.rn.num_nodes];
+                self.current_edge
+                    .iter_mut()
+                    .enumerate()
+                    .for_each(|(u, e)| *e = self.rn.start[u]);
+                let d = self.dfs(u, source, self.rn.excesses[u.index()], &mut visited);
+                self.rn.excesses[u.index()] -= d;
+                self.rn.excesses[source.index()] += d;
             }
         }
     }
 
-    fn dfs(&mut self, u: usize, source: usize, flow: Flow, visited: &mut Vec<bool>) -> Flow {
+    fn dfs(&mut self, u: NodeId, source: NodeId, flow: F, visited: &mut Vec<bool>) -> F {
         if u == source {
             return flow;
         }
-        visited[u] = true;
+        visited[u.index()] = true;
 
-        for i in self.current_edge[u]..self.csr.start[u + 1] {
-            self.current_edge[u] = i;
-            let to = self.csr.to[i];
-            let residual_capacity = self.csr.residual_capacity(i);
-            if visited[to] || residual_capacity == Flow::zero() {
+        for arc_id in (self.current_edge[u.index()]..self.rn.start[u.index() + 1]).map(ArcId) {
+            self.current_edge[u.index()] = arc_id.index();
+            let to = self.rn.to[arc_id.index()];
+            let residual_capacity = self.rn.residual_capacity(arc_id);
+            if visited[to.index()] || residual_capacity == F::zero() {
                 continue;
             }
 
             let delta = self.dfs(to, source, flow.min(residual_capacity), visited);
-            if delta > Flow::zero() {
-                self.csr.push_flow(u, i, delta, true);
+            if delta > F::zero() {
+                self.rn.push_flow_without_excess(u, arc_id, delta);
                 return delta;
             }
         }
-        Flow::zero()
+        F::zero()
     }
 }
 
