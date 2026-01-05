@@ -10,7 +10,7 @@ enum Solver {
     FordFulkerson,
     PushRelabelFIFO,
     // PushRelabelHighestLabel,
-    // ShortestAugmentingPath,
+    ShortestAugmentingPath,
 }
 
 fn load_graph(input_file_path: &PathBuf) -> (NodeId, NodeId, i64, MaximumFlowGraph<i64>) {
@@ -65,6 +65,7 @@ impl Solver {
             Solver::EdmondsKarp => EdmondsKarp::new(graph).maximum_flow_minimum_cut(s, t),
             Solver::FordFulkerson => FordFulkerson::new(graph).maximum_flow_minimum_cut(s, t),
             Solver::PushRelabelFIFO => PushRelabelFifo::new(graph).maximum_flow_minimum_cut(s, t),
+            Solver::ShortestAugmentingPath => ShortestAugmentingPath::new(graph).maximum_flow_minimum_cut(s, t),
         }
     }
 }
@@ -76,7 +77,7 @@ impl Solver {
 #[case::ford_fulkerson(Solver::FordFulkerson)]
 #[case::push_relabel_fifo(Solver::PushRelabelFIFO)]
 // #[case::push_relabel_highest_label(Solver::PushRelabelHighestLabel)]
-// #[case::shortest_augmenting_path(Solver::ShortestAugmentingPath)]
+#[case::shortest_augmenting_path(Solver::ShortestAugmentingPath)]
 fn maximum_flow(#[files("tests/maximum_flow/*/*.txt")] path: PathBuf, #[case] solver: Solver) {
     let (source, sink, expected, graph) = load_graph(&path);
 
@@ -96,7 +97,7 @@ fn maximum_flow(#[files("tests/maximum_flow/*/*.txt")] path: PathBuf, #[case] so
 #[case::ford_fulkerson(Solver::FordFulkerson)]
 #[case::push_relabel_fifo(Solver::PushRelabelFIFO)]
 // #[case::push_relabel_highest_label(Solver::PushRelabelHighestLabel)]
-// #[case::shortest_augmenting_path(Solver::ShortestAugmentingPath)]
+#[case::shortest_augmenting_path(Solver::ShortestAugmentingPath)]
 fn maximum_flow_source_eq_sink(#[case] solver: Solver) {
     let mut graph = MaximumFlowGraph::new();
     let nodes = graph.add_nodes(2);
@@ -113,7 +114,7 @@ fn maximum_flow_source_eq_sink(#[case] solver: Solver) {
 #[case::ford_fulkerson(Solver::FordFulkerson)]
 #[case::push_relabel_fifo(Solver::PushRelabelFIFO)]
 // #[case::push_relabel_highest_label(Solver::PushRelabelHighestLabel)]
-// #[case::shortest_augmenting_path(Solver::ShortestAugmentingPath)]
+#[case::shortest_augmenting_path(Solver::ShortestAugmentingPath)]
 fn maximum_flow_no_edges(#[case] solver: Solver) {
     let mut graph = MaximumFlowGraph::new();
     let nodes = graph.add_nodes(10);

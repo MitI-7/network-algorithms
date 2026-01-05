@@ -1,4 +1,3 @@
-use std::collections::VecDeque;
 use crate::{
     algorithms::maximum_flow::{
         algorithms::{macros::impl_maximum_flow_solver, solver::MaximumFlowSolver},
@@ -11,16 +10,18 @@ use crate::{
     core::numeric::FlowNum,
     graph::{direction::Directed, graph::Graph, ids::NodeId},
 };
+use crate::ids::ArcId;
 
 #[derive(Default)]
-pub struct ShortestAugmentingPath<Flow> {
-    csr: CSR<Flow>,
-    pub current_edge: Vec<usize>,
+pub struct ShortestAugmentingPath<F> {
+    rn: ResidualNetwork<F>,
+    current_edge: Box<[usize]>,
+    cutoff: Option<F>,
 }
 
-impl<Flow> MaximumFlowSolver<Flow> for ShortestAugmentingPath<Flow>
+impl<F> ShortestAugmentingPath<F>
 where
-    Flow: FlowNum,
+    F: FlowNum,
 {
     fn new<N>(graph: &Graph<Directed, N, MaximumFlowEdge<F>>) -> Self {
         let rn = ResidualNetwork::new(graph);
@@ -29,65 +30,51 @@ where
         Self {
             rn,
             current_edge: vec![0_usize; num_nodes].into_boxed_slice(),
-            distances_to_sink: vec![0; num_nodes].into_boxed_slice(),
-            que: VecDeque::new(),
             cutoff: None,
         }
     }
 
-    fn solve(&mut self, graph: &mut Graph<Directed, (), CapEdge<Flow>>, source: NodeId, sink: NodeId, upper: Option<Flow>) -> Result<Flow, Status> {
+    fn run(&mut self, source: NodeId, sink: NodeId) -> Result<F, Status> {
         validate_input(&self.rn, source, sink)?;
 
-        self.csr.build(graph);
-        self.csr.update_distances_to_sink(source.index(), sink.index());
-        self.current_edge.resize(self.csr.num_nodes, 0);
+        self.rn.update_distances_to_sink(source, sink);
 
-        let mut flow = Flow::zero();
-        let mut residual = upper.unwrap_or_else(|| self.csr.neighbors(source.index()).fold(Flow::zero(), |sum, i| sum + self.csr.upper[i]));
-        while self.csr.distances_to_sink[source.index()] < self.csr.num_nodes {
-            self.current_edge.iter_mut().enumerate().for_each(|(u, e)| *e = self.csr.start[u]);
-            if let Some(delta) = self.dfs(source.index(), sink.index(), residual) {
+        let mut flow = F::zero();
+        let mut residual = self.cutoff.unwrap_or_else(|| self.rn.neighbors(source).fold(F::zero(), |sum, arc_id| sum + self.rn.upper[arc_id.index()]));
+        while self.rn.distances_to_sink[source.index()] < self.rn.num_nodes {
+            self.current_edge.iter_mut().enumerate().for_each(|(u, e)| *e = self.rn.start[u]);
+            if let Some(delta) = self.dfs(source, sink, residual) {
                 flow += delta;
                 residual -= delta;
             }
         }
 
-        self.csr.set_flow(graph);
         Ok(flow)
     }
-}
 
-impl<Flow> ShortestAugmentingPath<Flow>
-where
-    Flow: FlowNum,
-{
-    pub fn solve(&mut self, graph: &mut Graph<Directed, (), CapEdge<Flow>>, source: NodeId, sink: NodeId, upper: Option<Flow>) -> Result<Flow, Status> {
-        <Self as MaximumFlowSolver<Flow>>::solve(self, graph, source, sink, upper)
-    }
-
-    fn dfs(&mut self, u: usize, sink: usize, upper: Flow) -> Option<Flow> {
+    fn dfs(&mut self, u: NodeId, sink: NodeId, upper: F) -> Option<F> {
         if u == sink {
             return Some(upper);
         }
 
-        for i in self.current_edge[u]..self.csr.start[u + 1] {
-            self.current_edge[u] = i;
-            let to = self.csr.to[i];
-            if self.csr.is_admissible_edge(u, i) {
+        for arc_id in (self.current_edge[u.index()]..self.rn.start[u.index() + 1]).map(ArcId) {
+            self.current_edge[u.index()] = arc_id.index();
+            let to = self.rn.to[arc_id.index()];
+            if self.rn.is_admissible_arc(u, arc_id) {
                 // advance
-                if let Some(delta) = self.dfs(to, sink, upper.min(self.csr.residual_capacity(i))) {
-                    self.csr.push_flow(u, i, delta, true);
+                if let Some(delta) = self.dfs(to, sink, upper.min(self.rn.residual_capacity(arc_id))) {
+                    self.rn.push_flow_without_excess(u, arc_id, delta);
                     return Some(delta);
                 }
             }
         }
 
         // retreat
-        self.csr.distances_to_sink[u] = self.csr.num_nodes;
-        for i in self.csr.neighbors(u) {
-            let to = self.csr.to[i];
-            if self.csr.residual_capacity(i) > Flow::zero() {
-                self.csr.distances_to_sink[u] = self.csr.distances_to_sink[u].min(self.csr.distances_to_sink[to] + 1);
+        self.rn.distances_to_sink[u.index()] = self.rn.num_nodes;
+        for arc_id in self.rn.neighbors(u) {
+            let to = self.rn.to[arc_id.index()];
+            if self.rn.residual_capacity(arc_id) > F::zero() {
+                self.rn.distances_to_sink[u.index()] = self.rn.distances_to_sink[u.index()].min(self.rn.distances_to_sink[to.index()] + 1);
             }
         }
 
