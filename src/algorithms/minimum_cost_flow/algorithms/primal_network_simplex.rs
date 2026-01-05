@@ -1,5 +1,3 @@
-use crate::algorithms::minimum_cost_flow::spanning_tree_structure::{EdgeState, SpanningTreeStructure};
-use crate::minimum_cost_flow::validate::{validate_balance, validate_infeasible};
 use crate::{
     algorithms::minimum_cost_flow::{
         algorithms::{
@@ -11,10 +9,15 @@ use crate::{
         normalized_network::{NormalizedEdge, NormalizedNetwork},
         residual_network::construct_extend_network_feasible_solution,
         result::MinimumCostFlowResult,
+        spanning_tree_structure::{EdgeState, SpanningTreeStructure},
         status::Status,
     },
     core::numeric::CostNum,
-    graph::{direction::Directed, graph::Graph, ids::{NodeId, EdgeId}},
+    graph::{
+        direction::Directed,
+        graph::Graph,
+        ids::{EdgeId, NodeId},
+    },
 };
 
 pub struct PrimalNetworkSimplex<F, P = BlockSearchPivotRule<F>> {
