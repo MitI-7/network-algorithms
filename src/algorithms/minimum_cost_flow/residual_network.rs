@@ -18,7 +18,6 @@ pub(crate) struct ResidualNetwork<F> {
     pub(crate) upper: Box<[F]>,
     pub(crate) cost: Box<[F]>,
     pub(crate) rev: Box<[ArcId]>,
-    pub(crate) is_reversed: Box<[bool]>,
 
     // state
     pub(crate) residual_capacity: Box<[F]>,
@@ -28,6 +27,7 @@ pub(crate) struct ResidualNetwork<F> {
     // ex
     pub(crate) _num_nodes_original_graph: usize,
     pub(crate) num_edges_original_graph: usize,
+    pub(crate) is_reversed_in_original_graph: Box<[bool]>,
     pub(crate) lower_in_original_graph: Box<[F]>,
 }
 
@@ -55,7 +55,6 @@ where
             upper: vec![F::zero(); num_edges * 2].into_boxed_slice(),
             cost: vec![F::zero(); num_edges * 2].into_boxed_slice(),
             rev: vec![ArcId(usize::MAX); num_edges * 2].into_boxed_slice(),
-            is_reversed: vec![false; num_edges * 2].into_boxed_slice(),
 
             residual_capacity: vec![F::zero(); num_edges * 2].into_boxed_slice(),
             excesses: vec![F::zero(); num_nodes].into_boxed_slice(),
@@ -63,6 +62,7 @@ where
 
             _num_nodes_original_graph: graph.num_nodes(),
             num_edges_original_graph: graph.num_edges(),
+            is_reversed_in_original_graph: vec![false; num_edges].into_boxed_slice(),
             lower_in_original_graph: vec![F::zero(); num_edges].into_boxed_slice(),
         };
         rn.build(graph, artificial_nodes, artificial_edges, initial_flows, fix_excesses);
@@ -125,7 +125,7 @@ where
 
             self.edge_id_to_arc_id[edge_id] = arc_id_u;
             self.lower_in_original_graph[edge_id] = edge.lower;
-            self.is_reversed[edge_id] = edge.is_reversed;
+            self.is_reversed_in_original_graph[edge_id] = edge.is_reversed;
 
             let initial_flow = initial_flows.map_or(F::zero(), |init| init[edge_id]);
             // u -> v
@@ -150,7 +150,7 @@ where
             let arc_id = self.edge_id_to_arc_id[edge_id];
 
             let flow = self.upper[arc_id.index()] - self.residual_capacity[arc_id.index()];
-            if self.is_reversed[edge_id] {
+            if self.is_reversed_in_original_graph[edge_id] {
                 let original_flow = self.upper[arc_id.index()] + self.lower_in_original_graph[edge_id] - flow;
                 objective_value += original_flow * -self.cost[arc_id.index()];
             } else {
@@ -167,7 +167,7 @@ where
             let arc_id = self.edge_id_to_arc_id[edge_id];
 
             let flow = self.upper[arc_id.index()] - self.residual_capacity[arc_id.index()];
-            if self.is_reversed[edge_id] {
+            if self.is_reversed_in_original_graph[edge_id] {
                 let original_flow = self.upper[arc_id.index()] + self.lower_in_original_graph[edge_id] - flow;
                 flows.push(original_flow);
             } else {

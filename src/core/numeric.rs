@@ -35,7 +35,6 @@ impl<T> CostNum for T where
         + AddAssign
         + SubAssign
         + Neg<Output = T>
-        + Default
 {
 }
 
