@@ -134,12 +134,11 @@ fn minimum_cost_flow(#[files("tests/minimum_cost_flow/*/*.txt")] path: PathBuf, 
 // #[case::ns_parametric(Solver::ParametricNetworkSimplex)]
 // #[case::ns_primal(Solver::PrimalNetworkSimplex)]
 fn minimum_cost_flow_no_edges(#[case] solver: Solver) {
-    let mut graph = MinimumCostFlowGraph::<i32>::new();
+    let mut graph = MinimumCostFlowGraph::<i128>::new();
     let _nodes = graph.add_nodes(2);
     graph.get_node_mut(NodeId(0)).unwrap().data.b = 1;
     graph.get_node_mut(NodeId(1)).unwrap().data.b = -1;
 
-    let graph = MinimumCostFlowGraph::<i128>::new();
     let actual = solver.solve(&graph);
     assert_eq!(actual.err().unwrap(), Status::Infeasible);
 }
