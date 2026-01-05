@@ -4,7 +4,7 @@ use rstest::rstest;
 use std::{fs::read_to_string, path::PathBuf};
 
 enum Solver {
-    // CapacityScaling,
+    CapacityScaling,
     Dinic,
     EdmondsKarp,
     FordFulkerson,
@@ -60,6 +60,7 @@ impl Solver {
         t: NodeId,
     ) -> Result<(MaximumFlowResult<i64>, MinimumCutResult<i64>), Status> {
         match self {
+            Solver::CapacityScaling => CapacityScaling::new(graph).maximum_flow_minimum_cut(s, t),
             Solver::Dinic => Dinic::new(graph).maximum_flow_minimum_cut(s, t),
             Solver::EdmondsKarp => EdmondsKarp::new(graph).maximum_flow_minimum_cut(s, t),
             Solver::FordFulkerson => FordFulkerson::new(graph).maximum_flow_minimum_cut(s, t),
@@ -69,7 +70,7 @@ impl Solver {
 }
 
 #[rstest]
-// #[case::capacity_scaling(Solver::CapacityScaling)]
+#[case::capacity_scaling(Solver::CapacityScaling)]
 #[case::dinic(Solver::Dinic)]
 #[case::edmonds_karp(Solver::EdmondsKarp)]
 #[case::ford_fulkerson(Solver::FordFulkerson)]
@@ -89,11 +90,11 @@ fn maximum_flow(#[files("tests/maximum_flow/*/*.txt")] path: PathBuf, #[case] so
 }
 
 #[rstest]
-// #[case::capacity_scaling(Solver::CapacityScaling)]
+#[case::capacity_scaling(Solver::CapacityScaling)]
 #[case::dinic(Solver::Dinic)]
-// #[case::edmonds_karp(Solver::EdmondsKarp)]
+#[case::edmonds_karp(Solver::EdmondsKarp)]
 #[case::ford_fulkerson(Solver::FordFulkerson)]
-// #[case::push_relabel_fifo(Solver::PushRelabelFIFO)]
+#[case::push_relabel_fifo(Solver::PushRelabelFIFO)]
 // #[case::push_relabel_highest_label(Solver::PushRelabelHighestLabel)]
 // #[case::shortest_augmenting_path(Solver::ShortestAugmentingPath)]
 fn maximum_flow_source_eq_sink(#[case] solver: Solver) {
@@ -106,11 +107,11 @@ fn maximum_flow_source_eq_sink(#[case] solver: Solver) {
 }
 
 #[rstest]
-// #[case::capacity_scaling(Solver::CapacityScaling)]
+#[case::capacity_scaling(Solver::CapacityScaling)]
 #[case::dinic(Solver::Dinic)]
-// #[case::edmonds_karp(Solver::EdmondsKarp)]
+#[case::edmonds_karp(Solver::EdmondsKarp)]
 #[case::ford_fulkerson(Solver::FordFulkerson)]
-// #[case::push_relabel_fifo(Solver::PushRelabelFIFO)]
+#[case::push_relabel_fifo(Solver::PushRelabelFIFO)]
 // #[case::push_relabel_highest_label(Solver::PushRelabelHighestLabel)]
 // #[case::shortest_augmenting_path(Solver::ShortestAugmentingPath)]
 fn maximum_flow_no_edges(#[case] solver: Solver) {

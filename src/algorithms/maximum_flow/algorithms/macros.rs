@@ -1,8 +1,8 @@
 macro_rules! impl_maximum_flow_solver {
-    ( $ solver:ident, $run:ident) => {
+    ( $solver:ident, $run:ident $(, $bound:path )* $(,)? ) => {
         impl<F> MaximumFlowSolver<F> for $solver<F>
         where
-            F: FlowNum,
+            F: FlowNum $( + $bound )*,
         {
             fn new<N>(graph: &Graph<Directed, N, MaximumFlowEdge<F>>) -> Self {
                 Self::new(graph)
@@ -14,8 +14,7 @@ macro_rules! impl_maximum_flow_solver {
             }
 
             fn maximum_flow_value(&mut self, source: NodeId, sink: NodeId) -> Result<F, Status> {
-                let objective_value = self.$run(source, sink)?;
-                Ok(objective_value)
+                Ok(self.$run(source, sink)?)
             }
 
             fn minimum_cut(&mut self, source: NodeId, sink: NodeId) -> Result<MinimumCutResult<F>, Status> {
@@ -24,15 +23,13 @@ macro_rules! impl_maximum_flow_solver {
             }
 
             fn minimum_cut_value(&mut self, source: NodeId, sink: NodeId) -> Result<F, Status> {
-                let objective_value = self.$run(source, sink)?;
-                Ok(objective_value)
+                Ok(self.$run(source, sink)?)
             }
 
             fn maximum_flow_minimum_cut(&mut self, source: NodeId, sink: NodeId) -> Result<(MaximumFlowResult<F>, MinimumCutResult<F>), Status> {
                 let objective_value = self.$run(source, sink)?;
-
-                let maximum_flow_result = MaximumFlowResult { objective_value, flows: self.rn.get_flows()};
-                let minimum_cut_result = MinimumCutResult { objective_value, source_side: self.rn.reachable_from_source(source)};
+                let maximum_flow_result = MaximumFlowResult { objective_value, flows: self.rn.get_flows() };
+                let minimum_cut_result = MinimumCutResult { objective_value, source_side: self.rn.reachable_from_source(source) };
                 Ok((maximum_flow_result, minimum_cut_result))
             }
         }

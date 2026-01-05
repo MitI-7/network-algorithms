@@ -34,11 +34,9 @@ where
             cutoff: None,
         }
     }
-    
+
     fn solve(&mut self, graph: &mut Graph<Directed, (), CapEdge<Flow>>, source: NodeId, sink: NodeId, upper: Option<Flow>) -> Result<Flow, Status> {
-        if source.index() >= graph.num_nodes() || sink.index() >= graph.num_nodes() || source == sink {
-            return Err(Status::BadInput);
-        }
+        validate_input(&self.rn, source, sink)?;
 
         self.csr.build(graph);
         self.csr.update_distances_to_sink(source.index(), sink.index());

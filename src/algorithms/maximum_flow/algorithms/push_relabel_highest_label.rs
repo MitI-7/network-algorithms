@@ -56,9 +56,7 @@ where
     Flow: FlowNum,
 {
     fn solve(&mut self, graph: &mut Graph<Directed, (), CapEdge<Flow>>, source: NodeId, sink: NodeId, upper: Option<Flow>) -> Result<Flow, Status> {
-        if source.index() >= graph.num_nodes() || sink.index() >= graph.num_nodes() || source == sink {
-            return Err(Status::BadInput);
-        }
+        validate_input(&self.rn, source, sink)?;
 
         let delta: Flow = graph.edges.iter().filter(|e| e.u == source).fold(Flow::zero(), |acc, e| acc + e.data.upper);
         let dummy_source = graph.add_node(); // dummy source

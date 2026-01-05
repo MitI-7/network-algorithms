@@ -40,18 +40,19 @@ where
     }
 
     fn run(&mut self, source: NodeId, sink: NodeId) -> Result<F, Status> {
-        let two = F::one() + F::one();
+        validate_input(&self.rn, source, sink)?;
 
         let max_capacity = *self.rn.upper.iter().map(|f| f).max().unwrap_or(&F::zero());
-        let mut delta = F::one();
-        while delta <= max_capacity {
-            delta *= two;
+        let mut deltas: Vec<F> = Vec::new();
+        let mut d = F::one();
+        while d <= max_capacity {
+            deltas.push(d);
+            d = d + d;
         }
-        delta /= two;
 
-        let mut residual = self.cutoff.unwrap_or_else(|| self.rn.neighbors(source).fold(F::zero(), |sum, i| sum + self.rn.upper[i]));
+        let mut residual = self.cutoff.unwrap_or_else(|| self.rn.neighbors(source).fold(F::zero(), |sum, arc_id| sum + self.rn.upper[arc_id.index()]));
         let mut flow = F::zero();
-        while delta > F::zero() {
+        for delta in deltas.into_iter().rev() {
             // solve maximum flow in delta-residual network
             loop {
                 self.bfs(source, sink, delta);
@@ -70,7 +71,6 @@ where
                     None => break,
                 }
             }
-            delta /= two;
         }
 
 
@@ -129,4 +129,4 @@ where
     }
 }
 
-impl_maximum_flow_solver!(CapacityScaling, run);
+impl_maximum_flow_solver!(CapacityScaling, run, One);

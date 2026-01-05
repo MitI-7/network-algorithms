@@ -49,6 +49,7 @@ where
 
     fn run(&mut self, source: NodeId, sink: NodeId) -> Result<F, Status> {
         validate_input(&self.rn, source, sink)?;
+        
         // initialize
         self.rn.residual_capacities.copy_from_slice(&self.rn.upper);
         self.rn.excesses.fill(F::zero());

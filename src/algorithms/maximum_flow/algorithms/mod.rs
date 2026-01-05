@@ -1,4 +1,4 @@
-// pub mod capacity_scaling;
+pub mod capacity_scaling;
 pub mod dinic;
 pub mod edmonds_karp;
 pub mod ford_fulkerson;
