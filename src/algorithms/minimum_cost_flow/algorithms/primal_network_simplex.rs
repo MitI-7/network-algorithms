@@ -112,8 +112,7 @@ where
 
     fn make_initial_spanning_tree_structure(&mut self, inf_cost: F) {
         let mut prev_node = self.st.root;
-        for edge_id in self.st.num_edges_original_graph..self.st.num_edges {
-            let edge_id = EdgeId(edge_id);
+        for edge_id in (self.st.num_edges_original_graph..self.st.num_edges).map(EdgeId) {
             let u = if self.st.from[edge_id.index()] == self.st.root {
                 self.st.to[edge_id.index()]
             } else {

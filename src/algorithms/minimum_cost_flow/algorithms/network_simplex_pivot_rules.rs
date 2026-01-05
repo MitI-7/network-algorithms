@@ -30,8 +30,7 @@ where
         let mut maxi_violation = Flow::zero();
         let mut entering_edge_id = None;
 
-        for edge_id in 0..st.num_edges {
-            let edge_id = EdgeId(edge_id);
+        for edge_id in (0..st.num_edges).map(EdgeId) {
             let violation = calculate_violation(edge_id, st);
             if violation > maxi_violation {
                 maxi_violation = violation;
