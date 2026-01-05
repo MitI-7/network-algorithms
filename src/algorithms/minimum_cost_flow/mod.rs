@@ -8,3 +8,4 @@ pub mod result;
 pub mod status;
 mod validate;
 mod algorithms;
+pub mod spanning_tree_structure;

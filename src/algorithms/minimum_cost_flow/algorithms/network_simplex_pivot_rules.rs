@@ -1,4 +1,4 @@
-use crate::algorithms::minimum_cost_flow::algorithms::spanning_tree_structure::{EdgeState, SpanningTreeStructure};
+use crate::algorithms::minimum_cost_flow::spanning_tree_structure::{EdgeState, SpanningTreeStructure};
 use crate::core::numeric::CostNum;
 
 pub trait PivotRule<Flow> {

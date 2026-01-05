@@ -16,8 +16,7 @@ use crate::{
         ids::{ArcId, NodeId},
     },
 };
-use std::cmp::Reverse;
-use std::collections::{BinaryHeap, VecDeque};
+use std::{cmp::Reverse, collections::BinaryHeap};
 
 // O(nU * (m + n) log n)
 pub struct OutOfKilter<F> {

@@ -1,24 +1,9 @@
-use crate::minimum_cost_flow::normalized_network::NormalizedEdge;
 use crate::{
-    algorithms::minimum_cost_flow::{
-        algorithms::{macros::impl_minimum_cost_flow_solver, solver::MinimumCostFlowSolver},
-        edge::MinimumCostFlowEdge,
-        node::MinimumCostFlowNode,
-        normalized_network::NormalizedNetwork,
-        residual_network::{ResidualNetwork, construct_extend_network_one_supply_one_demand},
-        result::MinimumCostFlowResult,
-        status::Status,
-        validate::{trivial_solution_if_any, validate_balance, validate_infeasible},
-    },
+    algorithms::minimum_cost_flow::normalized_network::{NormalizedEdge, NormalizedNetwork},
     core::numeric::CostNum,
-    graph::{
-        direction::Directed,
-        graph::Graph,
-        ids::{ArcId, NodeId},
-    },
+    graph::ids::NodeId,
 };
-use std::cmp::Reverse;
-use std::collections::{BinaryHeap, VecDeque};
+use std::{cmp::Reverse, collections::BinaryHeap};
 
 #[derive(Clone, Default, PartialEq, Debug)]
 pub enum EdgeState {
@@ -105,6 +90,7 @@ where
         st.build(graph, artificial_nodes, artificial_edges, initial_flows, fix_excesses);
         st
     }
+
     fn build(
         &mut self,
         graph: &NormalizedNetwork<F>,
@@ -113,14 +99,6 @@ where
         initial_flows: Option<&[F]>,
         fix_excesses: Option<&[F]>,
     ) {
-        // // self.excesses = graph.excesses.clone().into_boxed_slice();
-        // // self.excesses = graph.b.clone().into_boxed_slice();
-        // let mut e = Vec::new();
-        // for u in 0..self.num_nodes {
-        //     e.push(graph.excesses()[u]);
-        // }
-        // self.excesses = e.into_boxed_slice();
-
         for (u, e) in graph.excesses().iter().enumerate() {
             self.excesses[u] = *e;
         }
@@ -439,7 +417,6 @@ where
     pub fn make_minimum_cost_flow_in_original_graph(&self) -> Vec<F> {
         let mut flows = Vec::with_capacity(self.num_edges_original_graph);
         for edge_id in 0..self.num_edges_original_graph {
-
             let flow = self.flow[edge_id];
             if self.is_reversed[edge_id] {
                 let original_flow = self.upper[edge_id] + self.lower_in_original_graph[edge_id] - flow;
@@ -451,5 +428,4 @@ where
         }
         flows
     }
-
 }

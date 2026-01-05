@@ -1,26 +1,19 @@
-use crate::minimum_cost_flow::normalized_network::NormalizedEdge;
-use crate::minimum_cost_flow::residual_network::construct_extend_network_feasible_solution;
+use crate::algorithms::minimum_cost_flow::spanning_tree_structure::{EdgeState, SpanningTreeStructure};
 use crate::{
     algorithms::minimum_cost_flow::{
         algorithms::{
-            macros::impl_minimum_cost_flow_solver,
-            network_simplex_pivot_rules::BlockSearchPivotRule,
-            network_simplex_pivot_rules::PivotRule,
-            solver::MinimumCostFlowSolver,
-            spanning_tree_structure::{EdgeState, SpanningTreeStructure},
+            macros::impl_minimum_cost_flow_solver, network_simplex_pivot_rules::BlockSearchPivotRule,
+            network_simplex_pivot_rules::PivotRule, solver::MinimumCostFlowSolver,
         },
         edge::MinimumCostFlowEdge,
         node::MinimumCostFlowNode,
-        normalized_network::NormalizedNetwork,
+        normalized_network::{NormalizedEdge, NormalizedNetwork},
+        residual_network::construct_extend_network_feasible_solution,
         result::MinimumCostFlowResult,
         status::Status,
     },
     core::numeric::CostNum,
-    graph::{
-        direction::Directed,
-        graph::Graph,
-        ids::{ArcId, NodeId},
-    },
+    graph::{direction::Directed, graph::Graph, ids::NodeId},
 };
 
 pub struct PrimalNetworkSimplex<F, P = BlockSearchPivotRule<F>> {
@@ -38,7 +31,13 @@ where
     P: PivotRule<F> + Default,
 {
     pub fn set_pivot<P2: PivotRule<F>>(self, new_pivot: P2) -> PrimalNetworkSimplex<F, P2> {
-        PrimalNetworkSimplex { st: self.st, pivot: new_pivot, root: self.root, artificial_edges: self.artificial_edges, inf_cost: self.inf_cost }
+        PrimalNetworkSimplex {
+            st: self.st,
+            pivot: new_pivot,
+            root: self.root,
+            artificial_edges: self.artificial_edges,
+            inf_cost: self.inf_cost,
+        }
     }
 
     fn new(graph: &Graph<Directed, MinimumCostFlowNode<F>, MinimumCostFlowEdge<F>>) -> Self {
@@ -47,7 +46,7 @@ where
         let inf_cost = nn.iter_edges().map(|e| e.cost).fold(F::one(), |acc, cost| acc + cost); // all edge costs are non-negative
 
         let (root, artificial_edges, initial_flows, fix_excesses) = construct_extend_network_feasible_solution(&nn);
-        let mut st = SpanningTreeStructure::new(
+        let st = SpanningTreeStructure::new(
             &nn,
             Some(&[root]),
             Some(&artificial_edges),
@@ -74,7 +73,7 @@ where
         debug_assert!(self.st.satisfy_constraints());
 
         self.pivot.initialize(self.st.num_edges);
-        self.run2(&self.artificial_edges.clone()); //TODO:fix
+        self.run2();
 
         // copy
         // graph.excesses = self.st.excesses.to_vec();
@@ -102,7 +101,7 @@ where
         Ok(self.st.calculate_objective_value_in_original_graph())
     }
 
-    pub(crate) fn run2(&mut self, artificial_edges: &[NormalizedEdge<F>]) {
+    pub(crate) fn run2(&mut self) {
         while let Some(entering_edge_id) = self.pivot.find_entering_edge(&self.st, Self::calculate_violation) {
             let (leaving_edge_id, apex, delta, t2_now_root, t2_new_root) = self.select_leaving_edge(entering_edge_id);
             self.st.update_flow_in_cycle(entering_edge_id, delta, apex);
@@ -113,8 +112,7 @@ where
         }
 
         // if there is remaining flow on the artificial edge, revert it
-        for (i, &edge) in artificial_edges.iter().enumerate() {
-            let edge_id = self.st.num_edges_original_graph + i;
+        for edge_id in self.st.num_edges_original_graph..self.st.num_edges {
             if self.st.flow[edge_id] > F::zero() {
                 self.st.excesses[self.st.from[edge_id]] += self.st.flow[edge_id];
                 self.st.excesses[self.st.to[edge_id]] -= self.st.flow[edge_id];
