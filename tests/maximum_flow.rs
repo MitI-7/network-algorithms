@@ -6,7 +6,7 @@ use std::{fs::read_to_string, path::PathBuf};
 enum Solver {
     // CapacityScaling,
     Dinic,
-    // EdmondsKarp,
+    EdmondsKarp,
     FordFulkerson,
     PushRelabelFIFO,
     // PushRelabelHighestLabel,
@@ -49,7 +49,7 @@ fn load_graph(input_file_path: &PathBuf) -> (NodeId, NodeId, i64, MaximumFlowGra
 
 impl Solver {
     pub fn should_skip(&self, path: &PathBuf) -> bool {
-        let skip_for_libreoj = matches!(self, Solver::FordFulkerson);
+        let skip_for_libreoj = matches!(self, Solver::EdmondsKarp | Solver::FordFulkerson | Solver::PushRelabelFIFO);
         skip_for_libreoj && path.to_str().map_or(false, |s| s.contains("LibreOJ"))
     }
 
@@ -61,6 +61,7 @@ impl Solver {
     ) -> Result<(MaximumFlowResult<i64>, MinimumCutResult<i64>), Status> {
         match self {
             Solver::Dinic => Dinic::new(graph).maximum_flow_minimum_cut(s, t),
+            Solver::EdmondsKarp => EdmondsKarp::new(graph).maximum_flow_minimum_cut(s, t),
             Solver::FordFulkerson => FordFulkerson::new(graph).maximum_flow_minimum_cut(s, t),
             Solver::PushRelabelFIFO => PushRelabelFifo::new(graph).maximum_flow_minimum_cut(s, t),
         }
@@ -70,7 +71,7 @@ impl Solver {
 #[rstest]
 // #[case::capacity_scaling(Solver::CapacityScaling)]
 #[case::dinic(Solver::Dinic)]
-// #[case::edmonds_karp(Solver::EdmondsKarp)]
+#[case::edmonds_karp(Solver::EdmondsKarp)]
 #[case::ford_fulkerson(Solver::FordFulkerson)]
 #[case::push_relabel_fifo(Solver::PushRelabelFIFO)]
 // #[case::push_relabel_highest_label(Solver::PushRelabelHighestLabel)]

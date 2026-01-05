@@ -1,0 +1,132 @@
+use crate::{
+    algorithms::maximum_flow::{
+        algorithms::{macros::impl_maximum_flow_solver, solver::MaximumFlowSolver},
+        edge::MaximumFlowEdge,
+        residual_network::ResidualNetwork,
+        result::{MaximumFlowResult, MinimumCutResult},
+        status::Status,
+        validate::validate_input,
+    },
+    core::numeric::FlowNum,
+    graph::{direction::Directed, graph::Graph, ids::NodeId},
+};
+use std::collections::VecDeque;
+use num_traits::One;
+use crate::ids::ArcId;
+
+#[derive(Default)]
+pub struct CapacityScaling<F> {
+    rn: ResidualNetwork<F>,
+    current_edge: Box<[usize]>,
+    que: VecDeque<NodeId>,
+    cutoff: Option<F>,
+}
+
+impl<F> CapacityScaling<F>
+where
+    F: FlowNum + One,
+{
+
+    fn new<N>(graph: &Graph<Directed, N, MaximumFlowEdge<F>>) -> Self {
+        let rn = ResidualNetwork::new(graph);
+        let num_nodes = rn.num_nodes;
+
+        Self {
+            rn,
+            current_edge: vec![0_usize; num_nodes].into_boxed_slice(),
+            que: VecDeque::new(),
+            cutoff: None,
+        }
+    }
+
+    fn run(&mut self, source: NodeId, sink: NodeId) -> Result<F, Status> {
+        let two = F::one() + F::one();
+
+        let max_capacity = *self.rn.upper.iter().map(|f| f).max().unwrap_or(&F::zero());
+        let mut delta = F::one();
+        while delta <= max_capacity {
+            delta *= two;
+        }
+        delta /= two;
+
+        let mut residual = self.cutoff.unwrap_or_else(|| self.rn.neighbors(source).fold(F::zero(), |sum, i| sum + self.rn.upper[i]));
+        let mut flow = F::zero();
+        while delta > F::zero() {
+            // solve maximum flow in delta-residual network
+            loop {
+                self.bfs(source, sink, delta);
+
+                // no s-t path
+                if self.rn.distances_to_sink[source.index()] >= self.rn.num_nodes {
+                    break;
+                }
+
+                self.current_edge.iter_mut().enumerate().for_each(|(u, e)| *e = self.rn.start[u]);
+                match self.dfs(source, sink, residual, delta) {
+                    Some(delta) => {
+                        flow += delta;
+                        residual -= delta;
+                    }
+                    None => break,
+                }
+            }
+            delta /= two;
+        }
+
+
+        Ok(flow)
+    }
+
+    fn bfs(&mut self, source: NodeId, sink: NodeId, delta: F) {
+        self.que.clear();
+        self.que.push_back(sink);
+        self.rn.distances_to_sink.fill(self.rn.num_nodes);
+        self.rn.distances_to_sink[sink.index()] = 0;
+
+        while let Some(v) = self.que.pop_front() {
+            for i in self.rn.neighbors(v) {
+                // e.to -> v
+                let to = self.rn.to[i.index()];
+                let rev = self.rn.rev[i.index()];
+                if self.rn.residual_capacities[rev.index()] >= delta && self.rn.distances_to_sink[to.index()] == self.rn.num_nodes {
+                    self.rn.distances_to_sink[to.index()] = self.rn.distances_to_sink[v.index()] + 1;
+                    if to != source {
+                        self.que.push_back(to);
+                    }
+                }
+            }
+        }
+    }
+
+    fn dfs(&mut self, u: NodeId, sink: NodeId, upper: F, delta: F) -> Option<F> {
+        if u == sink {
+            return Some(upper);
+        }
+
+        let mut res = F::zero();
+        for i in self.current_edge[u.index()]..self.rn.start[u.index() + 1] {
+            let i = ArcId(i);
+            self.current_edge[u.index()] = i.index();
+            let v = self.rn.to[i.index()];
+            let residual_capacity = self.rn.residual_capacities[i.index()];
+
+            if !self.rn.is_admissible_arc(u, i) || residual_capacity < delta {
+                continue;
+            }
+
+            if let Some(d) = self.dfs(v, sink, residual_capacity.min(upper - res), delta) {
+                self.rn.push_flow_without_excess(u, i, d);
+                res += d;
+                if res == upper {
+                    return Some(res);
+                }
+            }
+        }
+        self.current_edge[u.index()] = self.rn.start[u.index() + 1];
+        self.rn.distances_to_sink[u.index()] = self.rn.num_nodes;
+
+        Some(res)
+    }
+}
+
+impl_maximum_flow_solver!(CapacityScaling, run);
