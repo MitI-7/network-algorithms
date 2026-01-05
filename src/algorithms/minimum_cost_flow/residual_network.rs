@@ -63,7 +63,7 @@ where
 
             _num_nodes_original_graph: graph.num_nodes(),
             num_edges_original_graph: graph.num_edges(),
-            lower_in_original_graph: vec![F::zero(); num_edges * 2].into_boxed_slice(),
+            lower_in_original_graph: vec![F::zero(); num_edges].into_boxed_slice(),
         };
         rn.build(graph, artificial_nodes, artificial_edges, initial_flows, fix_excesses);
 
