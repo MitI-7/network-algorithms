@@ -45,7 +45,7 @@ where
 
         // transforms the minimum cost flow problem into a problem with a single excess node and a single deficit node.
         let (source, sink, artificial_edges, excess_fix) = construct_extend_network_one_supply_one_demand(&nn);
-        let rn = ResidualNetwork::new(&nn, Some(&[source, sink]), Some(&artificial_edges), Some(&excess_fix));
+        let rn = ResidualNetwork::new(&nn, Some(&[source, sink]), Some(&artificial_edges), None, Some(&excess_fix));
         let num_nodes = rn.num_nodes;
 
         PrimalDual {

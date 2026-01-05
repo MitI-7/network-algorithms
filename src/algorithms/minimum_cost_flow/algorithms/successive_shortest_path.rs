@@ -29,7 +29,7 @@ where
 {
     pub fn new(graph: &Graph<Directed, MinimumCostFlowNode<F>, MinimumCostFlowEdge<F>>) -> Self {
         let nn = NormalizedNetwork::new(graph);
-        let rn = ResidualNetwork::new(&nn, None, None, None);
+        let rn = ResidualNetwork::new(&nn, None, None, None, None);
         Self { rn }
     }
 
