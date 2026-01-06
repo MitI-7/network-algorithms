@@ -6,3 +6,4 @@ pub mod primal_dual;
 pub mod primal_network_simplex;
 pub mod solver;
 pub mod successive_shortest_path;
+pub mod cost_scaling_push_relabel;

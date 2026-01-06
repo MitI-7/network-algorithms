@@ -1,10 +1,10 @@
-use network_algorithms::minimum_cost_flow::prelude::*;
 use network_algorithms::{ids::NodeId, minimum_cost_flow::prelude::*};
 use rstest::rstest;
 use std::{fs::read_to_string, path::PathBuf};
+use std::time::Duration;
 
 enum Solver {
-    // CostScalingPushRelabel,
+    CostScalingPushRelabel,
     CycleCanceling,
     OutOfKilter,
     PrimalDual,
@@ -26,7 +26,7 @@ impl Solver {
     }
     pub fn solve(&self, graph: &MinimumCostFlowGraph<i128>) -> Result<MinimumCostFlowResult<i128>, Status> {
         match self {
-            // Solver::CostScalingPushRelabel => Box::new(CostScalingPushRelabel::default()),
+            Solver::CostScalingPushRelabel => CostScalingPushRelabel::new(graph).minimum_cost_flow(),
             Solver::CycleCanceling => CycleCanceling::new(graph).minimum_cost_flow(),
             Solver::OutOfKilter => OutOfKilter::new(graph).minimum_cost_flow(),
             Solver::PrimalDual => PrimalDual::new(graph).minimum_cost_flow(),
@@ -39,7 +39,8 @@ impl Solver {
 }
 
 #[rstest]
-// #[case::cs(Solver::CostScalingPushRelabel)]
+#[timeout(Duration::from_millis(1000))]
+#[case::cs(Solver::CostScalingPushRelabel)]
 #[case::cc(Solver::CycleCanceling)]
 #[case::ok(Solver::OutOfKilter)]
 #[case::pd(Solver::PrimalDual)]
@@ -116,7 +117,7 @@ fn minimum_cost_flow(#[files("tests/minimum_cost_flow/*/*.txt")] path: PathBuf, 
 // }
 //
 #[rstest]
-// #[case::cs(Solver::CostScalingPushRelabel)]
+#[case::cs(Solver::CostScalingPushRelabel)]
 #[case::cc(Solver::CycleCanceling)]
 #[case::ok(Solver::OutOfKilter)]
 #[case::pd(Solver::PrimalDual)]

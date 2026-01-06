@@ -1,3 +1,4 @@
+use crate::ids::ArcId;
 use crate::{
     algorithms::maximum_flow::{
         algorithms::{macros::impl_maximum_flow_solver, solver::MaximumFlowSolver},
@@ -10,20 +11,18 @@ use crate::{
     core::numeric::FlowNum,
     graph::{direction::Directed, graph::Graph, ids::NodeId},
 };
-use std::collections::VecDeque;
-use crate::ids::ArcId;
 
 pub struct PushRelabelHighestLabel<F> {
     rn: ResidualNetwork<F>,
-    current_edge: Vec<usize>,
+    current_arc: Vec<usize>,
 
     global_relabel_freq: f64,
     value_only: bool,
     threshold: usize,
     work: usize,
 
-    buckets: Vec<Vec<NodeId>>, // buckets[i] = active nodes with distance i
-    in_bucket: Vec<bool>,
+    buckets: Box<[Vec<NodeId>]>, // buckets[i] = active nodes with distance i
+    in_bucket: Box<[bool]>,
     bucket_idx: usize,
 
     distance_count: Vec<usize>,
@@ -38,15 +37,15 @@ where
         let num_nodes = rn.num_nodes;
         Self {
             rn,
-            current_edge: Vec::new(),
+            current_arc: Vec::new(),
 
             global_relabel_freq: 1.0,
             value_only: false,
             threshold: 0,
             work: 0,
 
-            buckets: Vec::new(),
-            in_bucket: Vec::new(),
+            buckets: vec![Vec::new(); num_nodes].into_boxed_slice(),
+            in_bucket: vec![false; num_nodes].into_boxed_slice(),
             bucket_idx: 0,
 
             distance_count: Vec::new(),
@@ -62,10 +61,10 @@ where
         self.global_relabel_freq = global_relabel_freq;
         self
     }
-    
+
     fn run(&mut self, source: NodeId, sink: NodeId) -> Result<F, Status> {
         validate_input(&self.rn, source, sink)?;
-        
+
         self.pre_process(source, sink);
         loop {
             if self.buckets[self.bucket_idx].is_empty() {
@@ -99,9 +98,9 @@ where
 
     fn pre_process(&mut self, source: NodeId, sink: NodeId) {
         self.rn.excesses.fill(F::zero());
-        self.current_edge = vec![0; self.rn.num_nodes];
-        self.buckets = vec![Vec::new(); self.rn.num_nodes];
-        self.in_bucket = vec![false; self.rn.num_nodes];
+        self.current_arc = vec![0; self.rn.num_nodes];
+        self.buckets.fill(Vec::new());
+        self.in_bucket.fill(false);
         self.distance_count = vec![0; self.rn.num_nodes + 1];
 
         self.rn.update_distances_to_sink(source, sink);
@@ -109,7 +108,7 @@ where
 
         for u in 0..self.rn.num_nodes {
             self.distance_count[self.rn.distances_to_sink[u]] += 1;
-            self.current_edge[u] = self.rn.start[u];
+            self.current_arc[u] = self.rn.start[u];
         }
 
         for arc_id in self.rn.neighbors(source) {
@@ -134,7 +133,9 @@ where
     }
 
     fn enqueue(&mut self, u: NodeId) {
-        if self.in_bucket[u.index()] || self.rn.excesses[u.index()] <= F::zero() || self.rn.distances_to_sink[u.index()] >= self.rn.num_nodes
+        if self.in_bucket[u.index()]
+            || self.rn.excesses[u.index()] <= F::zero()
+            || self.rn.distances_to_sink[u.index()] >= self.rn.num_nodes
         {
             return;
         }
@@ -142,13 +143,13 @@ where
         self.in_bucket[u.index()] = true;
         self.buckets[self.rn.distances_to_sink[u.index()]].push(u);
         self.bucket_idx = self.bucket_idx.max(self.rn.distances_to_sink[u.index()]);
-        self.current_edge[u.index()] = self.rn.start[u.index()];
+        self.current_arc[u.index()] = self.rn.start[u.index()];
     }
 
     fn discharge(&mut self, u: NodeId) {
         // push
-        for arc_id in (self.current_edge[u.index()]..self.rn.start[u.index() + 1]).map(ArcId) {
-            self.current_edge[u.index()] = arc_id.index();
+        for arc_id in (self.current_arc[u.index()]..self.rn.start[u.index() + 1]).map(ArcId) {
+            self.current_arc[u.index()] = arc_id.index();
             if self.rn.excesses[u.index()] > F::zero() {
                 self.push(u, arc_id);
             }
@@ -211,7 +212,7 @@ where
             }
             while self.rn.excesses[u.index()] > F::zero() {
                 let mut visited = vec![false; self.rn.num_nodes];
-                self.current_edge
+                self.current_arc
                     .iter_mut()
                     .enumerate()
                     .for_each(|(u, e)| *e = self.rn.start[u]);
@@ -228,8 +229,8 @@ where
         }
         visited[u.index()] = true;
 
-        for arc_id in (self.current_edge[u.index()]..self.rn.start[u.index() + 1]).map(ArcId) {
-            self.current_edge[u.index()] = arc_id.index();
+        for arc_id in (self.current_arc[u.index()]..self.rn.start[u.index() + 1]).map(ArcId) {
+            self.current_arc[u.index()] = arc_id.index();
             let to = self.rn.to[arc_id.index()];
             let residual_capacity = self.rn.residual_capacity(arc_id);
             if visited[to.index()] || residual_capacity == F::zero() {

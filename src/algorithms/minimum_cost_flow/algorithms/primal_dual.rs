@@ -48,7 +48,7 @@ where
         let rn = ResidualNetwork::new(&nn, Some(&[source, sink]), Some(&artificial_edges), None, Some(&excess_fix));
         let num_nodes = rn.num_nodes;
 
-        PrimalDual {
+        Self {
             rn,
             que: VecDeque::new(),
             distances: vec![0; num_nodes].into_boxed_slice(),

@@ -1,8 +1,8 @@
 macro_rules! impl_minimum_cost_flow_solver {
-    ( $ solver:ident, $run:ident) => {
+    ( $solver:ident, $run:ident $(, $bound:path )* $(,)? ) => {
         impl<F> MinimumCostFlowSolver<F> for $solver<F>
         where
-            F: CostNum,
+            F: CostNum $(+ $bound)*,
         {
             fn new(graph: &Graph<Directed, MinimumCostFlowNode<F>, MinimumCostFlowEdge<F>>) -> Self {
                 Self::new(graph)
