@@ -10,6 +10,7 @@ pub use crate::algorithms::minimum_cost_flow::algorithms::network_simplex_pivot_
 pub use crate::algorithms::minimum_cost_flow::algorithms::network_simplex_pivot_rules::CandidateListPivotRule;
 pub use crate::algorithms::minimum_cost_flow::algorithms::network_simplex_pivot_rules::FirstEligibleArcPivotRule;
 pub use crate::algorithms::minimum_cost_flow::algorithms::out_of_kilter::OutOfKilter;
+pub use crate::algorithms::minimum_cost_flow::algorithms::parametric_network_simplex::ParametricNetworkSimplex;
 pub use crate::algorithms::minimum_cost_flow::algorithms::primal_dual::PrimalDual;
 pub use crate::algorithms::minimum_cost_flow::algorithms::primal_network_simplex::PrimalNetworkSimplex;
 pub use crate::algorithms::minimum_cost_flow::algorithms::solver::MinimumCostFlowSolver;

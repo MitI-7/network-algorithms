@@ -10,7 +10,7 @@ enum Solver {
     PrimalDual,
     SuccessiveShortestPath,
     DualNetworkSimplex,
-    // ParametricNetworkSimplex,
+    ParametricNetworkSimplex,
     PrimalNetworkSimplex,
 }
 
@@ -19,8 +19,7 @@ impl Solver {
         let skip_for_lib = matches!(self, Solver::CycleCanceling);
         let a = skip_for_lib && path.to_str().map_or(false, |s| s.contains("LibraryChecker"));
         let skip_for_anti =
-            // matches!(self, Solver::OutOfKilter | Solver::PrimalDual | Solver::SuccessiveShortestPath | Solver::ParametricNetworkSimplex);
-            matches!(self, Solver::OutOfKilter | Solver::PrimalDual | Solver::SuccessiveShortestPath);
+            matches!(self, Solver::OutOfKilter | Solver::PrimalDual | Solver::SuccessiveShortestPath | Solver::ParametricNetworkSimplex);
         let b = skip_for_anti && path.to_str().map_or(false, |s| s.contains("anti_ssp_00"));
         a || b
     }
@@ -32,7 +31,7 @@ impl Solver {
             Solver::PrimalDual => PrimalDual::new(graph).minimum_cost_flow(),
             Solver::SuccessiveShortestPath => SuccessiveShortestPath::new(graph).minimum_cost_flow(),
             Solver::DualNetworkSimplex => DualNetworkSimplex::new(graph).minimum_cost_flow(),
-            // Solver::ParametricNetworkSimplex => Box::new(ParametricNetworkSimplex::default()),
+            Solver::ParametricNetworkSimplex => ParametricNetworkSimplex::new(graph).minimum_cost_flow(),
             Solver::PrimalNetworkSimplex => PrimalNetworkSimplex::new(graph).minimum_cost_flow(),
         }
     }
@@ -46,7 +45,7 @@ impl Solver {
 #[case::pd(Solver::PrimalDual)]
 #[case::ssp(Solver::SuccessiveShortestPath)]
 #[case::ns_dual(Solver::DualNetworkSimplex)]
-// #[case::ns_parametric(Solver::ParametricNetworkSimplex)]
+#[case::ns_parametric(Solver::ParametricNetworkSimplex)]
 #[case::ns_primal(Solver::PrimalNetworkSimplex)]
 fn minimum_cost_flow(#[files("tests/minimum_cost_flow/*/*.txt")] path: PathBuf, #[case] solver: Solver) {
     if solver.should_skip(&path) {
