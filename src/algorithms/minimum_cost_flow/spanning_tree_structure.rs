@@ -308,7 +308,7 @@ where
     }
 
     // dijkstra
-    pub(crate) fn shortest_path(&self, source: NodeId) -> (Vec<F>, Vec<Option<usize>>) {
+    pub(crate) fn shortest_path(&self, source: NodeId) -> (Vec<F>, Vec<Option<EdgeId>>) {
         let mut graph = vec![Vec::new(); self.num_nodes];
         let mut total_cost = F::zero();
         for edge_id in 0..self.num_edges {
@@ -334,7 +334,7 @@ where
 
                 let to = self.to[edge_id];
                 if new_dist < distances[to.index()] {
-                    prev_edge_id[to.index()] = Some(edge_id);
+                    prev_edge_id[to.index()] = Some(EdgeId(edge_id));
                     distances[to.index()] = new_dist;
                     bh.push((Reverse(new_dist), to));
                 }

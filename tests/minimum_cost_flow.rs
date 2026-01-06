@@ -9,7 +9,7 @@ enum Solver {
     OutOfKilter,
     PrimalDual,
     SuccessiveShortestPath,
-    // DualNetworkSimplex,
+    DualNetworkSimplex,
     // ParametricNetworkSimplex,
     PrimalNetworkSimplex,
 }
@@ -31,7 +31,7 @@ impl Solver {
             Solver::OutOfKilter => OutOfKilter::new(graph).minimum_cost_flow(),
             Solver::PrimalDual => PrimalDual::new(graph).minimum_cost_flow(),
             Solver::SuccessiveShortestPath => SuccessiveShortestPath::new(graph).minimum_cost_flow(),
-            // Solver::DualNetworkSimplex => Box::new(DualNetworkSimplex::<F, P>::default()),
+            Solver::DualNetworkSimplex => DualNetworkSimplex::new(graph).minimum_cost_flow(),
             // Solver::ParametricNetworkSimplex => Box::new(ParametricNetworkSimplex::default()),
             Solver::PrimalNetworkSimplex => PrimalNetworkSimplex::new(graph).minimum_cost_flow(),
         }
@@ -45,7 +45,7 @@ impl Solver {
 #[case::ok(Solver::OutOfKilter)]
 #[case::pd(Solver::PrimalDual)]
 #[case::ssp(Solver::SuccessiveShortestPath)]
-// #[case::ns_dual(Solver::DualNetworkSimplex)]
+#[case::ns_dual(Solver::DualNetworkSimplex)]
 // #[case::ns_parametric(Solver::ParametricNetworkSimplex)]
 #[case::ns_primal(Solver::PrimalNetworkSimplex)]
 fn minimum_cost_flow(#[files("tests/minimum_cost_flow/*/*.txt")] path: PathBuf, #[case] solver: Solver) {

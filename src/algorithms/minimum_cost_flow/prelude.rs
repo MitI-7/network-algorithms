@@ -3,6 +3,7 @@ pub use super::result::MinimumCostFlowResult;
 pub use super::status::Status;
 pub use crate::algorithms::minimum_cost_flow::algorithms::cost_scaling_push_relabel::CostScalingPushRelabel;
 pub use crate::algorithms::minimum_cost_flow::algorithms::cycle_canceling::CycleCanceling;
+pub use crate::algorithms::minimum_cost_flow::algorithms::dual_network_simplex::DualNetworkSimplex;
 pub use crate::algorithms::minimum_cost_flow::algorithms::network_simplex_pivot_rules::AlteringCandidateListPivotRule;
 pub use crate::algorithms::minimum_cost_flow::algorithms::network_simplex_pivot_rules::BestEligibleArcPivotRule;
 pub use crate::algorithms::minimum_cost_flow::algorithms::network_simplex_pivot_rules::BlockSearchPivotRule;
