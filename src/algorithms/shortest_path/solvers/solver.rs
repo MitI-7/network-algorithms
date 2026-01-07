@@ -6,5 +6,7 @@ use crate::{
 
 pub trait ShortestPathSolver<W: FlowNum> {
     fn new(graph: &Graph<Directed, (), WeightEdge<W>>) -> Self;
-    fn solve(&mut self, source: NodeId) -> Result<ShortestPathResult<W>, Status>;
+    fn solve(&mut self, source: NodeId) -> Result<(), Status>;
+    fn distance(&self, u: NodeId) -> Option<W>;
+    fn reached(&self, u: NodeId) -> bool;
 }

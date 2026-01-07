@@ -8,8 +8,20 @@ macro_rules! impl_shortest_path_solver {
                 Self::new(graph)
             }
 
-            fn solve(&mut self, source: NodeId) -> Result<ShortestPathResult<W>, Status> {
+            fn solve(&mut self, source: NodeId) -> Result<(), Status> {
                 self.$run(source)
+            }
+            
+            fn distance(&self, u: NodeId) -> Option<W> {
+                if self.reached.get(u.index()) {
+                    Some(self.distances[u.index()])
+                } else {
+                    None
+                }
+            }
+    
+            fn reached(&self, u: NodeId) -> bool {
+                self.reached.get(u.index())
             }
         }
     };
