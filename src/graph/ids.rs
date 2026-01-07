@@ -20,6 +20,12 @@ impl EdgeId {
     }
 }
 
+impl Default for EdgeId {
+    fn default() -> Self {
+        Self { 0: usize::MAX }
+    }
+}
+
 #[repr(transparent)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub(crate) struct ArcId(pub usize);
