@@ -49,3 +49,20 @@ fn shortest_path(#[files("tests/shortest_path/*/*.txt")] input_file_path: PathBu
 
     // assert_eq!(actual.unwrap(), expected);
 }
+
+#[test]
+fn negative_edge() {
+    let mut graph = ShortestPathGraph::<i32>::default();
+    let nodes = graph.add_nodes(2);
+    graph.add_edge(nodes[0], nodes[1], -1);
+    assert!(matches!(Dijkstra::new(&graph).solve(nodes[0]), Err(Status::BadInput)));
+}
+
+#[test]
+fn negative_cycle() {
+    let mut graph = ShortestPathGraph::<i32>::default();
+    let nodes = graph.add_nodes(2);
+    graph.add_edge(nodes[0], nodes[1], -1);
+    graph.add_edge(nodes[1], nodes[0], -1);
+    assert!(matches!(BellmanFord::new(&graph).solve(nodes[0]), Err(Status::NegativeCycle)));
+}

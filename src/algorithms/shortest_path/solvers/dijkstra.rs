@@ -31,6 +31,10 @@ where
     }
 
     fn run(&mut self, source: NodeId) -> Result<ShortestPathResult<W>, Status> {
+        if self.csr.weight.iter().any(|&w| w < W::zero()) {
+            return Err(Status::BadInput);
+        }
+
         let mut heap = BinaryHeap::new();
         heap.push((Reverse(W::zero()), source));
 

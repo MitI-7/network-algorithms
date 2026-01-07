@@ -4,6 +4,6 @@ pub enum Status {
     #[default]
     NotSolved,
     BadInput,
-    // Optimal,
+    Optimal,
     NegativeCycle,
 }
