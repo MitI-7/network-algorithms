@@ -39,7 +39,7 @@ where
         self.maximum_branching(graph.num_nodes(), &edges)
     }
 
-    fn maximum_branching(&self, num_nodes: usize, edges: &Vec<Edge<W>>) -> (W, Vec<EdgeId>) {
+    fn maximum_branching(&self, num_nodes: usize, edges: &[Edge<W>]) -> (W, Vec<EdgeId>) {
         let mut critical_edge = vec![(usize::MAX, W::zero(), EdgeId(0)); num_nodes]; // from, cost, id
         let mut edge_id_to_node = vec![None; self.num_edges];
         for &Edge { id, from, to, cost } in edges.iter() {

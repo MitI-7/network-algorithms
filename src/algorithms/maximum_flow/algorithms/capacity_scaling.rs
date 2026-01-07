@@ -42,7 +42,7 @@ where
     fn run(&mut self, source: NodeId, sink: NodeId) -> Result<F, Status> {
         validate_input(&self.rn, source, sink)?;
 
-        let max_capacity = *self.rn.upper.iter().map(|f| f).max().unwrap_or(&F::zero());
+        let max_capacity = *self.rn.upper.iter().max().unwrap_or(&F::zero());
         let mut deltas: Vec<F> = Vec::new();
         let mut d = F::one();
         while d <= max_capacity {

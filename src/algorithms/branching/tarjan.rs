@@ -4,17 +4,13 @@
 //! [2] P. M. Camerini, L. Fratta, and F. Maffioli, “A note on finding optimum branchings,” Networks, vol. 9, no. 4, pp. 309–312, Dec. 1979, doi: 10.1002/net.3230090403.
 //! [3] A. Tofigh, “Optimum Branchings and Spanning Aborescences”, PDF: https://cw.fel.cvut.cz/old/_media/courses/a4m33pal/cviceni/algorithm-description.pdf
 
-use std::fmt::Debug;
-use crate::data_structures::bit_vector::BitVector;
-use crate::data_structures::skew_heap::SkewHeap;
-use crate::data_structures::UnionFind;
-use crate::algorithms::branching::edge::WeightEdge;
-use crate::graph::direction::{Directed};
-use crate::graph::graph::Graph;
-use std::marker::PhantomData;
-use std::mem;
-use crate::core::numeric::FlowNum;
-use crate::graph::ids::EdgeId;
+use crate::{
+    algorithms::branching::edge::WeightEdge,
+    core::numeric::FlowNum,
+    data_structures::{UnionFind, bit_vector::BitVector, skew_heap::SkewHeap},
+    graph::{direction::Directed, graph::Graph, ids::EdgeId},
+};
+use std::{marker::PhantomData, mem};
 
 struct Forest {
     parent: Box<[Option<usize>]>,
@@ -174,7 +170,12 @@ where
         (branching_roots, forest)
     }
 
-    fn construct_branching(&self, branching_roots: Vec<usize>, mut forest: Forest, graph: &Graph<Directed, (), WeightEdge<W>>) -> (W, Vec<EdgeId>) {
+    fn construct_branching(
+        &self,
+        branching_roots: Vec<usize>,
+        mut forest: Forest,
+        graph: &Graph<Directed, (), WeightEdge<W>>,
+    ) -> (W, Vec<EdgeId>) {
         let mut total_weight = W::zero();
         let mut branchings = Vec::with_capacity(graph.num_nodes() - 1);
 

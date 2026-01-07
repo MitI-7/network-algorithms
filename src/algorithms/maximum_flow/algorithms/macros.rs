@@ -14,7 +14,7 @@ macro_rules! impl_maximum_flow_solver {
             }
 
             fn maximum_flow_value(&mut self, source: NodeId, sink: NodeId) -> Result<F, Status> {
-                Ok(self.$run(source, sink)?)
+                self.$run(source, sink)
             }
 
             fn minimum_cut(&mut self, source: NodeId, sink: NodeId) -> Result<MinimumCutResult<F>, Status> {

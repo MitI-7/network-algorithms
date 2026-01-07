@@ -1,6 +1,8 @@
-use crate::graph::{bipartite_graph::BipartiteGraph, direction::Undirected};
+use crate::{
+    graph::{bipartite_graph::BipartiteGraph, direction::Undirected},
+    ids::{EdgeId, NodeId},
+};
 use std::collections::VecDeque;
-use crate::ids::{NodeId, EdgeId};
 
 #[derive(Default)]
 pub enum WarmStart {
@@ -126,7 +128,9 @@ impl HopcroftKarp {
             let mut best_v: Option<NodeId> = None;
             for i in self.neighbors(u).map(EdgeId) {
                 let v = self.to[i.index()];
-                if self.mate[v.index()].is_none() && (best_v.is_none() || degree_v[v.index()] < degree_v[best_v.unwrap().index()]) {
+                if self.mate[v.index()].is_none()
+                    && (best_v.is_none() || degree_v[v.index()] < degree_v[best_v.unwrap().index()])
+                {
                     best_v = Some(v);
                 }
             }
@@ -224,7 +228,10 @@ impl HopcroftKarp {
         }
 
         // phase-2 greedy
-        let mut nodes: Vec<_> = (0..self.num_left_nodes).map(NodeId).filter(|&u| !used_left[u.index()]).collect();
+        let mut nodes: Vec<_> = (0..self.num_left_nodes)
+            .map(NodeId)
+            .filter(|&u| !used_left[u.index()])
+            .collect();
         nodes.sort_unstable_by_key(|&u| degree_left[u.index()]);
 
         for u in nodes {
@@ -232,7 +239,9 @@ impl HopcroftKarp {
             let mut best_v: Option<NodeId> = None;
             for i in self.neighbors(u) {
                 let v = self.to[i];
-                if self.mate[v.index()].is_none() && (best_v.is_none() || degree_right[v.index()] < degree_right[best_v.unwrap().index()]) {
+                if self.mate[v.index()].is_none()
+                    && (best_v.is_none() || degree_right[v.index()] < degree_right[best_v.unwrap().index()])
+                {
                     best_v = Some(v);
                 }
             }
