@@ -89,7 +89,7 @@ where
 
 // #[cfg(test)]
 // mod test {
-//     use crate::algorithms::shortest_path::dijkstra::Dijkstra;
+//     use crate::solvers::shortest_path::dijkstra::Dijkstra;
 //     use crate::graph::edge::WeightEdge;
 //     use crate::graph::graph::Directed;
 //     use crate::graph::Graph;

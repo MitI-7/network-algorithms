@@ -1,7 +1,7 @@
 use crate::minimum_cost_flow::residual_network::construct_extend_network_feasible_solution;
 use crate::{
     algorithms::minimum_cost_flow::{
-        algorithms::{macros::impl_minimum_cost_flow_solver, solver::MinimumCostFlowSolver},
+        solvers::{macros::impl_minimum_cost_flow_solver, solver::MinimumCostFlowSolver},
         edge::MinimumCostFlowEdge,
         node::MinimumCostFlowNode,
         normalized_network::NormalizedNetwork,

@@ -1,6 +1,6 @@
 use crate::{
     algorithms::maximum_flow::{
-        algorithms::{macros::impl_maximum_flow_solver, solver::MaximumFlowSolver},
+        solvers::{macros::impl_maximum_flow_solver, solver::MaximumFlowSolver},
         edge::MaximumFlowEdge,
         residual_network::ResidualNetwork,
         result::{MaximumFlowResult, MinimumCutResult},

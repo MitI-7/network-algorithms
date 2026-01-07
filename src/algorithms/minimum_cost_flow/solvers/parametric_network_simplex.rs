@@ -1,10 +1,7 @@
 use crate::minimum_cost_flow::residual_network::construct_extend_network_one_supply_one_demand;
 use crate::{
     algorithms::minimum_cost_flow::{
-        algorithms::{
-            macros::impl_minimum_cost_flow_solver, network_simplex_pivot_rules::BlockSearchPivotRule,
-            network_simplex_pivot_rules::PivotRule, solver::MinimumCostFlowSolver,
-        },
+        solvers::{macros::impl_minimum_cost_flow_solver, solver::MinimumCostFlowSolver},
         edge::MinimumCostFlowEdge,
         node::MinimumCostFlowNode,
         normalized_network::NormalizedNetwork,
@@ -21,39 +18,35 @@ use crate::{
 };
 use std::collections::VecDeque;
 
-pub struct DualNetworkSimplex<F, P = BlockSearchPivotRule<F>> {
+pub struct ParametricNetworkSimplex<F> {
     st: SpanningTreeStructure<F>,
     sink: NodeId,
-    pivot: P,
 }
 
-impl<F, P> DualNetworkSimplex<F, P>
+impl<F> ParametricNetworkSimplex<F>
 where
     F: CostNum,
-    P: PivotRule<F> + Default,
 {
-    pub fn set_pivot<Q>(self, new_pivot: Q) -> DualNetworkSimplex<F, Q>
-    where
-        Q: PivotRule<F>,
-    {
-        DualNetworkSimplex { st: self.st, sink: self.sink, pivot: new_pivot }
-    }
-
     fn new(graph: &Graph<Directed, MinimumCostFlowNode<F>, MinimumCostFlowEdge<F>>) -> Self {
-        let nn = NormalizedNetwork::new(graph);
+        let nn = NormalizedNetwork::new(&graph);
 
         let (source, sink, artificial_edges, fix_excesses) = construct_extend_network_one_supply_one_demand(&nn);
         let mut st =
             SpanningTreeStructure::new(&nn, Some(&[source, sink]), Some(&artificial_edges), None, Some(&fix_excesses));
         st.root = source;
 
-        let mut pivot = P::default();
-        pivot.initialize(st.num_edges);
-
-        Self { st, sink, pivot }
+        Self { st, sink }
     }
 
     fn run(&mut self) -> Result<F, Status> {
+        // if (0..graph.num_nodes())
+        //     .into_iter()
+        //     .fold(F::zero(), |sum, u| sum + graph.nodes[u].b)
+        //     != F::zero()
+        // {
+        //     return Err(Status::Unbalanced);
+        // }
+
         if !self.make_initial_spanning_tree_structure() {
             // there is no s-t path
             let status = if self.st.satisfy_constraints() {
@@ -61,6 +54,7 @@ where
             } else {
                 Status::Infeasible
             };
+            // graph.remove_artificial_sub_graph(&[source, sink], &artificial_edges);
 
             return if status == Status::Optimal {
                 Ok(self.st.calculate_objective_value_in_original_graph())
@@ -68,22 +62,39 @@ where
                 Err(status)
             };
         }
+        debug_assert!(self.st.satisfy_optimality_conditions());
 
-        // debug_assert!(self.st.satisfy_optimality_conditions());
-
-        self.pivot.initialize(self.st.num_edges);
         self.run2();
 
-        self.pivot.clear();
+        // copy
+        // graph.excesses = self.st.excesses.clone().to_vec();
+        // for edge_id in 0..graph.num_edges() {
+        //     graph.edges[edge_id].flow = self.st.flow[edge_id];
+        // }
+        // graph.remove_artificial_sub_graph(&artificial_nodes, &artificial_edges);
+
+        // for edge_id in 0..graph.num_edges() {
+        //     let edge = &graph.edges[edge_id];
+        //     assert!(self.st.flow[edge_id] <= self.st.upper[edge_id]);
+        //
+        //     graph.edges[edge_id].data.flow = if edge.data.cost >= F::zero() {
+        //         self.st.flow[edge_id] + edge.data.lower
+        //     } else {
+        //         edge.data.upper - self.st.flow[edge_id]
+        //     };
+        //     assert!(graph.edges[edge_id].data.flow <= graph.edges[edge_id].data.upper);
+        //     assert!(graph.edges[edge_id].data.flow >= graph.edges[edge_id].data.lower);
+        // }
 
         if !self.st.satisfy_constraints() {
             return Err(Status::Infeasible);
         }
+
         Ok(self.st.calculate_objective_value_in_original_graph())
     }
 
-    fn run2(&mut self) {
-        while let Some(leaving_edge_id) = self.pivot.find_entering_edge(&self.st, Self::calculate_violation) {
+    pub(crate) fn run2(&mut self) {
+        while let Some((leaving_edge_id, delta)) = self.select_leaving_edge() {
             let t2_now_root = if self.st.parent[self.st.from[leaving_edge_id.index()].index()]
                 == self.st.to[leaving_edge_id.index()]
             {
@@ -92,30 +103,17 @@ where
                 self.st.to[leaving_edge_id.index()]
             };
 
+            self.st.update_flow_in_path(self.st.root, self.sink, delta);
+            if self.st.excesses[self.st.root.index()] == F::zero() {
+                break;
+            }
+
             if let Some((entering_edge_id, t2_new_root)) = self.select_entering_edge_id(leaving_edge_id, t2_now_root) {
-                let delta = Self::calculate_violation(leaving_edge_id, &self.st);
-                let apex = self.find_apex(entering_edge_id);
-
-                // update flow
-                self.st.update_flow_in_cycle(entering_edge_id, delta, apex);
-                assert!(self.st.is_lower(leaving_edge_id) || self.st.is_upper(leaving_edge_id));
-
                 self.dual_pivot(leaving_edge_id, entering_edge_id, t2_now_root, t2_new_root);
-                debug_assert!(self.st.validate_num_successors(self.st.root));
                 debug_assert!(self.st.satisfy_optimality_conditions());
             } else {
                 break;
             }
-        }
-    }
-
-    fn calculate_violation(edge_id: EdgeId, st: &SpanningTreeStructure<F>) -> F {
-        if st.flow[edge_id.index()] < F::zero() {
-            -st.flow[edge_id.index()]
-        } else if st.flow[edge_id.index()] > st.upper[edge_id.index()] {
-            st.flow[edge_id.index()] - st.upper[edge_id.index()]
-        } else {
-            F::zero()
         }
     }
 
@@ -134,11 +132,9 @@ where
         let mut children = vec![Vec::new(); self.st.num_nodes];
         for edge_id in prev_edge_id.iter().filter_map(|&edge_id| edge_id) {
             self.st.state[edge_id.index()] = EdgeState::Tree;
-            (
-                self.st.parent[self.st.to[edge_id.index()].index()],
-                self.st.parent_edge_id[self.st.to[edge_id.index()].index()],
-            ) = (self.st.from[edge_id.index()], edge_id);
-            children[self.st.from[edge_id.index()].index()].push(self.st.to[edge_id.index()]);
+            let (from, to) = (self.st.from[edge_id.index()], self.st.to[edge_id.index()]);
+            (self.st.parent[to.index()], self.st.parent_edge_id[to.index()]) = (from, edge_id);
+            children[from.index()].push(to);
         }
         (self.st.parent[self.st.root.index()], self.st.parent_edge_id[self.st.root.index()]) =
             (INVALID_NODE_ID, INVALID_EDGE_ID);
@@ -175,14 +171,31 @@ where
             self.st.potential[u] = -distances[u];
         }
 
-        // send flow from source to sink
-        self.st
-            .update_flow_in_path(self.st.root, self.sink, self.st.excesses[self.st.root.index()]);
-        assert!(
-            self.st.excesses[self.st.root.index()] == F::zero() && self.st.excesses[self.sink.index()] == F::zero()
-        );
-
         true
+    }
+
+    fn select_leaving_edge(&self) -> Option<(EdgeId, F)> {
+        let mut leaving_edge_id = None;
+        let mut mini_delta = F::zero();
+        let mut now = self.sink;
+        while now != self.st.root {
+            let (parent, edge_id) = (self.st.parent[now.index()], self.st.parent_edge_id[now.index()]);
+            assert_eq!(self.st.state[edge_id.index()], EdgeState::Tree);
+
+            let delta = if self.st.from[edge_id.index()] == parent {
+                self.st.residual_capacity(edge_id)
+            } else {
+                self.st.flow[edge_id.index()]
+            };
+            // select the edge closest to the source as the leaving edge
+            if leaving_edge_id.is_none() || delta <= mini_delta {
+                mini_delta = delta;
+                leaving_edge_id = Some(edge_id);
+            }
+
+            now = parent;
+        }
+        Some((leaving_edge_id?, mini_delta.min(self.st.excesses[self.st.root.index()])))
     }
 
     fn select_entering_edge_id(&self, leaving_edge_id: EdgeId, t2_now_root: NodeId) -> Option<(EdgeId, NodeId)> {
@@ -199,53 +212,40 @@ where
             }
         }
 
-        let flow_direction_t1_t2 = |edge_id: EdgeId| {
-            // (t1 -> t2 and lower) or (t2 -> t1 and upper)
-            (is_t1_node[self.st.from[edge_id.index()].index()]
-                && !is_t1_node[self.st.to[edge_id.index()].index()]
-                && self.st.flow[edge_id.index()] <= F::zero())
-                || (!is_t1_node[self.st.from[edge_id.index()].index()]
-                    && is_t1_node[self.st.to[edge_id.index()].index()]
-                    && self.st.flow[edge_id.index()] >= self.st.upper[edge_id.index()])
-        };
-
-        let leaving_edge_flow_direction = flow_direction_t1_t2(leaving_edge_id);
-
         let mut entering_edge_id = None;
         let mut t2_new_root = None;
         let mut mini_delta = F::zero();
         for edge_id in (0..self.st.num_edges).map(EdgeId) {
-            if self.st.state[edge_id.index()] == EdgeState::Tree || self.st.upper[edge_id.index()] == F::zero() {
+            if edge_id == leaving_edge_id {
                 continue;
             }
 
-            let entering_edge_flow_direction = flow_direction_t1_t2(edge_id);
-            if leaving_edge_flow_direction == entering_edge_flow_direction
-                || is_t1_node[self.st.from[edge_id.index()].index()] == is_t1_node[self.st.to[edge_id.index()].index()]
+            // t1 -> t2 and lower
+            let (from, to) = (self.st.from[edge_id.index()], self.st.to[edge_id.index()]);
+            if is_t1_node[from.index()]
+                && !is_t1_node[to.index()]
+                && self.st.state[edge_id.index()] == EdgeState::Lower
+                && self.st.upper[edge_id.index()] != F::zero()
             {
-                continue;
+                let reduced_cost = self.st.reduced_cost(edge_id);
+                if reduced_cost < mini_delta || entering_edge_id.is_none() {
+                    mini_delta = reduced_cost;
+                    entering_edge_id = Some(edge_id);
+                    t2_new_root = Some(to);
+                }
             }
 
-            let reduced_cost = if self.st.state[edge_id.index()] == EdgeState::Lower {
-                self.st.reduced_cost(edge_id)
-            } else {
-                -self.st.reduced_cost(edge_id)
-            };
-            assert!(reduced_cost >= F::zero());
-
-            if reduced_cost < mini_delta || entering_edge_id.is_none() {
-                mini_delta = reduced_cost;
-                entering_edge_id = Some(edge_id);
-                t2_new_root = if (entering_edge_flow_direction && self.st.state[edge_id.index()] == EdgeState::Lower)
-                    || (!entering_edge_flow_direction && self.st.state[edge_id.index()] == EdgeState::Upper)
-                {
-                    Some(self.st.to[edge_id.index()])
-                } else {
-                    Some(self.st.from[edge_id.index()])
-                };
+            // t2 -> t1 and upper
+            if !is_t1_node[from.index()] && is_t1_node[to.index()] && self.st.state[edge_id.index()] == EdgeState::Upper
+            {
+                let reduced_cost = -self.st.reduced_cost(edge_id);
+                if reduced_cost < mini_delta || entering_edge_id.is_none() {
+                    mini_delta = reduced_cost;
+                    entering_edge_id = Some(edge_id);
+                    t2_new_root = Some(from);
+                }
             }
         }
-
         Some((entering_edge_id?, t2_new_root?))
     }
 
@@ -265,38 +265,14 @@ where
             return;
         }
 
-        // drop leaving edge and detach tree
+        // drop leaving edge
         self.st.detach_tree(self.st.root, t2_now_root, leaving_edge_id);
 
-        // if the size of subtree t2 is larger than that of subtree t1, swap t1 and t2.
-        let (t1_new_root, t2_new_root, t2_now_root, new_attach_node) =
-            if self.st.num_successors[t2_now_root.index()] * 2 >= self.st.num_nodes {
-                (t2_now_root, self.st.opposite_side(t2_new_root, entering_edge_id), self.st.root, t2_new_root)
-            } else {
-                (self.st.root, t2_new_root, t2_now_root, self.st.opposite_side(t2_new_root, entering_edge_id))
-            };
-
-        // enter entering edge and attach tree
+        // enter entering edge
+        let attach_node = self.st.opposite_side(t2_new_root, entering_edge_id);
         self.st.re_rooting(t2_now_root, t2_new_root, entering_edge_id);
         self.st
-            .attach_tree(t1_new_root, new_attach_node, t2_new_root, entering_edge_id);
-        self.st.root = t1_new_root;
-        self.st.parent[self.st.root.index()] = INVALID_NODE_ID;
-        assert_eq!(self.st.parent_edge_id[self.st.root.index()], INVALID_EDGE_ID);
-    }
-
-    fn find_apex(&self, entering_edge_id: EdgeId) -> NodeId {
-        let (mut u, mut v) = (self.st.from[entering_edge_id.index()], self.st.to[entering_edge_id.index()]);
-        while u != v {
-            let (u_num, v_num) = (self.st.num_successors[u.index()], self.st.num_successors[v.index()]);
-            if u_num <= v_num {
-                u = self.st.parent[u.index()];
-            }
-            if v_num <= u_num {
-                v = self.st.parent[v.index()];
-            }
-        }
-        u
+            .attach_tree(self.st.root, attach_node, t2_new_root, entering_edge_id);
     }
 
     fn make_minimum_cost_flow_in_original_graph(&self) -> Vec<F> {
@@ -304,4 +280,4 @@ where
     }
 }
 
-impl_minimum_cost_flow_solver!(DualNetworkSimplex, run);
+impl_minimum_cost_flow_solver!(ParametricNetworkSimplex, run);

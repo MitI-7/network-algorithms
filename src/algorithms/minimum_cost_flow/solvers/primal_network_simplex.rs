@@ -1,6 +1,6 @@
 use crate::{
     algorithms::minimum_cost_flow::{
-        algorithms::{
+        solvers::{
             macros::impl_minimum_cost_flow_solver, network_simplex_pivot_rules::BlockSearchPivotRule,
             network_simplex_pivot_rules::PivotRule, solver::MinimumCostFlowSolver,
         },

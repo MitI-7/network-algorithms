@@ -7,5 +7,5 @@ pub mod residual_network;
 pub mod result;
 pub mod status;
 mod validate;
-mod algorithms;
+mod solvers;
 pub mod spanning_tree_structure;

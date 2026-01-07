@@ -19,7 +19,7 @@ pub enum WarmStart {
 /// the Hopcroft-Karp algorithm which has \f$ O(e\sqrt{n}) \f$ time
 /// complexity.
 ///
-/// \note In several cases the push-relabel based algorithms have
+/// \note In several cases the push-relabel based solvers have
 /// better runtime performance than the augmenting path based ones.
 #[derive(Default)]
 pub struct HopcroftKarp {
