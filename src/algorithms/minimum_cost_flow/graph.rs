@@ -8,13 +8,10 @@ use crate::{
 };
 use std::ops::{Deref, DerefMut};
 
+#[derive(Default)]
 pub struct MinimumCostFlowGraph<F>(Graph<Directed, MinimumCostFlowNode<F>, MinimumCostFlowEdge<F>>);
 
 impl<F> MinimumCostFlowGraph<F> {
-    pub fn new() -> Self {
-        Self(Graph::new_directed())
-    }
-
     pub fn add_edge(&mut self, u: NodeId, v: NodeId, lower: F, upper: F, cost: F) -> Option<EdgeId> {
         if u.index() >= self.num_nodes() || v.index() >= self.num_nodes() {
             return None;

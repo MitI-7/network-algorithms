@@ -1,7 +1,7 @@
 use network_algorithms::minimum_cost_flow::prelude::*;
 
 fn primal_network_simplex() {
-    let mut graph = MinimumCostFlowGraph::<i32>::new();
+    let mut graph = MinimumCostFlowGraph::<i32>::default();
     let nodes = graph.add_nodes(5);
     let edges = vec![
         graph.add_edge(nodes[0], nodes[1], 0, 15, 4).unwrap(),

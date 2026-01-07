@@ -20,7 +20,7 @@ fn maximum_matching(#[files("tests/maximum_matching/*/*.txt")] input_file_path: 
                 nodes = graph.add_nodes(n);
             } else {
                 let (u, v) = (line[0].parse::<usize>().unwrap(), line[1].parse::<usize>().unwrap());
-                graph.add_edge(nodes[u], nodes[v], ());
+                graph.add_edge(nodes[u], nodes[v]);
             }
         });
 

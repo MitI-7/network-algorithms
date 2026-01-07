@@ -2,7 +2,7 @@ use network_algorithms::ids::{EdgeId, NodeId};
 use network_algorithms::maximum_flow::prelude::*;
 
 fn make_sample_graph() -> (Vec<NodeId>, Vec<EdgeId>, MaximumFlowGraph<i32>) {
-    let mut graph = MaximumFlowGraph::new();
+    let mut graph = MaximumFlowGraph::default();
     let nodes = graph.add_nodes(6);
     let mut edges = Vec::new();
     edges.push(graph.add_edge(nodes[0], nodes[1], 3).unwrap());

@@ -8,15 +8,12 @@ use crate::{
 };
 use std::ops::{Deref, DerefMut};
 
+#[derive(Default)]
 pub struct MaximumFlowGraph<F>(Graph<Directed, (), MaximumFlowEdge<F>>);
 
 impl<F> MaximumFlowGraph<F> {
-    pub fn new() -> Self {
-        Self(Graph::new_directed())
-    }
-
     pub fn add_edge(&mut self, u: NodeId, v: NodeId, upper: F) -> Option<EdgeId> {
-        if u.index() >= self.num_nodes() || v.index() >= self.num_nodes() {
+        if u.index() >= self.0.num_nodes() || v.index() >= self.0.num_nodes() {
             return None;
         }
         self.0.add_edge(u, v, MaximumFlowEdge { upper })
@@ -35,15 +32,3 @@ impl<F> DerefMut for MaximumFlowGraph<F> {
         &mut self.0
     }
 }
-
-// 相互変換
-// impl<F> From<Graph<Directed, (), MaximumFlowEdge<F>>> for MaximumFlowGraph<F> {
-//     fn from(g: Graph<Directed, (), MaximumFlowEdge<F>>) -> Self {
-//         Self(g)
-//     }
-// }
-// impl<F> From<MaximumFlowGraph<F>> for Graph<Directed, (), MaximumFlowEdge<F>> {
-//     fn from(g: MaximumFlowGraph<F>) -> Self {
-//         g.0
-//     }
-// }

@@ -13,7 +13,7 @@ enum Solver {
 }
 
 fn load_graph(input_file_path: &PathBuf) -> (NodeId, NodeId, i64, MaximumFlowGraph<i64>) {
-    let mut graph = MaximumFlowGraph::new();
+    let mut graph = MaximumFlowGraph::default();
 
     let (mut num_nodes, mut num_edges, mut source, mut sink, mut expected) = (0, 0, 0, 0, 0);
     let mut nodes = Vec::new();
@@ -99,7 +99,7 @@ fn maximum_flow(#[files("tests/maximum_flow/*/*.txt")] path: PathBuf, #[case] so
 #[case::push_relabel_highest_label(Solver::PushRelabelHighestLabel)]
 #[case::shortest_augmenting_path(Solver::ShortestAugmentingPath)]
 fn maximum_flow_source_eq_sink(#[case] solver: Solver) {
-    let mut graph = MaximumFlowGraph::new();
+    let mut graph = MaximumFlowGraph::default();
     let nodes = graph.add_nodes(2);
     graph.add_edge(nodes[0], nodes[1], 1);
 
@@ -116,7 +116,7 @@ fn maximum_flow_source_eq_sink(#[case] solver: Solver) {
 #[case::push_relabel_highest_label(Solver::PushRelabelHighestLabel)]
 #[case::shortest_augmenting_path(Solver::ShortestAugmentingPath)]
 fn maximum_flow_no_edges(#[case] solver: Solver) {
-    let mut graph = MaximumFlowGraph::new();
+    let mut graph = MaximumFlowGraph::default();
     let nodes = graph.add_nodes(10);
 
     let (maximum_flow_actual, minimum_cut_actual) = solver.run(&graph, nodes[0], nodes[9]).unwrap();

@@ -57,7 +57,7 @@ fn minimum_cost_flow(#[files("tests/minimum_cost_flow/*/*.txt")] path: PathBuf, 
     }
 
     let (mut num_nodes, mut num_edges, mut expected) = (0, 0, "dummy".to_string());
-    let mut graph = MinimumCostFlowGraph::<i128>::new();
+    let mut graph = MinimumCostFlowGraph::<i128>::default();
     let mut nodes = Vec::new();
 
     read_to_string(&path)
@@ -129,7 +129,7 @@ fn minimum_cost_flow(#[files("tests/minimum_cost_flow/*/*.txt")] path: PathBuf, 
 // #[case::ns_parametric(Solver::ParametricNetworkSimplex)]
 #[case::ns_primal(Solver::PrimalNetworkSimplex)]
 fn minimum_cost_flow_no_edges(#[case] solver: Solver) {
-    let mut graph = MinimumCostFlowGraph::<i128>::new();
+    let mut graph = MinimumCostFlowGraph::<i128>::default();
     let nodes = graph.add_nodes(2);
     graph.get_node_mut(nodes[0]).unwrap().data.b = 1;
     graph.get_node_mut(nodes[1]).unwrap().data.b = -1;
@@ -148,7 +148,7 @@ fn minimum_cost_flow_no_edges(#[case] solver: Solver) {
 // #[case::ns_parametric(Solver::ParametricNetworkSimplex)]
 #[case::ns_primal(Solver::PrimalNetworkSimplex)]
 fn minimum_cost_flow_no_nodes(#[case] solver: Solver) {
-    let graph = MinimumCostFlowGraph::<i128>::new();
+    let graph = MinimumCostFlowGraph::<i128>::default();
     let actual = solver.solve(&graph);
     assert_eq!(actual.unwrap().objective_value, 0);
 }
