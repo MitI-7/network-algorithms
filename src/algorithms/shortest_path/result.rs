@@ -1,3 +1,3 @@
 pub struct ShortestPathResult<W> {
-    pub distances: Vec<Option<W>>,
+    pub distances: Vec<W>,
 }

@@ -1,5 +1,11 @@
 use crate::{
-    algorithms::shortest_path::{csr::CSR, edge::WeightEdge, result::ShortestPathResult, status::Status},
+    algorithms::shortest_path::{
+        csr::CSR,
+        edge::WeightEdge,
+        result::ShortestPathResult,
+        solvers::{macros::impl_shortest_path_solver, solver::ShortestPathSolver},
+        status::Status,
+    },
     core::numeric::FlowNum,
     data_structures::bit_vector,
     graph::{
@@ -24,14 +30,14 @@ where
         Self { csr }
     }
 
-    pub fn solve(&mut self, source: NodeId) -> Result<ShortestPathResult<W>, Status> {
+    fn run(&mut self, source: NodeId) -> Result<ShortestPathResult<W>, Status> {
         let mut heap = BinaryHeap::new();
         heap.push((Reverse(W::zero()), source));
 
         let mut visited = bit_vector::BitVector::new(self.csr.num_nodes);
-        let mut distances = vec![None; self.csr.num_nodes];
+        let mut distances = vec![W::max_value(); self.csr.num_nodes];
         let mut prev = vec![INVALID_NODE_ID; self.csr.num_nodes];
-        distances[source.index()] = Some(W::zero());
+        distances[source.index()] = W::zero();
 
         while let Some((d, u)) = heap.pop() {
             if visited.get(u.index()) {
@@ -48,8 +54,8 @@ where
                 }
 
                 let new_dist = d.0 + w;
-                if distances[to.index()].is_none() || new_dist < distances[to.index()].unwrap() {
-                    distances[to.index()] = Some(new_dist);
+                if new_dist < distances[to.index()] {
+                    distances[to.index()] = new_dist;
                     prev[to.index()] = u;
                     heap.push((Reverse(new_dist), to));
                 }
@@ -58,3 +64,5 @@ where
         Ok(ShortestPathResult { distances })
     }
 }
+
+impl_shortest_path_solver!(Dijkstra, run);
