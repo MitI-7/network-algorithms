@@ -1,9 +1,9 @@
-use crate::core::direction::Directed;
-use crate::core::graph::Graph;
-use crate::edge::weight::WeightEdge;
-use crate::prelude::EdgeId;
-use crate::traits::{IntNum, Zero};
+use crate::graph::direction::Directed;
+use crate::graph::graph::Graph;
+use crate::algorithms::spanning_tree::edge::WeightEdge;
+use crate::graph::ids::EdgeId;
 use std::marker::PhantomData;
+use crate::core::numeric::FlowNum;
 
 #[derive(Clone)]
 struct Edge<W> {
@@ -23,14 +23,14 @@ pub struct Edmonds<W> {
 
 impl<W> Edmonds<W>
 where
-    W: IntNum + Zero,
+    W: FlowNum,
 {
     pub fn solve(&mut self, graph: &Graph<Directed, (), WeightEdge<W>>, root: usize) -> Option<(W, Vec<EdgeId>)> {
         self.num_nodes = graph.num_nodes();
         self.num_edges = graph.num_edges();
 
         let mut edges = Vec::with_capacity(graph.num_edges());
-        for (i, edge) in graph.edges.iter().enumerate() {
+        for (i, edge) in graph.edges().enumerate() {
             edges.push(Edge { id: EdgeId(i), from: edge.u.index(), to: edge.v.index(), cost: edge.data.weight });
         }
 
