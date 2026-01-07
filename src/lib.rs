@@ -4,7 +4,8 @@ mod graph;
 
 pub use crate::algorithms::maximum_flow;
 pub use crate::algorithms::minimum_cost_flow;
-pub use crate::graph::{direction, graph::Graph, ids};
+pub use crate::algorithms::maximum_bipartite_matching;
+pub use crate::graph::{direction, graph::Graph, ids, bipartite_graph::BipartiteGraph};
 
 // #[cfg(feature = "raw")]
 // pub mod raw {
