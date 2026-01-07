@@ -1,12 +1,12 @@
-use crate::core::graph::Graph;
+use crate::algorithms::shortest_path::csr::CSR;
+use crate::algorithms::shortest_path::edge::WeightEdge;
 use crate::data_structures::bit_vector;
-use crate::traits::{IntNum, Zero};
+use crate::graph::direction::Directed;
+use crate::graph::graph::Graph;
+use crate::graph::ids::NodeId;
 use std::cmp::Reverse;
 use std::collections::BinaryHeap;
-use crate::core::direction::Directed;
-use crate::edge::weight::WeightEdge;
-use crate::algorithms::shortest_path::csr::CSR;
-use crate::core::ids::NodeId;
+use crate::core::numeric::FlowNum;
 
 #[derive(Default)]
 pub struct Dijkstra<W> {
@@ -15,9 +15,13 @@ pub struct Dijkstra<W> {
 
 impl<W> Dijkstra<W>
 where
-    W: IntNum + Zero + Copy + Ord,
+    W: FlowNum,
 {
-    pub fn solve(&mut self, graph: &Graph<Directed, (), WeightEdge<W>>, source: NodeId) -> Result<Vec<Option<W>>, String> {
+    pub fn solve(
+        &mut self,
+        graph: &Graph<Directed, (), WeightEdge<W>>,
+        source: NodeId,
+    ) -> Result<Vec<Option<W>>, String> {
         self.csr.build(graph);
 
         let mut heap = BinaryHeap::new();
