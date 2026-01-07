@@ -1,6 +1,6 @@
 #[repr(transparent)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub struct NodeId(pub usize);
+pub struct NodeId(pub(crate) usize);
 
 impl NodeId {
     #[inline(always)]
@@ -11,7 +11,7 @@ impl NodeId {
 
 #[repr(transparent)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub struct EdgeId(pub usize);
+pub struct EdgeId(pub(crate) usize);
 
 impl EdgeId {
     #[inline(always)]
@@ -22,7 +22,7 @@ impl EdgeId {
 
 impl Default for EdgeId {
     fn default() -> Self {
-        Self { 0: usize::MAX }
+        Self(usize::MAX)
     }
 }
 
@@ -39,4 +39,4 @@ impl ArcId {
 
 pub const INVALID_NODE_ID: NodeId = NodeId(usize::MAX);
 pub const INVALID_EDGE_ID: EdgeId = EdgeId(usize::MAX);
-pub const INVALID_ARC_ID: ArcId = ArcId(usize::MAX);
+pub(crate) const INVALID_ARC_ID: ArcId = ArcId(usize::MAX);

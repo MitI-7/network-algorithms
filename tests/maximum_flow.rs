@@ -1,5 +1,4 @@
-use network_algorithms::maximum_flow::result::MinimumCutResult;
-use network_algorithms::{ids::NodeId, maximum_flow::prelude::*};
+use network_algorithms::{ids::NodeId, maximum_flow::prelude::*, maximum_flow::result::MinimumCutResult};
 use rstest::rstest;
 use std::{fs::read_to_string, path::PathBuf};
 
@@ -16,7 +15,7 @@ enum Solver {
 fn load_graph(input_file_path: &PathBuf) -> (NodeId, NodeId, i64, MaximumFlowGraph<i64>) {
     let mut graph = MaximumFlowGraph::new();
 
-    let (mut num_nodes, mut num_edges, mut source, mut sink, mut expected) = (0, 0, NodeId(0), NodeId(0), 0);
+    let (mut num_nodes, mut num_edges, mut source, mut sink, mut expected) = (0, 0, 0, 0, 0);
     let mut nodes = Vec::new();
 
     read_to_string(&input_file_path)
@@ -29,8 +28,8 @@ fn load_graph(input_file_path: &PathBuf) -> (NodeId, NodeId, i64, MaximumFlowGra
                 (num_nodes, num_edges, source, sink, expected) = (
                     line[0].parse().unwrap(),
                     line[1].parse().unwrap(),
-                    NodeId(line[2].parse().unwrap()),
-                    NodeId(line[3].parse().unwrap()),
+                    line[2].parse().unwrap(),
+                    line[3].parse().unwrap(),
                     line[4].parse().unwrap(),
                 );
                 nodes = graph.add_nodes(num_nodes);
@@ -44,7 +43,7 @@ fn load_graph(input_file_path: &PathBuf) -> (NodeId, NodeId, i64, MaximumFlowGra
             }
         });
 
-    (source, sink, expected, graph)
+    (nodes[source], nodes[sink], expected, graph)
 }
 
 impl Solver {

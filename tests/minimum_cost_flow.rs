@@ -1,7 +1,6 @@
-use network_algorithms::{ids::NodeId, minimum_cost_flow::prelude::*};
+use network_algorithms::minimum_cost_flow::prelude::*;
 use rstest::rstest;
-use std::{fs::read_to_string, path::PathBuf};
-use std::time::Duration;
+use std::{fs::read_to_string, path::PathBuf, time::Duration};
 
 enum Solver {
     CostScalingPushRelabel,
@@ -18,8 +17,13 @@ impl Solver {
     pub fn should_skip(&self, path: &PathBuf) -> bool {
         let skip_for_lib = matches!(self, Solver::CycleCanceling);
         let a = skip_for_lib && path.to_str().map_or(false, |s| s.contains("LibraryChecker"));
-        let skip_for_anti =
-            matches!(self, Solver::OutOfKilter | Solver::PrimalDual | Solver::SuccessiveShortestPath | Solver::ParametricNetworkSimplex);
+        let skip_for_anti = matches!(
+            self,
+            Solver::OutOfKilter
+                | Solver::PrimalDual
+                | Solver::SuccessiveShortestPath
+                | Solver::ParametricNetworkSimplex
+        );
         let b = skip_for_anti && path.to_str().map_or(false, |s| s.contains("anti_ssp_00"));
         a || b
     }
@@ -126,9 +130,9 @@ fn minimum_cost_flow(#[files("tests/minimum_cost_flow/*/*.txt")] path: PathBuf, 
 #[case::ns_primal(Solver::PrimalNetworkSimplex)]
 fn minimum_cost_flow_no_edges(#[case] solver: Solver) {
     let mut graph = MinimumCostFlowGraph::<i128>::new();
-    let _nodes = graph.add_nodes(2);
-    graph.get_node_mut(NodeId(0)).unwrap().data.b = 1;
-    graph.get_node_mut(NodeId(1)).unwrap().data.b = -1;
+    let nodes = graph.add_nodes(2);
+    graph.get_node_mut(nodes[0]).unwrap().data.b = 1;
+    graph.get_node_mut(nodes[1]).unwrap().data.b = -1;
 
     let actual = solver.solve(&graph);
     assert_eq!(actual.err().unwrap(), Status::Infeasible);
