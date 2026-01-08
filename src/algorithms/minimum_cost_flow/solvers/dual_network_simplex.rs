@@ -1,14 +1,13 @@
 use crate::minimum_cost_flow::residual_network::construct_extend_network_one_supply_one_demand;
 use crate::{
     algorithms::minimum_cost_flow::{
+        edge::MinimumCostFlowEdge,
+        node::MinimumCostFlowNode,
+        normalized_network::NormalizedNetwork,
         solvers::{
             macros::impl_minimum_cost_flow_solver, network_simplex_pivot_rules::BlockSearchPivotRule,
             network_simplex_pivot_rules::PivotRule, solver::MinimumCostFlowSolver,
         },
-        edge::MinimumCostFlowEdge,
-        node::MinimumCostFlowNode,
-        normalized_network::NormalizedNetwork,
-        result::MinimumCostFlowResult,
         spanning_tree_structure::{EdgeState, SpanningTreeStructure},
         status::Status,
     },
@@ -301,6 +300,10 @@ where
 
     fn make_minimum_cost_flow_in_original_graph(&self) -> Vec<F> {
         self.st.make_minimum_cost_flow_in_original_graph()
+    }
+
+    fn flow(&self, edge_id: EdgeId) -> Option<F> {
+        self.st.flow(edge_id)
     }
 }
 

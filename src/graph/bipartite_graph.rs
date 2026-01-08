@@ -2,7 +2,6 @@ use crate::graph::{
     direction::{Directed, Direction, Undirected},
     edge::Edge,
     ids::{EdgeId, NodeId},
-    node::Node,
 };
 use std::marker::PhantomData;
 

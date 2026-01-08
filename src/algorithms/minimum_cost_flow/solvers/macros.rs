@@ -4,21 +4,19 @@ macro_rules! impl_minimum_cost_flow_solver {
         where
             F: CostNum $(+ $bound)*,
         {
-            fn new(graph: &Graph<Directed, MinimumCostFlowNode<F>, MinimumCostFlowEdge<F>>) -> Self {
+            fn new(graph: &Graph<Directed, MinimumCostFlowNode<F>, MinimumCostFlowEdge<F>>) -> Self
+            where
+                Self: Sized
+            {
                 Self::new(graph)
             }
 
-            fn minimum_cost_flow(&mut self) -> Result<MinimumCostFlowResult<F>, Status> {
-                let objective_value = self.$run()?;
-                Ok(MinimumCostFlowResult {
-                    objective_value,
-                    flows: self.make_minimum_cost_flow_in_original_graph()
-                })
+            fn solve(&mut self) -> Result<F, Status> {
+                self.$run()
             }
 
-            fn minimum_cost_flow_value(&mut self) -> Result<F, Status> {
-                let objective_value = self.$run()?;
-                Ok(objective_value)
+            fn flow(&self, edge_id: EdgeId) -> Option<F> {
+                self.flow(edge_id)
             }
         }
     };

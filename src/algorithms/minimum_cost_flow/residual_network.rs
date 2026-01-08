@@ -3,7 +3,7 @@ use crate::graph::iter::ArcIdRange;
 use crate::{
     algorithms::minimum_cost_flow::normalized_network::{NormalizedEdge, NormalizedNetwork},
     core::numeric::CostNum,
-    graph::ids::{INVALID_ARC_ID, INVALID_NODE_ID, NodeId},
+    graph::ids::{EdgeId, INVALID_ARC_ID, INVALID_NODE_ID, NodeId},
 };
 use std::{cmp::Reverse, collections::BinaryHeap};
 
@@ -238,6 +238,14 @@ where
 
     pub fn residual_capacity(&self, arc_id: ArcId) -> F {
         self.residual_capacity[arc_id.index()]
+    }
+
+    pub(crate) fn flow(&self, edge_id: EdgeId) -> Option<F> {
+        if edge_id.index() >= self.num_edges_original_graph {
+            return None;
+        }
+        let arc_id = self.edge_id_to_arc_id[edge_id.index()];
+        Some(self.upper[arc_id.index()] - self.residual_capacity[arc_id.index()])
     }
 }
 

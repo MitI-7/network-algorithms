@@ -435,4 +435,11 @@ where
         }
         flows
     }
+    
+    pub(crate) fn flow(&self, edge_id: EdgeId) -> Option<F> {
+        if edge_id.index() >= self.num_edges {
+            return None;
+        }
+        Some(self.flow[edge_id.index()])
+    }
 }

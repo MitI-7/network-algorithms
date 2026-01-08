@@ -1,6 +1,7 @@
+use network_algorithms::ids::EdgeId;
 use network_algorithms::minimum_cost_flow::prelude::*;
 
-fn primal_network_simplex() {
+fn make_graph() -> (MinimumCostFlowGraph<i32>, Vec<EdgeId>) {
     let mut graph = MinimumCostFlowGraph::<i32>::default();
     let nodes = graph.add_nodes(5);
     let edges = vec![
@@ -18,17 +19,20 @@ fn primal_network_simplex() {
     graph.get_node_mut(nodes[3]).unwrap().data.b = -5;
     graph.get_node_mut(nodes[4]).unwrap().data.b = -15;
 
-    match SuccessiveShortestPath::new(&graph).minimum_cost_flow() {
-        Ok(result) => {
-            println!("minimum cost:{}", result.objective_value);
+    (graph, edges)
+}
+
+fn primal_network_simplex() {
+    let (graph, edges) = make_graph();
+    let mut solver = PrimalNetworkSimplex::new(&graph);
+
+    match solver.solve() {
+        Ok(objective_value) => {
+            println!("minimum cost:{}", objective_value);
             for edge_id in edges {
-                println!(
-                    "{:?}: {}",
-                    graph.get_edge(edge_id),
-                    result.flows[edge_id.index()]
-                );
+                println!("{:?}: {}", graph.get_edge(edge_id), solver.flow(edge_id).unwrap());
             }
-            assert_eq!(result.objective_value, 150);
+            assert_eq!(objective_value, 150);
         }
         _ => unreachable!(),
     }

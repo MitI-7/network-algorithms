@@ -27,16 +27,16 @@ impl Solver {
         let b = skip_for_anti && path.to_str().map_or(false, |s| s.contains("anti_ssp_00"));
         a || b
     }
-    pub fn solve(&self, graph: &MinimumCostFlowGraph<i128>) -> Result<MinimumCostFlowResult<i128>, Status> {
+    pub fn get(&self, graph: &MinimumCostFlowGraph<i128>) -> Box<dyn MinimumCostFlowSolver<i128>> {
         match self {
-            Solver::CostScalingPushRelabel => CostScalingPushRelabel::new(graph).minimum_cost_flow(),
-            Solver::CycleCanceling => CycleCanceling::new(graph).minimum_cost_flow(),
-            Solver::OutOfKilter => OutOfKilter::new(graph).minimum_cost_flow(),
-            Solver::PrimalDual => PrimalDual::new(graph).minimum_cost_flow(),
-            Solver::SuccessiveShortestPath => SuccessiveShortestPath::new(graph).minimum_cost_flow(),
-            Solver::DualNetworkSimplex => DualNetworkSimplex::new(graph).minimum_cost_flow(),
-            Solver::ParametricNetworkSimplex => ParametricNetworkSimplex::new(graph).minimum_cost_flow(),
-            Solver::PrimalNetworkSimplex => PrimalNetworkSimplex::new(graph).minimum_cost_flow(),
+            Solver::CostScalingPushRelabel => Box::new(<CostScalingPushRelabel<i128> as MinimumCostFlowSolver<i128>>::new(graph)),
+            Solver::CycleCanceling => Box::new(<CostScalingPushRelabel<i128> as MinimumCostFlowSolver<i128>>::new(graph)),
+            Solver::OutOfKilter => Box::new(<CostScalingPushRelabel<i128> as MinimumCostFlowSolver<i128>>::new(graph)),
+            Solver::PrimalDual => Box::new(<CostScalingPushRelabel<i128> as MinimumCostFlowSolver<i128>>::new(graph)),
+            Solver::SuccessiveShortestPath => Box::new(<CostScalingPushRelabel<i128> as MinimumCostFlowSolver<i128>>::new(graph)),
+            Solver::DualNetworkSimplex => Box::new(<CostScalingPushRelabel<i128> as MinimumCostFlowSolver<i128>>::new(graph)),
+            Solver::ParametricNetworkSimplex => Box::new(<CostScalingPushRelabel<i128> as MinimumCostFlowSolver<i128>>::new(graph)),
+            Solver::PrimalNetworkSimplex => Box::new(<CostScalingPushRelabel<i128> as MinimumCostFlowSolver<i128>>::new(graph)),
         }
     }
 }
@@ -85,48 +85,47 @@ fn minimum_cost_flow(#[files("tests/minimum_cost_flow/*/*.txt")] path: PathBuf, 
             }
         });
 
-    let actual = solver.solve(&graph);
+    let actual = solver.get(&graph).solve();
 
     match actual {
         Ok(actual) => {
-            assert_eq!(actual.objective_value, expected.parse().unwrap(), "{:?}", path);
+            assert_eq!(actual, expected.parse().unwrap(), "{:?}", path);
         }
         _ => assert_eq!("infeasible", expected, "{:?}", path),
     }
     assert_eq!(graph.num_nodes(), num_nodes);
     assert_eq!(graph.num_edges(), num_edges);
 }
-//
-// #[rstest]
-// #[case::cs(Solver::CostScalingPushRelabel)]
-// #[case::nc(Solver::NegativeCostCanceling)]
-// #[case::ok(Solver::OutOfKilter)]
-// #[case::pd(Solver::PrimalDual)]
-// #[case::ssp(Solver::SuccessiveShortestPath)]
-// #[case::ns_dual(Solver::DualNetworkSimplex)]
-// #[case::ns_parametric(Solver::ParametricNetworkSimplex)]
-// #[case::ns_primal(Solver::PrimalNetworkSimplex)]
-// fn minimum_cost_flow_unbalance(#[case] solver: Solver) {
-//     let mut graph = MinimumCostFlowGraph::<i32>::new();
-//     let nodes = graph.add_nodes(2);
-//     graph.add_directed_edge(nodes[0], nodes[1], 0, 1, 1);
-//
-//     graph.nodes[0].b = 1;
-//     graph.nodes[1].b = 1;
-//
-//     let mut solver_impl = solver.build::<_, BlockSearchPivotRule<_>>();
-//     let actual = solver_impl.solve(&mut graph);
-//     assert_eq!(actual.err().unwrap(), Status::Unbalanced);
-// }
-//
+
 #[rstest]
 #[case::cs(Solver::CostScalingPushRelabel)]
 #[case::cc(Solver::CycleCanceling)]
 #[case::ok(Solver::OutOfKilter)]
 #[case::pd(Solver::PrimalDual)]
 #[case::ssp(Solver::SuccessiveShortestPath)]
-// #[case::ns_dual(Solver::DualNetworkSimplex)]
-// #[case::ns_parametric(Solver::ParametricNetworkSimplex)]
+#[case::ns_dual(Solver::DualNetworkSimplex)]
+#[case::ns_parametric(Solver::ParametricNetworkSimplex)]
+#[case::ns_primal(Solver::PrimalNetworkSimplex)]
+fn minimum_cost_flow_unbalance(#[case] solver: Solver) {
+    let mut graph = MinimumCostFlowGraph::<i128>::default();
+    let nodes = graph.add_nodes(2);
+    graph.add_edge(nodes[0], nodes[1], 0, 1, 1);
+
+    graph.get_node_mut(nodes[0]).unwrap().data.b = 1;
+    graph.get_node_mut(nodes[1]).unwrap().data.b = 1;
+
+    let actual = solver.get(&graph).solve();
+    assert_eq!(actual.err().unwrap(), Status::Unbalanced);
+}
+
+#[rstest]
+#[case::cs(Solver::CostScalingPushRelabel)]
+#[case::cc(Solver::CycleCanceling)]
+#[case::ok(Solver::OutOfKilter)]
+#[case::pd(Solver::PrimalDual)]
+#[case::ssp(Solver::SuccessiveShortestPath)]
+#[case::ns_dual(Solver::DualNetworkSimplex)]
+#[case::ns_parametric(Solver::ParametricNetworkSimplex)]
 #[case::ns_primal(Solver::PrimalNetworkSimplex)]
 fn minimum_cost_flow_no_edges(#[case] solver: Solver) {
     let mut graph = MinimumCostFlowGraph::<i128>::default();
@@ -134,21 +133,21 @@ fn minimum_cost_flow_no_edges(#[case] solver: Solver) {
     graph.get_node_mut(nodes[0]).unwrap().data.b = 1;
     graph.get_node_mut(nodes[1]).unwrap().data.b = -1;
 
-    let actual = solver.solve(&graph);
+    let actual = solver.get(&graph).solve();
     assert_eq!(actual.err().unwrap(), Status::Infeasible);
 }
 
 #[rstest]
-// #[case::cs(Solver::CostScalingPushRelabel)]
+#[case::cs(Solver::CostScalingPushRelabel)]
 #[case::cc(Solver::CycleCanceling)]
 #[case::ok(Solver::OutOfKilter)]
 #[case::pd(Solver::PrimalDual)]
 #[case::ssp(Solver::SuccessiveShortestPath)]
-// #[case::ns_dual(Solver::DualNetworkSimplex)]
-// #[case::ns_parametric(Solver::ParametricNetworkSimplex)]
+#[case::ns_dual(Solver::DualNetworkSimplex)]
+#[case::ns_parametric(Solver::ParametricNetworkSimplex)]
 #[case::ns_primal(Solver::PrimalNetworkSimplex)]
 fn minimum_cost_flow_no_nodes(#[case] solver: Solver) {
     let graph = MinimumCostFlowGraph::<i128>::default();
-    let actual = solver.solve(&graph);
-    assert_eq!(actual.unwrap().objective_value, 0);
+    let actual = solver.get(&graph).solve();
+    assert_eq!(actual.unwrap(), 0);
 }

@@ -5,7 +5,6 @@ use crate::{
         edge::MinimumCostFlowEdge,
         node::MinimumCostFlowNode,
         normalized_network::NormalizedNetwork,
-        result::MinimumCostFlowResult,
         spanning_tree_structure::{EdgeState, SpanningTreeStructure},
         status::Status,
     },
@@ -277,6 +276,10 @@ where
 
     fn make_minimum_cost_flow_in_original_graph(&self) -> Vec<F> {
         self.st.make_minimum_cost_flow_in_original_graph()
+    }
+
+    fn flow(&self, edge_id: EdgeId) -> Option<F> {
+        self.st.flow(edge_id)
     }
 }
 

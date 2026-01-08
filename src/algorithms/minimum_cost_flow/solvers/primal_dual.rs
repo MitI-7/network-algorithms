@@ -1,11 +1,10 @@
 use crate::{
     algorithms::minimum_cost_flow::{
-        solvers::{macros::impl_minimum_cost_flow_solver, solver::MinimumCostFlowSolver},
         edge::MinimumCostFlowEdge,
         node::MinimumCostFlowNode,
         normalized_network::NormalizedNetwork,
         residual_network::{ResidualNetwork, construct_extend_network_one_supply_one_demand},
-        result::MinimumCostFlowResult,
+        solvers::{macros::impl_minimum_cost_flow_solver, solver::MinimumCostFlowSolver},
         status::Status,
         validate::{trivial_solution_if_any, validate_balance, validate_infeasible},
     },
@@ -13,7 +12,7 @@ use crate::{
     graph::{
         direction::Directed,
         graph::Graph,
-        ids::{ArcId, NodeId},
+        ids::{ArcId, EdgeId, NodeId},
     },
 };
 use std::cmp::Reverse;
@@ -221,6 +220,10 @@ where
 
     fn make_minimum_cost_flow_in_original_graph(&self) -> Vec<F> {
         self.rn.make_minimum_cost_flow_in_original_graph()
+    }
+
+    fn flow(&self, edge_id: EdgeId) -> Option<F> {
+        self.rn.flow(edge_id)
     }
 }
 
