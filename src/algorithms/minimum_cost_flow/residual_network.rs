@@ -1,10 +1,10 @@
-use crate::graph::graph;
-use crate::graph::ids::ArcId;
-use crate::graph::iter::ArcIdRange;
 use crate::{
     algorithms::minimum_cost_flow::normalized_network::{NormalizedEdge, NormalizedNetwork},
     core::numeric::CostNum,
-    graph::ids::{EdgeId, INVALID_ARC_ID, INVALID_NODE_ID, NodeId},
+    graph::{
+        ids::{ArcId, EdgeId, INVALID_ARC_ID, INVALID_NODE_ID, NodeId},
+        iter::ArcIdRange,
+    },
 };
 use std::{cmp::Reverse, collections::BinaryHeap};
 
@@ -250,12 +250,25 @@ where
         let arc_id = self.edge_id_to_arc_id[edge_id.index()];
         Some(self.upper[arc_id.index()] - self.residual_capacity[arc_id.index()])
     }
-    
+
+    pub(crate) fn flows(&self) -> Vec<F> {
+        let mut flows = vec![F::zero(); self.num_edges_original_graph];
+        for edge_id in (0..self.num_edges_original_graph).map(EdgeId) {
+            let arc_id = self.edge_id_to_arc_id[edge_id.index()];
+            flows[edge_id.index()] = self.upper[arc_id.index()] - self.residual_capacity[arc_id.index()];
+        }
+        flows
+    }
+
     pub(crate) fn potential(&self, node_id: NodeId) -> Option<F> {
         if node_id.index() >= self.num_nodes_original_graph {
             return None;
         }
         Some(self.potentials[node_id.index()])
+    }
+
+    pub(crate) fn potentials(&self) -> Vec<F> {
+        self.potentials[..self.num_nodes_original_graph].to_vec()
     }
 }
 
@@ -269,8 +282,16 @@ where
     let mut excess = vec![F::zero(); graph.num_nodes() + 2];
     let source = NodeId(graph.num_nodes());
     let sink = NodeId(source.index() + 1);
-    let total_excess_positive = graph.excesses().iter().filter(|&e| *e > F::zero()).fold(F::zero(), |sum, &e| sum + e);
-    let total_excess_negative = graph.excesses().iter().filter(|&e| *e < F::zero()).fold(F::zero(), |sum, &e| sum + e);
+    let total_excess_positive = graph
+        .excesses()
+        .iter()
+        .filter(|&e| *e > F::zero())
+        .fold(F::zero(), |sum, &e| sum + e);
+    let total_excess_negative = graph
+        .excesses()
+        .iter()
+        .filter(|&e| *e < F::zero())
+        .fold(F::zero(), |sum, &e| sum + e);
 
     for u in 0..graph.num_nodes() {
         if u == source.index() || u == sink.index() {

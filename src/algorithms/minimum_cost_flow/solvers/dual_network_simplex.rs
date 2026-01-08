@@ -1,18 +1,16 @@
-use crate::minimum_cost_flow::residual_network::construct_extend_network_one_supply_one_demand;
-use crate::minimum_cost_flow::validate::{
-    validate_balance, validate_balance_spanning_tree, validate_infeasible, validate_infeasible_spanning_tree,
-};
 use crate::{
     algorithms::minimum_cost_flow::{
         edge::MinimumCostFlowEdge,
         node::MinimumCostFlowNode,
         normalized_network::NormalizedNetwork,
+        residual_network::construct_extend_network_one_supply_one_demand,
         solvers::{
             macros::impl_minimum_cost_flow_solver, network_simplex_pivot_rules::BlockSearchPivotRule,
             network_simplex_pivot_rules::PivotRule, solver::MinimumCostFlowSolver,
         },
         spanning_tree_structure::{EdgeState, SpanningTreeStructure},
         status::Status,
+        validate::{validate_balance_spanning_tree, validate_infeasible_spanning_tree},
     },
     core::numeric::CostNum,
     graph::{
@@ -312,8 +310,16 @@ where
         self.st.flow(edge_id)
     }
 
+    fn flows(&self) -> Vec<F> {
+        self.st.flows()
+    }
+
     fn potential(&self, node_id: NodeId) -> Option<F> {
         self.st.potential(node_id)
+    }
+
+    fn potentials(&self) -> Vec<F> {
+        self.st.potentials()
     }
 }
 

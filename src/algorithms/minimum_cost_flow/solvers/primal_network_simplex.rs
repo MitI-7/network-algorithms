@@ -232,8 +232,16 @@ where
         self.st.flow(edge_id)
     }
 
+    fn flows(&self) -> Vec<F> {
+        self.st.flows()
+    }
+
     fn potential(&self, node_id: NodeId) -> Option<F> {
         self.st.potential(node_id)
+    }
+
+    fn potentials(&self) -> Vec<F> {
+        self.st.potentials()
     }
 }
 

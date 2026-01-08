@@ -19,8 +19,16 @@ macro_rules! impl_minimum_cost_flow_solver {
                 self.flow(edge_id)
             }
             
+            fn flows(&self) -> Vec<F> {
+                self.flows()
+            }
+            
             fn potential(&self, node_id: NodeId) -> Option<F> {
                 self.potential(node_id)
+            }
+            
+            fn potentials(&self) -> Vec<F> {
+                self.potentials()
             }
         }
     };

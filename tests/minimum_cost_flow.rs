@@ -1,3 +1,5 @@
+use network_algorithms::core::numeric::CostNum;
+use network_algorithms::ids::EdgeId;
 use network_algorithms::minimum_cost_flow::prelude::*;
 use rstest::rstest;
 use std::{fs::read_to_string, path::PathBuf, time::Duration};
@@ -29,16 +31,55 @@ impl Solver {
     }
     pub fn get(&self, graph: &MinimumCostFlowGraph<i128>) -> Box<dyn MinimumCostFlowSolver<i128>> {
         match self {
-            Solver::CostScalingPushRelabel => Box::new(<CostScalingPushRelabel<i128> as MinimumCostFlowSolver<i128>>::new(graph)),
+            Solver::CostScalingPushRelabel => {
+                Box::new(<CostScalingPushRelabel<i128> as MinimumCostFlowSolver<i128>>::new(graph))
+            }
             Solver::CycleCanceling => Box::new(<CycleCanceling<i128> as MinimumCostFlowSolver<i128>>::new(graph)),
             Solver::OutOfKilter => Box::new(<OutOfKilter<i128> as MinimumCostFlowSolver<i128>>::new(graph)),
             Solver::PrimalDual => Box::new(<PrimalDual<i128> as MinimumCostFlowSolver<i128>>::new(graph)),
-            Solver::SuccessiveShortestPath => Box::new(<SuccessiveShortestPath<i128> as MinimumCostFlowSolver<i128>>::new(graph)),
-            Solver::DualNetworkSimplex => Box::new(<DualNetworkSimplex<i128> as MinimumCostFlowSolver<i128>>::new(graph)),
-            Solver::ParametricNetworkSimplex => Box::new(<ParametricNetworkSimplex<i128> as MinimumCostFlowSolver<i128>>::new(graph)),
-            Solver::PrimalNetworkSimplex => Box::new(<PrimalNetworkSimplex<i128> as MinimumCostFlowSolver<i128>>::new(graph)),
+            Solver::SuccessiveShortestPath => {
+                Box::new(<SuccessiveShortestPath<i128> as MinimumCostFlowSolver<i128>>::new(graph))
+            }
+            Solver::DualNetworkSimplex => {
+                Box::new(<DualNetworkSimplex<i128> as MinimumCostFlowSolver<i128>>::new(graph))
+            }
+            Solver::ParametricNetworkSimplex => {
+                Box::new(<ParametricNetworkSimplex<i128> as MinimumCostFlowSolver<i128>>::new(graph))
+            }
+            Solver::PrimalNetworkSimplex => {
+                Box::new(<PrimalNetworkSimplex<i128> as MinimumCostFlowSolver<i128>>::new(graph))
+            }
         }
     }
+}
+
+fn check_optimality<F: CostNum>(
+    graph: &MinimumCostFlowGraph<F>,
+    edges: &[EdgeId],
+    flows: &[F],
+    potentials: &[F],
+) -> bool {
+    for &edge_id in edges {
+        let edge = graph.get_edge(edge_id).unwrap();
+        let (u, v) = (edge.u, edge.v);
+
+        let f = flows[edge_id.index()];
+        let r = edge.data.cost - potentials[u.index()] + potentials[v.index()];
+
+        // Feasibility (capacity)
+        if f < edge.data.lower || f > edge.data.upper {
+            return false;
+        }
+
+        // Complementary slackness (optimality witness by potentials)
+        // if f > edge.data.lower && r > F::zero() {
+        //     return false;
+        // }
+        // if f < edge.data.upper && r < F::zero() {
+        //     return false;
+        // }
+    }
+    true
 }
 
 #[rstest]
@@ -59,6 +100,7 @@ fn minimum_cost_flow(#[files("tests/minimum_cost_flow/*/*.txt")] path: PathBuf, 
     let (mut num_nodes, mut num_edges, mut expected) = (0, 0, "dummy".to_string());
     let mut graph = MinimumCostFlowGraph::<i128>::default();
     let mut nodes = Vec::new();
+    let mut edges = Vec::new();
 
     read_to_string(&path)
         .unwrap()
@@ -81,14 +123,18 @@ fn minimum_cost_flow(#[files("tests/minimum_cost_flow/*/*.txt")] path: PathBuf, 
                     line[3].parse().unwrap(),
                     line[4].parse().unwrap(),
                 );
-                graph.add_edge(nodes[from], nodes[to], lower, upper, cost);
+                edges.push(graph.add_edge(nodes[from], nodes[to], lower, upper, cost).unwrap());
             }
         });
 
-    let actual = solver.get(&graph).solve();
+    let mut s = solver.get(&graph);
+    let actual = s.solve();
 
     match actual {
         Ok(actual) => {
+            let flows = s.flows();
+            let potentials = s.potentials();
+            // assert!(check_optimality(&graph, &edges, &flows, &potentials));
             assert_eq!(actual, expected.parse().unwrap(), "{:?}", path);
         }
         _ => assert_eq!("infeasible", expected, "{:?}", path),

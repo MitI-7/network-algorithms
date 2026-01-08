@@ -446,10 +446,19 @@ where
         Some(self.flow[edge_id.index()])
     }
 
+    pub(crate) fn flows(&self) -> Vec<F> {
+        self.flow[..self.num_edges].to_vec()
+    }
+    
     pub(crate) fn potential(&self, node_id: NodeId) -> Option<F> {
         if node_id.index() >= self.num_nodes {
             return None;
         }
         Some(self.potentials[node_id.index()])
     }
+    
+    pub(crate) fn potentials(&self) -> Vec<F> {
+        self.potentials[..self.num_nodes].to_vec()
+    }
+
 }
