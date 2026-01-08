@@ -18,6 +18,10 @@ macro_rules! impl_minimum_cost_flow_solver {
             fn flow(&self, edge_id: EdgeId) -> Option<F> {
                 self.flow(edge_id)
             }
+            
+            fn potential(&self, node_id: NodeId) -> Option<F> {
+                self.potential(node_id)
+            }
         }
     };
 }

@@ -123,9 +123,9 @@ where
             };
 
             if self.st.from[edge_id.index()] == u {
-                (self.st.potential[u.index()], self.st.state[edge_id.index()]) = (inf_cost, EdgeState::Tree);
+                (self.st.potentials[u.index()], self.st.state[edge_id.index()]) = (inf_cost, EdgeState::Tree);
             } else {
-                (self.st.potential[u.index()], self.st.state[edge_id.index()]) = (-inf_cost, EdgeState::Tree);
+                (self.st.potentials[u.index()], self.st.state[edge_id.index()]) = (-inf_cost, EdgeState::Tree);
             }
 
             (self.st.parent[u.index()], self.st.parent_edge_id[u.index()]) = (self.st.root, edge_id);
@@ -230,6 +230,10 @@ where
 
     fn flow(&self, edge_id: EdgeId) -> Option<F> {
         self.st.flow(edge_id)
+    }
+
+    fn potential(&self, node_id: NodeId) -> Option<F> {
+        self.st.potential(node_id)
     }
 }
 

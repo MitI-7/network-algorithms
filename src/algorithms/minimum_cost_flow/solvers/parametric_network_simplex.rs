@@ -163,7 +163,7 @@ where
 
         // determine potentials
         for u in 0..self.st.num_nodes {
-            self.st.potential[u] = -distances[u];
+            self.st.potentials[u] = -distances[u];
         }
 
         true
@@ -276,6 +276,10 @@ where
 
     fn flow(&self, edge_id: EdgeId) -> Option<F> {
         self.st.flow(edge_id)
+    }
+
+    fn potential(&self, node_id: NodeId) -> Option<F> {
+        self.st.potential(node_id)
     }
 }
 

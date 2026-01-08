@@ -21,7 +21,7 @@ pub struct SpanningTreeStructure<F> {
     // node
     pub parent: Box<[NodeId]>,
     pub parent_edge_id: Box<[EdgeId]>,
-    pub potential: Box<[F]>,
+    pub potentials: Box<[F]>,
 
     // edge
     pub from: Box<[NodeId]>,
@@ -67,7 +67,7 @@ where
 
             parent: vec![INVALID_NODE_ID; num_nodes].into_boxed_slice(),
             parent_edge_id: vec![INVALID_EDGE_ID; num_nodes].into_boxed_slice(),
-            potential: vec![F::zero(); num_nodes].into_boxed_slice(),
+            potentials: vec![F::zero(); num_nodes].into_boxed_slice(),
 
             from: vec![INVALID_NODE_ID; num_edges].into_boxed_slice(),
             to: vec![INVALID_NODE_ID; num_edges].into_boxed_slice(),
@@ -133,8 +133,8 @@ where
 
     #[inline]
     pub(crate) fn reduced_cost(&self, edge_id: EdgeId) -> F {
-        self.cost[edge_id.index()] - self.potential[self.from[edge_id.index()].index()]
-            + self.potential[self.to[edge_id.index()].index()]
+        self.cost[edge_id.index()] - self.potentials[self.from[edge_id.index()].index()]
+            + self.potentials[self.to[edge_id.index()].index()]
     }
 
     pub(crate) fn update_flow_in_path(&mut self, source: NodeId, sink: NodeId, delta: F) {
@@ -234,7 +234,7 @@ where
 
         let mut now = new_root;
         while now != INVALID_NODE_ID {
-            self.potential[now.index()] += delta;
+            self.potentials[now.index()] += delta;
             if now == self.last_descendent_dft[new_root.index()] {
                 break;
             }
@@ -444,5 +444,12 @@ where
             return None;
         }
         Some(self.flow[edge_id.index()])
+    }
+
+    pub(crate) fn potential(&self, node_id: NodeId) -> Option<F> {
+        if node_id.index() >= self.num_nodes {
+            return None;
+        }
+        Some(self.potentials[node_id.index()])
     }
 }

@@ -26,7 +26,7 @@ pub(crate) struct ResidualNetwork<F> {
     pub(crate) potentials: Box<[F]>,
 
     // ex
-    pub(crate) _num_nodes_original_graph: usize,
+    pub(crate) num_nodes_original_graph: usize,
     pub(crate) num_edges_original_graph: usize,
     pub(crate) b: Box<[F]>,
     pub(crate) is_reversed_in_original_graph: Box<[bool]>,
@@ -62,7 +62,7 @@ where
             excesses: vec![F::zero(); num_nodes].into_boxed_slice(),
             potentials: vec![F::zero(); num_nodes].into_boxed_slice(),
 
-            _num_nodes_original_graph: graph.num_nodes(),
+            num_nodes_original_graph: graph.num_nodes(),
             num_edges_original_graph: graph.num_edges(),
             b: vec![F::zero(); num_nodes].into_boxed_slice(),
             is_reversed_in_original_graph: vec![false; num_edges].into_boxed_slice(),
@@ -249,6 +249,13 @@ where
         }
         let arc_id = self.edge_id_to_arc_id[edge_id.index()];
         Some(self.upper[arc_id.index()] - self.residual_capacity[arc_id.index()])
+    }
+    
+    pub(crate) fn potential(&self, node_id: NodeId) -> Option<F> {
+        if node_id.index() >= self.num_nodes_original_graph {
+            return None;
+        }
+        Some(self.potentials[node_id.index()])
     }
 }
 

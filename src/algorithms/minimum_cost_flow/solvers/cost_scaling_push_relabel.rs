@@ -268,6 +268,10 @@ where
     fn flow(&self, edge_id: EdgeId) -> Option<F> {
         self.rn.flow(edge_id)
     }
+
+    fn potential(&self, node_id: NodeId) -> Option<F> {
+        self.rn.potential(node_id)
+    }
 }
 
 impl_minimum_cost_flow_solver!(CostScalingPushRelabel, run, FromPrimitive);

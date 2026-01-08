@@ -1,5 +1,4 @@
 use network_algorithms::{ids::NodeId, maximum_flow::prelude::*};
-use num_traits::One;
 use rstest::rstest;
 use std::{fs::read_to_string, path::PathBuf};
 
