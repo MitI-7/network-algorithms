@@ -65,6 +65,10 @@ impl<D: Direction, N, E> Graph<D, N, E> {
         Some(&self.edges[edge_id.index()])
     }
 
+    pub fn nodes(&self) -> std::slice::Iter<'_, Node<N>> {
+        self.nodes.iter()
+    }
+
     pub fn edges(&self) -> std::slice::Iter<'_, Edge<E>> {
         self.edges.iter()
     }

@@ -1,3 +1,4 @@
+use crate::graph::graph;
 use crate::graph::ids::ArcId;
 use crate::graph::iter::ArcIdRange;
 use crate::{
@@ -27,6 +28,7 @@ pub(crate) struct ResidualNetwork<F> {
     // ex
     pub(crate) _num_nodes_original_graph: usize,
     pub(crate) num_edges_original_graph: usize,
+    pub(crate) b: Box<[F]>,
     pub(crate) is_reversed_in_original_graph: Box<[bool]>,
     pub(crate) lower_in_original_graph: Box<[F]>,
 }
@@ -62,6 +64,7 @@ where
 
             _num_nodes_original_graph: graph.num_nodes(),
             num_edges_original_graph: graph.num_edges(),
+            b: vec![F::zero(); num_nodes].into_boxed_slice(),
             is_reversed_in_original_graph: vec![false; num_edges].into_boxed_slice(),
             lower_in_original_graph: vec![F::zero(); num_edges].into_boxed_slice(),
         };
@@ -81,7 +84,6 @@ where
             return;
         }
 
-        self.excesses = vec![F::zero(); self.num_nodes].into_boxed_slice();
         for (u, e) in graph.excesses().iter().enumerate() {
             self.excesses[u] = *e;
         }
@@ -91,6 +93,7 @@ where
                 self.excesses[u] += fix[u];
             }
         }
+        self.b = self.excesses.clone();
 
         let mut degree = vec![0usize; self.num_nodes];
 
@@ -259,7 +262,8 @@ where
     let mut excess = vec![F::zero(); graph.num_nodes() + 2];
     let source = NodeId(graph.num_nodes());
     let sink = NodeId(source.index() + 1);
-    let mut total_excess = F::zero();
+    let total_excess_positive = graph.excesses().iter().filter(|&e| *e > F::zero()).fold(F::zero(), |sum, &e| sum + e);
+    let total_excess_negative = graph.excesses().iter().filter(|&e| *e < F::zero()).fold(F::zero(), |sum, &e| sum + e);
 
     for u in 0..graph.num_nodes() {
         if u == source.index() || u == sink.index() {
@@ -274,7 +278,6 @@ where
                 cost: F::zero(),
                 is_reversed: false,
             });
-            total_excess += graph.excesses()[u];
         }
         if graph.excesses()[u] < F::zero() {
             edges.push(NormalizedEdge {
@@ -288,8 +291,8 @@ where
         }
         excess[u] -= graph.excesses()[u];
     }
-    excess[source.index()] = total_excess;
-    excess[sink.index()] = -total_excess;
+    excess[source.index()] = total_excess_positive;
+    excess[sink.index()] = total_excess_negative;
 
     (source, sink, edges, excess)
 }
@@ -341,6 +344,7 @@ where
             artificial_edges.push(edge);
         }
         fix_excess[u] -= excess;
+        fix_excess[root.index()] += excess;
     }
 
     (root, artificial_edges, flows, fix_excess)

@@ -41,6 +41,7 @@ pub struct SpanningTreeStructure<F> {
 
     pub(crate) _num_nodes_original_graph: usize,
     pub(crate) num_edges_original_graph: usize,
+    pub(crate) b: Box<[F]>,
     pub(crate) lower_in_original_graph: Box<[F]>,
 }
 
@@ -84,6 +85,7 @@ where
 
             _num_nodes_original_graph: graph.num_nodes(),
             num_edges_original_graph: graph.num_edges(),
+            b: vec![F::zero(); num_nodes].into_boxed_slice(),
             lower_in_original_graph: vec![F::zero(); num_edges].into_boxed_slice(),
         };
 
@@ -108,6 +110,7 @@ where
                 self.excesses[u] += fix[u];
             }
         }
+        self.b = self.excesses.clone();
 
         for (edge_id, edge) in graph
             .iter_edges()

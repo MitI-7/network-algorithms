@@ -17,7 +17,6 @@ use crate::{
 };
 use std::{cmp::Reverse, collections::BinaryHeap};
 
-#[derive(Default)]
 pub struct SuccessiveShortestPath<F> {
     rn: ResidualNetwork<F>,
 }

@@ -1,4 +1,7 @@
 use crate::minimum_cost_flow::residual_network::construct_extend_network_one_supply_one_demand;
+use crate::minimum_cost_flow::validate::{
+    validate_balance, validate_balance_spanning_tree, validate_infeasible, validate_infeasible_spanning_tree,
+};
 use crate::{
     algorithms::minimum_cost_flow::{
         edge::MinimumCostFlowEdge,
@@ -53,6 +56,9 @@ where
     }
 
     fn run(&mut self) -> Result<F, Status> {
+        validate_balance_spanning_tree(&self.st)?;
+        validate_infeasible_spanning_tree(&self.st)?;
+
         if !self.make_initial_spanning_tree_structure() {
             // there is no s-t path
             let status = if self.st.satisfy_constraints() {

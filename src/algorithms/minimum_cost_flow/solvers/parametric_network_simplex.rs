@@ -1,10 +1,11 @@
 use crate::minimum_cost_flow::residual_network::construct_extend_network_one_supply_one_demand;
+use crate::minimum_cost_flow::validate::{validate_balance_spanning_tree, validate_infeasible_spanning_tree};
 use crate::{
     algorithms::minimum_cost_flow::{
-        solvers::{macros::impl_minimum_cost_flow_solver, solver::MinimumCostFlowSolver},
         edge::MinimumCostFlowEdge,
         node::MinimumCostFlowNode,
         normalized_network::NormalizedNetwork,
+        solvers::{macros::impl_minimum_cost_flow_solver, solver::MinimumCostFlowSolver},
         spanning_tree_structure::{EdgeState, SpanningTreeStructure},
         status::Status,
     },
@@ -38,13 +39,8 @@ where
     }
 
     fn run(&mut self) -> Result<F, Status> {
-        // if (0..graph.num_nodes())
-        //     .into_iter()
-        //     .fold(F::zero(), |sum, u| sum + graph.nodes[u].b)
-        //     != F::zero()
-        // {
-        //     return Err(Status::Unbalanced);
-        // }
+        validate_balance_spanning_tree(&self.st)?;
+        validate_infeasible_spanning_tree(&self.st)?;
 
         if !self.make_initial_spanning_tree_structure() {
             // there is no s-t path

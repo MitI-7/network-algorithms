@@ -1,13 +1,14 @@
+use crate::minimum_cost_flow::validate::{validate_balance_spanning_tree, validate_infeasible_spanning_tree};
 use crate::{
     algorithms::minimum_cost_flow::{
-        solvers::{
-            macros::impl_minimum_cost_flow_solver, network_simplex_pivot_rules::BlockSearchPivotRule,
-            network_simplex_pivot_rules::PivotRule, solver::MinimumCostFlowSolver,
-        },
         edge::MinimumCostFlowEdge,
         node::MinimumCostFlowNode,
         normalized_network::{NormalizedEdge, NormalizedNetwork},
         residual_network::construct_extend_network_feasible_solution,
+        solvers::{
+            macros::impl_minimum_cost_flow_solver, network_simplex_pivot_rules::BlockSearchPivotRule,
+            network_simplex_pivot_rules::PivotRule, solver::MinimumCostFlowSolver,
+        },
         spanning_tree_structure::{EdgeState, SpanningTreeStructure},
         status::Status,
     },
@@ -64,6 +65,9 @@ where
     }
 
     fn run(&mut self) -> Result<F, Status> {
+        validate_balance_spanning_tree(&self.st)?;
+        validate_infeasible_spanning_tree(&self.st)?;
+
         (self.st.root, self.st.parent[self.root.index()], self.st.parent_edge_id[self.root.index()]) =
             (self.root, INVALID_NODE_ID, INVALID_EDGE_ID);
 
@@ -223,7 +227,7 @@ where
     fn make_minimum_cost_flow_in_original_graph(&self) -> Vec<F> {
         self.st.make_minimum_cost_flow_in_original_graph()
     }
-    
+
     fn flow(&self, edge_id: EdgeId) -> Option<F> {
         self.st.flow(edge_id)
     }

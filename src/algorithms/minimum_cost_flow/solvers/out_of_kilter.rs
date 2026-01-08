@@ -37,7 +37,6 @@ where
             Some(&initial_flows),
             Some(&fix_excesses),
         );
-        assert!(rn.excesses.iter().all(|&e| e == F::zero()));
         OutOfKilter { rn }
     }
 
