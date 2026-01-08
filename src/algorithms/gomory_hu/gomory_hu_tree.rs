@@ -1,7 +1,7 @@
 use crate::{
     algorithms::maximum_flow::prelude::{Dinic, MaximumFlowSolver},
     core::numeric::FlowNum,
-    direction::{Undirected, Directed},
+    direction::{Directed, Undirected},
     graph::{graph::Graph, ids::NodeId},
     maximum_flow::edge::MaximumFlowEdge,
 };
@@ -32,26 +32,24 @@ where
         let mut parent = vec![root; n];
         let mut weight = vec![F::zero(); n];
 
-
         for s_idx in 1..n {
             let s = NodeId(s_idx);
             let t = parent[s_idx];
 
             // 1) s-t mincut (= maxflow)
-            let res = self.solver.minimum_cut(s, t)?;
-
-            let w = res.objective_value;
-
+            let w = self.solver.solve(s, t)?;
+            let source_side = self.solver.minimum_cut()?;
+            
             // 2) parent 更新
             for v_idx in (s_idx + 1)..n {
-                if parent[v_idx] == t && res.source_side[v_idx] {
+                if parent[v_idx] == t && source_side[v_idx] {
                     parent[v_idx] = s;
                 }
             }
 
             // 3) swap 規則
             let t_idx = t.index();
-            if t != root && res.source_side[parent[t_idx].index()] {
+            if t != root && source_side[parent[t_idx].index()] {
                 let pt = parent[t_idx];
                 parent[s_idx] = pt;
                 parent[t_idx] = s;
@@ -73,7 +71,7 @@ where
 }
 
 fn to_bidirected<F: FlowNum, N>(
-    g: &Graph<Undirected, N, MaximumFlowEdge<F>>
+    g: &Graph<Undirected, N, MaximumFlowEdge<F>>,
 ) -> Graph<Directed, (), MaximumFlowEdge<F>> {
     let mut dg = Graph::<Directed, (), MaximumFlowEdge<F>>::new_directed();
     dg.add_nodes_with(std::iter::repeat(()).take(g.num_nodes()));
@@ -143,11 +141,7 @@ mod tests {
     }
 
     /// 無向グラフの s-t 最小カットを「全カット列挙」で厳密に計算する（nが小さい前提）
-    fn brute_st_mincut_undirected(
-        g: &Graph<Undirected, (), MaximumFlowEdge<i64>>,
-        s: usize,
-        t: usize,
-    ) -> i64 {
+    fn brute_st_mincut_undirected(g: &Graph<Undirected, (), MaximumFlowEdge<i64>>, s: usize, t: usize) -> i64 {
         let n = g.num_nodes();
         assert!(n <= 20, "この brute force は小グラフ用（指数時間）");
         assert!(s < n && t < n && s != t);
@@ -157,8 +151,12 @@ mod tests {
         // mask は「S 側に入る頂点集合」
         // 条件: s ∈ S, t ∉ S
         for mask in 0_u64..(1_u64 << n) {
-            if ((mask >> s) & 1) == 0 { continue; }
-            if ((mask >> t) & 1) == 1 { continue; }
+            if ((mask >> s) & 1) == 0 {
+                continue;
+            }
+            if ((mask >> t) & 1) == 1 {
+                continue;
+            }
 
             let mut cut = 0_i64;
             for e in g.edges() {
@@ -190,17 +188,7 @@ mod tests {
     fn gomory_hu_small_fixed_graph_matches_bruteforce() {
         // 小さな例（手作り）
         // 0--1(3), 1--2(2), 2--3(4), 3--4(1), 0--4(5), 1--3(2)
-        let g = make_graph(
-            5,
-            &[
-                (0, 1, 3),
-                (1, 2, 2),
-                (2, 3, 4),
-                (3, 4, 1),
-                (0, 4, 5),
-                (1, 3, 2),
-            ],
-        );
+        let g = make_graph(5, &[(0, 1, 3), (1, 2, 2), (2, 3, 4), (3, 4, 1), (0, 4, 5), (1, 3, 2)]);
 
         let mut gh = GomoryHu::<i64>::new(&g);
         let tree = gh.build().expect("gomory-hu build failed");
@@ -213,11 +201,7 @@ mod tests {
             for t in (s + 1)..g.num_nodes() {
                 let expected = brute_st_mincut_undirected(&g, s, t);
                 let got = tree_path_min(&adj, s, t);
-                assert_eq!(
-                    got, expected,
-                    "mismatch for pair (s,t)=({},{})  expected={} got={}",
-                    s, t, expected, got
-                );
+                assert_eq!(got, expected, "mismatch for pair (s,t)=({},{})  expected={} got={}", s, t, expected, got);
             }
         }
     }
@@ -230,7 +214,7 @@ mod tests {
 
     #[test]
     fn gomory_hu_random_small_graphs_match_bruteforce() {
-        let n = 7;              // 2^7=128 なので全カット列挙が軽い
+        let n = 7; // 2^7=128 なので全カット列挙が軽い
         let trials = 20;
         let mut seed = 123456789_u64;
 
@@ -248,7 +232,9 @@ mod tests {
             for _ in 0..(n * 2) {
                 let a = (lcg_next(&mut seed) % (n as u64)) as usize;
                 let b = (lcg_next(&mut seed) % (n as u64)) as usize;
-                if a == b { continue; }
+                if a == b {
+                    continue;
+                }
                 let (u, v) = if a < b { (a, b) } else { (b, a) };
                 let cap = (lcg_next(&mut seed) % 9 + 1) as i64;
                 edges.push((u, v, cap));

@@ -1,5 +1,5 @@
 use crate::{
-    algorithms::shortest_path::{edge::WeightEdge, result::ShortestPathResult, status::Status},
+    algorithms::shortest_path::{edge::WeightEdge, status::Status},
     core::numeric::FlowNum,
     graph::{direction::Directed, graph::Graph, ids::NodeId},
 };

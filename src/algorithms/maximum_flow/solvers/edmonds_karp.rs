@@ -1,9 +1,8 @@
 use crate::{
     algorithms::maximum_flow::{
-        solvers::{macros::impl_maximum_flow_solver, solver::MaximumFlowSolver},
         edge::MaximumFlowEdge,
         residual_network::ResidualNetwork,
-        result::{MaximumFlowResult, MinimumCutResult},
+        solvers::{macros::impl_maximum_flow_solver, solver::MaximumFlowSolver},
         status::Status,
         validate::validate_input,
     },
@@ -11,15 +10,15 @@ use crate::{
     graph::{
         direction::Directed,
         graph::Graph,
-        ids::{INVALID_ARC_ID, INVALID_NODE_ID, NodeId},
+        ids::{EdgeId, INVALID_ARC_ID, INVALID_NODE_ID, NodeId},
     },
 };
 use std::collections::VecDeque;
 
-#[derive(Default)]
 pub struct EdmondsKarp<F> {
     rn: ResidualNetwork<F>,
     cutoff: Option<F>,
+    source: NodeId,
 }
 
 impl<F> EdmondsKarp<F>
@@ -28,12 +27,13 @@ where
 {
     fn new<N>(graph: &Graph<Directed, N, MaximumFlowEdge<F>>) -> Self {
         let rn = ResidualNetwork::new(graph);
-        Self { rn, cutoff: None }
+        Self { rn, cutoff: None, source: INVALID_NODE_ID }
     }
 
     fn run(&mut self, source: NodeId, sink: NodeId) -> Result<F, Status> {
         validate_input(&self.rn, source, sink)?;
 
+        self.source = source;
         let mut prev = vec![(INVALID_NODE_ID, INVALID_ARC_ID); self.rn.num_nodes];
         let mut visited = vec![false; self.rn.num_nodes];
         let mut residual = self.cutoff.unwrap_or_else(|| {

@@ -19,13 +19,14 @@ fn make_sample_graph() -> (Vec<NodeId>, Vec<EdgeId>, MaximumFlowGraph<i32>) {
 
 fn ford_fulkerson() {
     let (nodes, edges, graph) = make_sample_graph();
-    match FordFulkerson::new(&graph).maximum_flow(nodes[0], nodes[5]) {
-        Ok(result) => {
-            println!("maximum flow:{}", result.objective_value);
+    let mut solver = FordFulkerson::new(&graph);
+    match solver.solve(nodes[0], nodes[5]) {
+        Ok(objective_value) => {
+            println!("maximum flow:{}", objective_value);
             for edge_id in edges {
-                println!("{:?}: {}", graph.get_edge(edge_id), result.flows[edge_id.index()]);
+                println!("{:?}: {}", graph.get_edge(edge_id), solver.flow(edge_id).unwrap());
             }
-            assert_eq!(result.objective_value, 5);
+            assert_eq!(objective_value, 5);
         }
         _ => unreachable!(),
     }
@@ -35,10 +36,10 @@ fn dinic() {
     let (nodes, _edges, graph) = make_sample_graph();
 
     let mut dinic = Dinic::new(&graph);
-    let objective_value = dinic.maximum_flow(nodes[0], nodes[5]).unwrap().objective_value;
+    let objective_value = dinic.solve(nodes[0], nodes[5]).unwrap();
     println!("maximum flow from {} to {} is {}", 0, 5, objective_value);
 
-    let objective_value = dinic.maximum_flow(nodes[2], nodes[4]).unwrap().objective_value;
+    let objective_value = dinic.solve(nodes[2], nodes[4]).unwrap();
     println!("maximum flow from {} to {} is {}", 2, 4, objective_value);
 }
 

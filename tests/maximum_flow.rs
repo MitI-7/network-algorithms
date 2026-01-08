@@ -1,4 +1,5 @@
-use network_algorithms::{ids::NodeId, maximum_flow::prelude::*, maximum_flow::result::MinimumCutResult};
+use network_algorithms::{ids::NodeId, maximum_flow::prelude::*};
+use num_traits::One;
 use rstest::rstest;
 use std::{fs::read_to_string, path::PathBuf};
 
@@ -52,20 +53,19 @@ impl Solver {
         skip_for_libreoj && path.to_str().map_or(false, |s| s.contains("LibreOJ"))
     }
 
-    pub fn run(
-        &self,
-        graph: &MaximumFlowGraph<i64>,
-        s: NodeId,
-        t: NodeId,
-    ) -> Result<(MaximumFlowResult<i64>, MinimumCutResult<i64>), Status> {
+    pub fn get(&self, graph: &MaximumFlowGraph<i64>) -> Box<dyn MaximumFlowSolver<i64>> {
         match self {
-            Solver::CapacityScaling => CapacityScaling::new(graph).maximum_flow_minimum_cut(s, t),
-            Solver::Dinic => Dinic::new(graph).maximum_flow_minimum_cut(s, t),
-            Solver::EdmondsKarp => EdmondsKarp::new(graph).maximum_flow_minimum_cut(s, t),
-            Solver::FordFulkerson => FordFulkerson::new(graph).maximum_flow_minimum_cut(s, t),
-            Solver::PushRelabelFIFO => PushRelabelFifo::new(graph).maximum_flow_minimum_cut(s, t),
-            Solver::ShortestAugmentingPath => ShortestAugmentingPath::new(graph).maximum_flow_minimum_cut(s, t),
-            Solver::PushRelabelHighestLabel => PushRelabelHighestLabel::new(graph).maximum_flow_minimum_cut(s, t),
+            Solver::CapacityScaling => Box::new(<CapacityScaling<i64> as MaximumFlowSolver<i64>>::new(graph)),
+            Solver::Dinic => Box::new(<Dinic<i64> as MaximumFlowSolver<i64>>::new(graph)),
+            Solver::EdmondsKarp => Box::new(<EdmondsKarp<i64> as MaximumFlowSolver<i64>>::new(graph)),
+            Solver::FordFulkerson => Box::new(<FordFulkerson<i64> as MaximumFlowSolver<i64>>::new(graph)),
+            Solver::PushRelabelFIFO => Box::new(<PushRelabelFifo<i64> as MaximumFlowSolver<i64>>::new(graph)),
+            Solver::ShortestAugmentingPath => {
+                Box::new(<ShortestAugmentingPath<i64> as MaximumFlowSolver<i64>>::new(graph))
+            }
+            Solver::PushRelabelHighestLabel => {
+                Box::new(<PushRelabelHighestLabel<i64> as MaximumFlowSolver<i64>>::new(graph))
+            }
         }
     }
 }
@@ -79,15 +79,13 @@ impl Solver {
 #[case::push_relabel_highest_label(Solver::PushRelabelHighestLabel)]
 #[case::shortest_augmenting_path(Solver::ShortestAugmentingPath)]
 fn maximum_flow(#[files("tests/maximum_flow/*/*.txt")] path: PathBuf, #[case] solver: Solver) {
-    let (source, sink, expected, graph) = load_graph(&path);
-
     if solver.should_skip(&path) {
         return;
     }
 
-    let (maximum_flow_actual, minimum_cut_actual) = solver.run(&graph, source, sink).unwrap();
-    assert_eq!(maximum_flow_actual.objective_value, expected);
-    assert_eq!(minimum_cut_actual.objective_value, expected);
+    let (source, sink, expected, graph) = load_graph(&path);
+    let objective_value = solver.get(&graph).solve(source, sink).unwrap();
+    assert_eq!(objective_value, expected);
 }
 
 #[rstest]
@@ -103,7 +101,7 @@ fn maximum_flow_source_eq_sink(#[case] solver: Solver) {
     let nodes = graph.add_nodes(2);
     graph.add_edge(nodes[0], nodes[1], 1);
 
-    let actual = solver.run(&graph, nodes[0], nodes[0]);
+    let actual = solver.get(&graph).solve(nodes[0], nodes[0]);
     assert_eq!(actual.err().unwrap(), Status::BadInput);
 }
 
@@ -119,7 +117,6 @@ fn maximum_flow_no_edges(#[case] solver: Solver) {
     let mut graph = MaximumFlowGraph::default();
     let nodes = graph.add_nodes(10);
 
-    let (maximum_flow_actual, minimum_cut_actual) = solver.run(&graph, nodes[0], nodes[9]).unwrap();
-    assert_eq!(maximum_flow_actual.objective_value, 0);
-    assert_eq!(minimum_cut_actual.objective_value, 0);
+    let actual = solver.get(&graph).solve(nodes[0], nodes[9]);
+    assert_eq!(actual.unwrap(), 0);
 }

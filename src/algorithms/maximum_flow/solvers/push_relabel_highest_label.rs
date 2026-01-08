@@ -1,15 +1,17 @@
-use crate::ids::ArcId;
 use crate::{
     algorithms::maximum_flow::{
-        solvers::{macros::impl_maximum_flow_solver, solver::MaximumFlowSolver},
         edge::MaximumFlowEdge,
         residual_network::ResidualNetwork,
-        result::{MaximumFlowResult, MinimumCutResult},
+        solvers::{macros::impl_maximum_flow_solver, solver::MaximumFlowSolver},
         status::Status,
         validate::validate_input,
     },
     core::numeric::FlowNum,
-    graph::{direction::Directed, graph::Graph, ids::NodeId},
+    graph::{
+        direction::Directed,
+        graph::Graph,
+        ids::{ArcId, EdgeId, INVALID_NODE_ID, NodeId},
+    },
 };
 
 pub struct PushRelabelHighestLabel<F> {
@@ -26,6 +28,7 @@ pub struct PushRelabelHighestLabel<F> {
     bucket_idx: usize,
 
     distance_count: Vec<usize>,
+    source: NodeId,
 }
 
 impl<F> PushRelabelHighestLabel<F>
@@ -49,6 +52,7 @@ where
             bucket_idx: 0,
 
             distance_count: Vec::new(),
+            source: INVALID_NODE_ID,
         }
     }
 
@@ -65,6 +69,7 @@ where
     fn run(&mut self, source: NodeId, sink: NodeId) -> Result<F, Status> {
         validate_input(&self.rn, source, sink)?;
 
+        self.source = source;
         self.pre_process(source, sink);
         loop {
             if self.buckets[self.bucket_idx].is_empty() {

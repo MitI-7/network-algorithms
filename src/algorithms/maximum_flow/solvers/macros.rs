@@ -4,33 +4,29 @@ macro_rules! impl_maximum_flow_solver {
         where
             F: FlowNum $( + $bound )*,
         {
-            fn new<N>(graph: &Graph<Directed, N, MaximumFlowEdge<F>>) -> Self {
+            fn new<N>(graph: &Graph<Directed, N, MaximumFlowEdge<F>>) -> Self
+            where
+                Self: Sized,
+            {
                 Self::new(graph)
             }
 
-            fn maximum_flow(&mut self, source: NodeId, sink: NodeId) -> Result<MaximumFlowResult<F>, Status> {
+            fn solve(&mut self, source: NodeId, sink: NodeId) -> Result<F, Status> {
                 let objective_value = self.$run(source, sink)?;
-                Ok(MaximumFlowResult { objective_value, flows: self.rn.get_flows() })
+                Ok(objective_value)
             }
 
-            fn maximum_flow_value(&mut self, source: NodeId, sink: NodeId) -> Result<F, Status> {
-                self.$run(source, sink)
+            fn flow(&self, edge_id: EdgeId) -> Option<F> {
+                if edge_id.index() >= self.rn.num_edges {
+                    return None;
+                }
+
+                let arc_id = self.rn.edge_id_to_arc_id[edge_id.index()];
+                Some(self.rn.upper[arc_id.index()] - self.rn.residual_capacities[arc_id.index()])
             }
 
-            fn minimum_cut(&mut self, source: NodeId, sink: NodeId) -> Result<MinimumCutResult<F>, Status> {
-                let objective_value = self.$run(source, sink)?;
-                Ok(MinimumCutResult { objective_value, source_side: self.rn.reachable_from_source(source) })
-            }
-
-            fn minimum_cut_value(&mut self, source: NodeId, sink: NodeId) -> Result<F, Status> {
-                Ok(self.$run(source, sink)?)
-            }
-
-            fn maximum_flow_minimum_cut(&mut self, source: NodeId, sink: NodeId) -> Result<(MaximumFlowResult<F>, MinimumCutResult<F>), Status> {
-                let objective_value = self.$run(source, sink)?;
-                let maximum_flow_result = MaximumFlowResult { objective_value, flows: self.rn.get_flows() };
-                let minimum_cut_result = MinimumCutResult { objective_value, source_side: self.rn.reachable_from_source(source) };
-                Ok((maximum_flow_result, minimum_cut_result))
+            fn minimum_cut(&mut self) -> Result<Vec<bool>, Status> {
+                Ok(self.rn.reachable_from_source(self.source))
             }
         }
     };

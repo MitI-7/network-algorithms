@@ -1,20 +1,24 @@
 use crate::{
     algorithms::maximum_flow::{
-        solvers::{macros::impl_maximum_flow_solver, solver::MaximumFlowSolver},
         edge::MaximumFlowEdge,
         residual_network::ResidualNetwork,
-        result::{MaximumFlowResult, MinimumCutResult},
+        solvers::{macros::impl_maximum_flow_solver, solver::MaximumFlowSolver},
         status::Status,
         validate::validate_input,
     },
     core::numeric::FlowNum,
-    graph::{direction::Directed, graph::Graph, ids::NodeId},
+    graph::{
+        direction::Directed,
+        graph::Graph,
+        ids::{EdgeId, INVALID_NODE_ID, NodeId},
+    },
 };
 
 pub struct FordFulkerson<F> {
     rn: ResidualNetwork<F>,
     visited: Box<[bool]>,
     cutoff: Option<F>,
+    source: NodeId,
 }
 
 impl<F> FordFulkerson<F>
@@ -24,12 +28,14 @@ where
     fn new<N>(graph: &Graph<Directed, N, MaximumFlowEdge<F>>) -> Self {
         let rn = ResidualNetwork::new(graph);
         let num_nodes = rn.num_nodes;
-        Self { rn, visited: vec![false; num_nodes].into_boxed_slice(), cutoff: None}
+        Self { rn, visited: vec![false; num_nodes].into_boxed_slice(), cutoff: None, source: INVALID_NODE_ID }
     }
 
     pub(crate) fn run(&mut self, source: NodeId, sink: NodeId) -> Result<F, Status> {
         validate_input(&self.rn, source, sink)?;
+
         // initialize
+        self.source = source;
         self.rn.residual_capacities.copy_from_slice(&self.rn.upper);
 
         let mut residual = self.cutoff.unwrap_or_else(|| {

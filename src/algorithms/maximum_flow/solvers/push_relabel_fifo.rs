@@ -1,9 +1,8 @@
 use crate::{
     algorithms::maximum_flow::{
-        solvers::{macros::impl_maximum_flow_solver, solver::MaximumFlowSolver},
         edge::MaximumFlowEdge,
         residual_network::ResidualNetwork,
-        result::{MaximumFlowResult, MinimumCutResult},
+        solvers::{macros::impl_maximum_flow_solver, solver::MaximumFlowSolver},
         status::Status,
         validate::validate_input,
     },
@@ -11,7 +10,7 @@ use crate::{
     graph::{
         direction::Directed,
         graph::Graph,
-        ids::{ArcId, NodeId},
+        ids::{ArcId, EdgeId, INVALID_NODE_ID, NodeId},
     },
 };
 use std::collections::VecDeque;
@@ -25,6 +24,7 @@ pub struct PushRelabelFifo<F> {
     active_nodes: VecDeque<NodeId>,
     current_edge: Box<[usize]>,
     distance_count: Box<[usize]>,
+    source: NodeId,
 }
 
 impl<F> PushRelabelFifo<F>
@@ -44,13 +44,15 @@ where
             active_nodes: VecDeque::new(),
             current_edge: vec![0_usize; num_nodes].into_boxed_slice(),
             distance_count: vec![0_usize; num_nodes + 1].into_boxed_slice(),
+            source: INVALID_NODE_ID,
         }
     }
 
     fn run(&mut self, source: NodeId, sink: NodeId) -> Result<F, Status> {
         validate_input(&self.rn, source, sink)?;
-        
+
         // initialize
+        self.source = source;
         self.rn.residual_capacities.copy_from_slice(&self.rn.upper);
         self.rn.excesses.fill(F::zero());
 

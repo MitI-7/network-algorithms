@@ -1,9 +1,8 @@
 use crate::{
     algorithms::maximum_flow::{
-        solvers::{macros::impl_maximum_flow_solver, solver::MaximumFlowSolver},
         edge::MaximumFlowEdge,
         residual_network::ResidualNetwork,
-        result::{MaximumFlowResult, MinimumCutResult},
+        solvers::{macros::impl_maximum_flow_solver, solver::MaximumFlowSolver},
         status::Status,
         validate::validate_input,
     },
@@ -11,7 +10,7 @@ use crate::{
     graph::{
         direction::Directed,
         graph::Graph,
-        ids::{ArcId, NodeId},
+        ids::{ArcId, EdgeId, INVALID_NODE_ID, NodeId},
     },
 };
 use std::collections::VecDeque;
@@ -22,6 +21,7 @@ pub struct Dinic<F> {
     distances_to_sink: Box<[usize]>,
     que: VecDeque<NodeId>,
     cutoff: Option<F>,
+    source: NodeId,
 }
 
 impl<F> Dinic<F>
@@ -38,6 +38,7 @@ where
             distances_to_sink: vec![0; num_nodes].into_boxed_slice(),
             que: VecDeque::new(),
             cutoff: None,
+            source: INVALID_NODE_ID,
         }
     }
 
@@ -45,6 +46,7 @@ where
         validate_input(&self.rn, source, sink)?;
 
         // initialize
+        self.source = source;
         self.rn.residual_capacities.copy_from_slice(&self.rn.upper);
 
         let mut residual = self.cutoff.unwrap_or_else(|| {

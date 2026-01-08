@@ -4,7 +4,6 @@ use crate::{
     algorithms::shortest_path::{
         csr::CSR,
         edge::WeightEdge,
-        result::ShortestPathResult,
         solvers::{macros::impl_shortest_path_solver, solver::ShortestPathSolver},
         status::Status,
     },

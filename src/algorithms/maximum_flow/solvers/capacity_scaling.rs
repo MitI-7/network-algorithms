@@ -1,32 +1,33 @@
 use crate::{
     algorithms::maximum_flow::{
-        solvers::{macros::impl_maximum_flow_solver, solver::MaximumFlowSolver},
         edge::MaximumFlowEdge,
         residual_network::ResidualNetwork,
-        result::{MaximumFlowResult, MinimumCutResult},
+        solvers::{macros::impl_maximum_flow_solver, solver::MaximumFlowSolver},
         status::Status,
         validate::validate_input,
     },
     core::numeric::FlowNum,
-    graph::{direction::Directed, graph::Graph, ids::NodeId},
+    graph::{
+        direction::Directed,
+        graph::Graph,
+        ids::{ArcId, EdgeId, INVALID_NODE_ID, NodeId},
+    },
 };
-use std::collections::VecDeque;
 use num_traits::One;
-use crate::ids::ArcId;
+use std::collections::VecDeque;
 
-#[derive(Default)]
 pub struct CapacityScaling<F> {
     rn: ResidualNetwork<F>,
     current_edge: Box<[usize]>,
     que: VecDeque<NodeId>,
     cutoff: Option<F>,
+    source: NodeId,
 }
 
 impl<F> CapacityScaling<F>
 where
     F: FlowNum + One,
 {
-
     fn new<N>(graph: &Graph<Directed, N, MaximumFlowEdge<F>>) -> Self {
         let rn = ResidualNetwork::new(graph);
         let num_nodes = rn.num_nodes;
@@ -36,12 +37,14 @@ where
             current_edge: vec![0_usize; num_nodes].into_boxed_slice(),
             que: VecDeque::new(),
             cutoff: None,
+            source: INVALID_NODE_ID,
         }
     }
 
     fn run(&mut self, source: NodeId, sink: NodeId) -> Result<F, Status> {
         validate_input(&self.rn, source, sink)?;
 
+        self.source = source;
         let max_capacity = *self.rn.upper.iter().max().unwrap_or(&F::zero());
         let mut deltas: Vec<F> = Vec::new();
         let mut d = F::one();
@@ -50,7 +53,11 @@ where
             d = d + d;
         }
 
-        let mut residual = self.cutoff.unwrap_or_else(|| self.rn.neighbors(source).fold(F::zero(), |sum, arc_id| sum + self.rn.upper[arc_id.index()]));
+        let mut residual = self.cutoff.unwrap_or_else(|| {
+            self.rn
+                .neighbors(source)
+                .fold(F::zero(), |sum, arc_id| sum + self.rn.upper[arc_id.index()])
+        });
         let mut flow = F::zero();
         for delta in deltas.into_iter().rev() {
             // solve maximum flow in delta-residual network
@@ -62,7 +69,10 @@ where
                     break;
                 }
 
-                self.current_edge.iter_mut().enumerate().for_each(|(u, e)| *e = self.rn.start[u]);
+                self.current_edge
+                    .iter_mut()
+                    .enumerate()
+                    .for_each(|(u, e)| *e = self.rn.start[u]);
                 match self.dfs(source, sink, residual, delta) {
                     Some(delta) => {
                         flow += delta;
@@ -72,7 +82,6 @@ where
                 }
             }
         }
-
 
         Ok(flow)
     }
@@ -88,7 +97,9 @@ where
                 // e.to -> v
                 let to = self.rn.to[i.index()];
                 let rev = self.rn.rev[i.index()];
-                if self.rn.residual_capacities[rev.index()] >= delta && self.rn.distances_to_sink[to.index()] == self.rn.num_nodes {
+                if self.rn.residual_capacities[rev.index()] >= delta
+                    && self.rn.distances_to_sink[to.index()] == self.rn.num_nodes
+                {
                     self.rn.distances_to_sink[to.index()] = self.rn.distances_to_sink[v.index()] + 1;
                     if to != source {
                         self.que.push_back(to);

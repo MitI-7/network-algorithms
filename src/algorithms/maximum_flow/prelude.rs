@@ -1,5 +1,4 @@
 pub use super::graph::MaximumFlowGraph;
-pub use super::result::MaximumFlowResult;
 pub use super::status::Status;
 pub use crate::algorithms::maximum_flow::solvers::capacity_scaling::CapacityScaling;
 pub use crate::algorithms::maximum_flow::solvers::dinic::Dinic;
