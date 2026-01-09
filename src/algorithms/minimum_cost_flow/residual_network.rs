@@ -1,4 +1,3 @@
-use crate::minimum_cost_flow::graph::MinimumCostFlowGraph;
 use crate::{
     algorithms::minimum_cost_flow::normalized_network::{NormalizedEdge, NormalizedNetwork},
     core::numeric::CostNum,
@@ -7,7 +6,6 @@ use crate::{
         iter::ArcIdRange,
     },
 };
-use std::fmt::Debug;
 use std::{cmp::Reverse, collections::BinaryHeap};
 
 #[derive(Default)]

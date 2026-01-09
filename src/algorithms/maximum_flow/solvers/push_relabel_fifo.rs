@@ -82,8 +82,7 @@ where
         }
 
         if !self.value_only {
-            // self.push_flow_excess_back_to_source(source.index(), sink.index());
-            // self.rn.set_flow(graph);
+            self.push_flow_excess_back_to_source(source, sink);
         }
 
         Ok(self.rn.excesses[sink.index()])

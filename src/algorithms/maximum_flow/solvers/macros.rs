@@ -25,6 +25,10 @@ macro_rules! impl_maximum_flow_solver {
                 Some(self.rn.upper[arc_id.index()] - self.rn.residual_capacities[arc_id.index()])
             }
 
+            fn flows(&self) -> Vec<F> {
+                (0..self.rn.num_edges).map(|edge_id| self.flow(EdgeId(edge_id)).unwrap()).collect()
+            }
+
             fn minimum_cut(&mut self) -> Result<Vec<bool>, Status> {
                 Ok(self.rn.reachable_from_source(self.source))
             }

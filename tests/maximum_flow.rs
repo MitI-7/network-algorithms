@@ -81,6 +81,17 @@ fn load_graph(input_file_path: &PathBuf) -> (NodeId, NodeId, i64, MaximumFlowGra
     (nodes[source], nodes[sink], expected, graph)
 }
 
+fn check(graph: &MaximumFlowGraph<i64>, reach: &Vec<bool>) -> i64 {
+    let mut o = 0;
+    for e in graph.edges() {
+        if reach[e.u.index()] && !reach[e.v.index()] {
+            o += e.data.upper;
+        }
+    }
+
+    o
+}
+
 #[apply(all_solvers)]
 fn maximum_flow(#[files("tests/maximum_flow/*/*.txt")] path: PathBuf, #[case] solver: Solver) {
     if solver.skip(&path) {
@@ -88,8 +99,19 @@ fn maximum_flow(#[files("tests/maximum_flow/*/*.txt")] path: PathBuf, #[case] so
     }
 
     let (source, sink, expected, graph) = load_graph(&path);
-    let objective_value = solver.get(&graph).solve(source, sink).unwrap();
+    let mut s = solver.get(&graph);
+    let objective_value = s.solve(source, sink).unwrap();
     assert_eq!(objective_value, expected);
+
+    let flows = s.flows();
+    let reach = s.minimum_cut().unwrap();
+    assert_eq!(check(&graph, &reach), expected);
+
+    for (edge_id, e) in graph.edges().enumerate() {
+        if reach[e.u.index()] && !reach[e.v.index()] {
+            assert_eq!(flows[edge_id], e.data.upper);
+        }
+    }
 }
 
 #[apply(all_solvers)]

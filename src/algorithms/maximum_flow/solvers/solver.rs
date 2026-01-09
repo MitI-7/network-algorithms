@@ -14,5 +14,6 @@ pub trait MaximumFlowSolver<F: FlowNum> {
         Self: Sized;
     fn solve(&mut self, source: NodeId, sink: NodeId) -> Result<F, Status>;
     fn flow(&self, u: EdgeId) -> Option<F>;
+    fn flows(&self) -> Vec<F>;
     fn minimum_cut(&mut self) -> Result<Vec<bool>, Status>;
 }
