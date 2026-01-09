@@ -412,10 +412,6 @@ where
 
     pub fn calculate_objective_value_in_original_graph(&self) -> F {
         let mut objective_value = F::zero();
-        // for edge_id in 0..self.num_edges {
-        //     objective_value += self.flow[edge_id] * self.cost[edge_id];
-        // }
-
         for edge_id in 0..self.num_edges_original_graph {
             let cost = if self.is_reversed[edge_id] {
                 -self.cost[edge_id]
