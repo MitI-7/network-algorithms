@@ -1,3 +1,4 @@
+use crate::minimum_cost_flow::extend_network::construct_extend_network_one_supply_one_demand;
 use crate::{
     algorithms::minimum_cost_flow::{
         edge::MinimumCostFlowEdge,
@@ -19,6 +20,8 @@ use std::{cmp::Reverse, collections::BinaryHeap};
 
 pub struct SuccessiveShortestPath<F> {
     rn: ResidualNetwork<F>,
+    source: NodeId,
+    sink: NodeId,
 }
 
 impl<F> SuccessiveShortestPath<F>
@@ -27,8 +30,9 @@ where
 {
     pub fn new(graph: &Graph<Directed, MinimumCostFlowNode<F>, MinimumCostFlowEdge<F>>) -> Self {
         let nn = NormalizedNetwork::new(graph);
-        let rn = ResidualNetwork::new(&nn, None, None, None, None);
-        Self { rn }
+        let (source, sink, artificial_edges, excess_fix) = construct_extend_network_one_supply_one_demand(&nn);
+        let rn = ResidualNetwork::new(&nn, Some(&[source, sink]), Some(&artificial_edges), None, Some(&excess_fix));
+        Self { rn, source, sink }
     }
 
     fn run(&mut self) -> Result<F, Status> {
@@ -39,27 +43,23 @@ where
             return res;
         }
 
-        for s in 0..self.rn.num_nodes {
-            let s = NodeId(s);
-            while self.rn.excesses[s.index()] > F::zero() {
-                match self.calculate_distance(s) {
-                    Some((t, visited, dist, prev)) => {
-                        // update potentials
-                        for u in 0..self.rn.num_nodes {
-                            if visited[u] {
-                                self.rn.potentials[u] =
-                                    self.rn.potentials[u] - dist[u].unwrap() + dist[t.index()].unwrap();
-                            }
+        while self.rn.excesses[self.source.index()] > F::zero() {
+            match self.calculate_distance(self.source) {
+                Some((t, visited, dist, prev)) => {
+                    // update potentials
+                    for u in 0..self.rn.num_nodes {
+                        if visited[u] {
+                            self.rn.potentials[u] = self.rn.potentials[u] - dist[u].unwrap() + dist[t.index()].unwrap();
                         }
-                        // update flow
-                        self.update_flow(s, t, prev);
                     }
-                    None => break,
+                    // update flow
+                    self.update_flow(self.source, t, prev);
                 }
+                None => break,
             }
         }
 
-        if self.rn.have_excess() || self.rn.have_flow_in_artificial_arc() {
+        if self.rn.have_excess() {
             Err(Status::Infeasible)
         } else {
             Ok(self.rn.calculate_objective_value_original_graph())
