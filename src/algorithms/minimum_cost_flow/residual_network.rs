@@ -209,6 +209,19 @@ where
         self.residual_capacity[arc_id.index()]
     }
 
+    pub fn have_flow_in_artificial_arc(&self) -> bool {
+        (self.num_edges_original_graph..self.num_edges)
+            .into_iter()
+            .any(|edge_id| {
+                let arc_id = self.edge_id_to_arc_id[edge_id];
+                self.residual_capacity[arc_id.index()] != self.upper[arc_id.index()]
+            })
+    }
+
+    pub fn have_excess(&self) -> bool {
+        self.excesses.iter().any(|e| *e != F::zero())
+    }
+
     pub fn calculate_objective_value_original_graph(&self) -> F {
         let mut objective_value = F::zero();
         for edge_id in 0..self.num_edges_original_graph {

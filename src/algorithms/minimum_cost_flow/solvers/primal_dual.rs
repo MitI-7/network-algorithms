@@ -74,11 +74,11 @@ where
             self.primal(self.source, self.sink);
         }
 
-        if self.rn.excesses[self.source.index()] != F::zero() || self.rn.excesses[self.sink.index()] != F::zero() {
-            return Err(Status::Infeasible);
+        if self.rn.have_excess() {
+            Err(Status::Infeasible)
+        } else {
+            Ok(self.rn.calculate_objective_value_original_graph())
         }
-
-        Ok(self.rn.calculate_objective_value_original_graph())
     }
 
     // update potentials

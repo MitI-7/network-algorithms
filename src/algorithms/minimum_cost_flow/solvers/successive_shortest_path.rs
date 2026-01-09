@@ -59,12 +59,11 @@ where
             }
         }
 
-        if self.rn.excesses.iter().any(|&f| f > F::zero()) {
-            return Err(Status::Infeasible);
+        if self.rn.have_excess() || self.rn.have_flow_in_artificial_arc() {
+            Err(Status::Infeasible)
+        } else {
+            Ok(self.rn.calculate_objective_value_original_graph())
         }
-
-        debug_assert!(self.rn.check_optimality());
-        Ok(self.rn.calculate_objective_value_original_graph())
     }
 
     fn calculate_distance(&mut self, s: NodeId) -> Option<(NodeId, Vec<bool>, Vec<Option<F>>, Vec<Option<ArcId>>)> {

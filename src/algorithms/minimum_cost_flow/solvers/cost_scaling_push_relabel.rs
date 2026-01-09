@@ -86,16 +86,10 @@ where
             self.rn.cost[i] = self.rn.cost[i] / cost_scaling_factor;
         }
 
-        if (self.rn.num_edges_original_graph..self.rn.num_edges)
-            .into_iter()
-            .all(|edge_id| {
-                let arc_id = self.rn.edge_id_to_arc_id[edge_id];
-                self.rn.residual_capacity[arc_id.index()] == self.rn.upper[arc_id.index()]
-            })
-        {
-            Ok(self.rn.calculate_objective_value_original_graph())
-        } else {
+        if self.rn.have_excess() || self.rn.have_flow_in_artificial_arc() {
             Err(Status::Infeasible)
+        } else {
+            Ok(self.rn.calculate_objective_value_original_graph())
         }
     }
 
@@ -292,7 +286,9 @@ where
                     }
                 }
             }
-            if !updated { break; }
+            if !updated {
+                break;
+            }
         }
 
         // ここが重要：check_optimality の r = c - π(u) + π(v) に合わせて π = -dist

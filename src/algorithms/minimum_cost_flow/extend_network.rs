@@ -11,10 +11,10 @@ pub(crate) fn construct_extend_network_one_supply_one_demand<F>(
 where
     F: CostNum,
 {
-    let mut edges = Vec::new();
-    let mut excess = vec![F::zero(); graph.num_nodes() + 2];
     let source = NodeId(graph.num_nodes());
     let sink = NodeId(source.index() + 1);
+    let mut edges = Vec::new();
+    let mut excesses = vec![F::zero(); graph.num_nodes() + 2];
     let total_excess_positive = graph
         .excesses()
         .iter()
@@ -30,32 +30,35 @@ where
         if u == source.index() || u == sink.index() {
             continue;
         }
-        if graph.excesses()[u] > F::zero() {
+
+        let excess = graph.excesses()[u];
+        if excess > F::zero() {
+            // source -> u
             edges.push(NormalizedEdge {
                 u: source,
                 v: NodeId(u),
                 lower: F::zero(),
-                upper: graph.excesses()[u],
+                upper: excess,
                 cost: F::zero(),
                 is_reversed: false,
             });
-        }
-        if graph.excesses()[u] < F::zero() {
+        } else if excess < F::zero() {
+            // u -> sink
             edges.push(NormalizedEdge {
                 u: NodeId(u),
                 v: sink,
                 lower: F::zero(),
-                upper: -graph.excesses()[u],
+                upper: -excess,
                 cost: F::zero(),
                 is_reversed: false,
             });
         }
-        excess[u] -= graph.excesses()[u];
+        excesses[u] -= excess;
     }
-    excess[source.index()] = total_excess_positive;
-    excess[sink.index()] = total_excess_negative;
+    excesses[source.index()] = total_excess_positive;
+    excesses[sink.index()] = total_excess_negative;
 
-    (source, sink, edges, excess)
+    (source, sink, edges, excesses)
 }
 
 pub(crate) fn construct_extend_network_feasible_solution<F>(

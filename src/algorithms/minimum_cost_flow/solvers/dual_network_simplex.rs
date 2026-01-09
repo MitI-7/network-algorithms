@@ -42,7 +42,8 @@ where
     fn new(graph: &Graph<Directed, MinimumCostFlowNode<F>, MinimumCostFlowEdge<F>>) -> Self {
         let nn = NormalizedNetwork::new(graph);
 
-        let (source, sink, artificial_edges, fix_excesses) = construct_extend_network_one_supply_one_demand(&nn);
+        let (source, sink, artificial_edges, fix_excesses) =
+            construct_extend_network_one_supply_one_demand(&nn);
         let mut st =
             SpanningTreeStructure::new(&nn, Some(&[source, sink]), Some(&artificial_edges), None, Some(&fix_excesses));
         st.root = source;
