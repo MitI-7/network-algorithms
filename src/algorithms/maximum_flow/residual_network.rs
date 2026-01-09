@@ -139,14 +139,7 @@ where
         self.residual_capacities[arc_id.index()] > F::zero()
             && self.distances_to_sink[from.index()] == self.distances_to_sink[self.to[arc_id.index()].index()] + 1
     }
-
-    pub(crate) fn get_flows(&self) -> Vec<F> {
-        self.edge_id_to_arc_id
-            .iter()
-            .map(|&arc_id| self.upper[arc_id.index()] - self.residual_capacities[arc_id.index()])
-            .collect()
-    }
-
+    
     pub(crate) fn reachable_from_source(&self, source: NodeId) -> Vec<bool> {
         let mut seen = vec![false; self.num_nodes];
         let mut que = VecDeque::new();

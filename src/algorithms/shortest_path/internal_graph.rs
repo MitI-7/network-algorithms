@@ -6,16 +6,16 @@ use crate::{
 };
 
 #[derive(Default)]
-pub struct CSR<W> {
+pub struct InternalGraph<W> {
     pub num_nodes: usize,
-    pub num_edges: usize,
+    pub _num_edges: usize,
 
     pub start: Box<[usize]>,
     pub to: Box<[NodeId]>,
     pub weight: Box<[W]>,
 }
 
-impl<W> CSR<W>
+impl<W> InternalGraph<W>
 where
     W: FlowNum,
 {
@@ -25,7 +25,7 @@ where
 
         let mut csr = Self {
             num_nodes,
-            num_edges,
+            _num_edges: num_edges,
             start: vec![0; num_nodes + 1].into_boxed_slice(),
             to: vec![INVALID_NODE_ID; num_edges].into_boxed_slice(),
             weight: vec![W::zero(); num_edges].into_boxed_slice(),

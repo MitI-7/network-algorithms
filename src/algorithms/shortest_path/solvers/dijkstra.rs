@@ -1,7 +1,7 @@
 use crate::data_structures::BitVector;
 use crate::{
     algorithms::shortest_path::{
-        csr::CSR,
+        internal_graph::InternalGraph,
         edge::WeightEdge,
         solvers::{macros::impl_shortest_path_solver, solver::ShortestPathSolver},
         status::Status,
@@ -16,7 +16,7 @@ use crate::{
 use std::{cmp::Reverse, collections::BinaryHeap};
 
 pub struct Dijkstra<W> {
-    csr: CSR<W>,
+    csr: InternalGraph<W>,
     reached: BitVector,
     distances: Box<[W]>,
 }
@@ -26,7 +26,7 @@ where
     W: FlowNum,
 {
     pub fn new(graph: &Graph<Directed, (), WeightEdge<W>>) -> Self {
-        let csr = CSR::new(graph);
+        let csr = InternalGraph::new(graph);
         let num_nodes = csr.num_nodes;
         Self { csr, reached: BitVector::new(num_nodes), distances: vec![W::max_value(); num_nodes].into_boxed_slice() }
     }
