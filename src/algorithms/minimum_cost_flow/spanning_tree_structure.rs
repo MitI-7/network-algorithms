@@ -410,7 +410,7 @@ where
         NodeId(u.index() ^ self.to[edge_id.index()].index() ^ self.from[edge_id.index()].index())
     }
 
-    pub fn calculate_objective_value_in_original_graph(&self) -> F {
+    pub fn calculate_objective_value_original_graph(&self) -> F {
         let mut objective_value = F::zero();
         for edge_id in 0..self.num_edges_original_graph {
             let cost = if self.is_reversed[edge_id] {

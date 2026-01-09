@@ -3,7 +3,8 @@ use crate::{
         edge::MinimumCostFlowEdge,
         node::MinimumCostFlowNode,
         normalized_network::NormalizedNetwork,
-        residual_network::{ResidualNetwork, construct_extend_network_feasible_solution},
+        extend_network::construct_extend_network_feasible_solution,
+        residual_network::{ResidualNetwork},
         solvers::{macros::impl_minimum_cost_flow_solver, solver::MinimumCostFlowSolver},
         status::Status,
         validate::{trivial_solution_if_any, validate_balance, validate_infeasible},
@@ -86,7 +87,8 @@ where
                 self.rn.residual_capacity[arc_id.index()] == self.rn.upper[arc_id.index()]
             })
         {
-            Ok(self.rn.calculate_objective_value_in_original_graph())
+            // assert!(self.rn.check_optimality());
+            Ok(self.rn.calculate_objective_value_original_graph())
         } else {
             Err(Status::Infeasible)
         }
@@ -161,24 +163,42 @@ where
         }
     }
 
-    fn make_minimum_cost_flow_in_original_graph(&self) -> Vec<F> {
-        self.rn.make_minimum_cost_flow_in_original_graph()
-    }
-
     fn flow(&self, edge_id: EdgeId) -> Option<F> {
-        self.rn.flow(edge_id)
+        self.rn.flow_original_graph(edge_id)
     }
 
     fn flows(&self) -> Vec<F> {
-        self.rn.flows()
+        self.rn.flows_original_graph()
     }
 
     fn potential(&self, node_id: NodeId) -> Option<F> {
-        self.rn.potential(node_id)
+        self.rn.potential_original_graph(node_id)
     }
 
     fn potentials(&self) -> Vec<F> {
-        self.rn.potentials()
+        let n = self.rn.num_nodes;
+        let mut dist = vec![F::zero(); n]; // スーパーソースを全頂点に0で繋ぐのと等価
+
+        // Bellman-Ford: 残余容量>0の残余辺だけで最短距離 dist を計算
+        for _ in 0..n.saturating_sub(1) {
+            let mut updated = false;
+            for u in (0..n).map(NodeId) {
+                for e in self.rn.neighbors(u) {
+                    if self.rn.residual_capacity[e.index()] > F::zero() {
+                        let v = self.rn.to[e.index()];
+                        let cand = dist[u.index()] + self.rn.cost[e.index()];
+                        if cand < dist[v.index()] {
+                            dist[v.index()] = cand;
+                            updated = true;
+                        }
+                    }
+                }
+            }
+            if !updated { break; }
+        }
+
+        // ここが重要：check_optimality の r = c - π(u) + π(v) に合わせて π = -dist
+        dist.into_iter().map(|d| -d).collect()
     }
 }
 

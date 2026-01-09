@@ -4,6 +4,7 @@ use crate::{
     minimum_cost_flow::normalized_network::{NormalizedEdge, NormalizedNetwork},
 };
 
+// transforms the minimum cost flow problem into a problem with a single excess node and a single deficit node.
 pub(crate) fn construct_extend_network_one_supply_one_demand<F>(
     graph: &NormalizedNetwork<'_, F>,
 ) -> (NodeId, NodeId, Vec<NormalizedEdge<F>>, Vec<F>)

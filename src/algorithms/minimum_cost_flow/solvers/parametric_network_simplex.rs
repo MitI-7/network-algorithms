@@ -52,7 +52,7 @@ where
             // graph.remove_artificial_sub_graph(&[source, sink], &artificial_edges);
 
             return if status == Status::Optimal {
-                Ok(self.st.calculate_objective_value_in_original_graph())
+                Ok(self.st.calculate_objective_value_original_graph())
             } else {
                 Err(status)
             };
@@ -65,7 +65,7 @@ where
             return Err(Status::Infeasible);
         }
 
-        Ok(self.st.calculate_objective_value_in_original_graph())
+        Ok(self.st.calculate_objective_value_original_graph())
     }
 
     pub(crate) fn run2(&mut self) {

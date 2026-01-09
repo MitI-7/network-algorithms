@@ -1,11 +1,12 @@
 pub mod edge;
+mod extend_network;
 pub mod graph;
 pub mod node;
 mod normalized_network;
 pub mod prelude;
 pub mod residual_network;
 pub mod result;
-pub mod status;
-mod validate;
 mod solvers;
 pub mod spanning_tree_structure;
+pub mod status;
+mod validate;

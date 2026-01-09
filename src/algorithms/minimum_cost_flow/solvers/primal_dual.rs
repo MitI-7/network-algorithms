@@ -1,9 +1,10 @@
 use crate::{
     algorithms::minimum_cost_flow::{
         edge::MinimumCostFlowEdge,
+        extend_network::construct_extend_network_one_supply_one_demand,
         node::MinimumCostFlowNode,
         normalized_network::NormalizedNetwork,
-        residual_network::{ResidualNetwork, construct_extend_network_one_supply_one_demand},
+        residual_network::ResidualNetwork,
         solvers::{macros::impl_minimum_cost_flow_solver, solver::MinimumCostFlowSolver},
         status::Status,
         validate::{trivial_solution_if_any, validate_balance, validate_infeasible},
@@ -42,7 +43,6 @@ where
     pub fn new(graph: &Graph<Directed, MinimumCostFlowNode<F>, MinimumCostFlowEdge<F>>) -> Self {
         let nn = NormalizedNetwork::new(graph);
 
-        // transforms the minimum cost flow problem into a problem with a single excess node and a single deficit node.
         let (source, sink, artificial_edges, excess_fix) = construct_extend_network_one_supply_one_demand(&nn);
         let rn = ResidualNetwork::new(&nn, Some(&[source, sink]), Some(&artificial_edges), None, Some(&excess_fix));
         let num_nodes = rn.num_nodes;
@@ -78,7 +78,7 @@ where
             return Err(Status::Infeasible);
         }
 
-        Ok(self.rn.calculate_objective_value_in_original_graph())
+        Ok(self.rn.calculate_objective_value_original_graph())
     }
 
     // update potentials
@@ -116,10 +116,24 @@ where
         }
 
         // update potentials
-        for u in 0..self.rn.num_nodes {
-            if self.visited[u] {
-                self.rn.potentials[u] -= self.dist[u].unwrap();
+        // for u in 0..self.rn.num_nodes {
+        //     if self.visited[u] {
+        //         self.rn.potentials[u] -= self.dist[u].unwrap();
+        //     }
+        // }
+
+        // sink reachable が確認できた後に
+        let mut d_max = F::zero();
+        for d in self.dist.iter().filter_map(|&x| x) {
+            if d > d_max {
+                d_max = d;
             }
+        }
+
+        // visited だけでなく全頂点を更新
+        for u in 0..self.rn.num_nodes {
+            let du = self.dist[u].unwrap_or(d_max);
+            self.rn.potentials[u] -= du;
         }
 
         self.visited[sink.index()]
@@ -218,24 +232,20 @@ where
             && self.distances[from.index()] == self.distances[self.rn.to[arc_id.index()].index()] + 1
     }
 
-    fn make_minimum_cost_flow_in_original_graph(&self) -> Vec<F> {
-        self.rn.make_minimum_cost_flow_in_original_graph()
-    }
-
     fn flow(&self, edge_id: EdgeId) -> Option<F> {
-        self.rn.flow(edge_id)
+        self.rn.flow_original_graph(edge_id)
     }
 
     fn flows(&self) -> Vec<F> {
-        self.rn.flows()
+        self.rn.flows_original_graph()
     }
-    
+
     fn potential(&self, node_id: NodeId) -> Option<F> {
-        self.rn.potential(node_id)
+        self.rn.potential_original_graph(node_id)
     }
 
     fn potentials(&self) -> Vec<F> {
-        self.rn.potentials()
+        self.rn.potentials_original_graph()
     }
 }
 

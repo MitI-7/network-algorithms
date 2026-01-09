@@ -63,7 +63,8 @@ where
             return Err(Status::Infeasible);
         }
 
-        Ok(self.rn.calculate_objective_value_in_original_graph())
+        debug_assert!(self.rn.check_optimality());
+        Ok(self.rn.calculate_objective_value_original_graph())
     }
 
     fn calculate_distance(&mut self, s: NodeId) -> Option<(NodeId, Vec<bool>, Vec<Option<F>>, Vec<Option<ArcId>>)> {
@@ -138,24 +139,20 @@ where
         self.rn.excesses[s.index()] -= delta;
     }
 
-    fn make_minimum_cost_flow_in_original_graph(&self) -> Vec<F> {
-        self.rn.make_minimum_cost_flow_in_original_graph()
-    }
-
     fn flow(&self, edge_id: EdgeId) -> Option<F> {
-        self.rn.flow(edge_id)
+        self.rn.flow_original_graph(edge_id)
     }
 
     fn flows(&self) -> Vec<F> {
-        self.rn.flows()
+        self.rn.flows_original_graph()
     }
-    
+
     fn potential(&self, node_id: NodeId) -> Option<F> {
-        self.rn.potential(node_id)
+        self.rn.potential_original_graph(node_id)
     }
 
     fn potentials(&self) -> Vec<F> {
-        self.rn.potentials()
+        self.rn.potentials_original_graph()
     }
 }
 

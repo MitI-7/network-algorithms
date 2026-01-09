@@ -66,7 +66,7 @@ where
             };
 
             return if status == Status::Optimal {
-                Ok(self.st.calculate_objective_value_in_original_graph())
+                Ok(self.st.calculate_objective_value_original_graph())
             } else {
                 Err(status)
             };
@@ -82,7 +82,7 @@ where
         if !self.st.satisfy_constraints() {
             return Err(Status::Infeasible);
         }
-        Ok(self.st.calculate_objective_value_in_original_graph())
+        Ok(self.st.calculate_objective_value_original_graph())
     }
 
     fn run2(&mut self) {

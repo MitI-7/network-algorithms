@@ -1,3 +1,4 @@
+use crate::minimum_cost_flow::graph::MinimumCostFlowGraph;
 use crate::{
     algorithms::minimum_cost_flow::normalized_network::{NormalizedEdge, NormalizedNetwork},
     core::numeric::CostNum,
@@ -6,6 +7,7 @@ use crate::{
         iter::ArcIdRange,
     },
 };
+use std::fmt::Debug;
 use std::{cmp::Reverse, collections::BinaryHeap};
 
 #[derive(Default)]
@@ -147,40 +149,6 @@ where
         }
     }
 
-    pub fn calculate_objective_value_in_original_graph(&self) -> F {
-        let mut objective_value = F::zero();
-        for edge_id in 0..self.num_edges_original_graph {
-            let arc_id = self.edge_id_to_arc_id[edge_id];
-
-            let flow = self.upper[arc_id.index()] - self.residual_capacity[arc_id.index()];
-            if self.is_reversed_in_original_graph[edge_id] {
-                let original_flow = self.upper[arc_id.index()] + self.lower_in_original_graph[edge_id] - flow;
-                objective_value += original_flow * -self.cost[arc_id.index()];
-            } else {
-                let original_flow = flow + self.lower_in_original_graph[edge_id];
-                objective_value += original_flow * self.cost[arc_id.index()];
-            };
-        }
-        objective_value
-    }
-
-    pub fn make_minimum_cost_flow_in_original_graph(&self) -> Vec<F> {
-        let mut flows = Vec::with_capacity(self.num_edges_original_graph);
-        for edge_id in 0..self.num_edges_original_graph {
-            let arc_id = self.edge_id_to_arc_id[edge_id];
-
-            let flow = self.upper[arc_id.index()] - self.residual_capacity[arc_id.index()];
-            if self.is_reversed_in_original_graph[edge_id] {
-                let original_flow = self.upper[arc_id.index()] + self.lower_in_original_graph[edge_id] - flow;
-                flows.push(original_flow);
-            } else {
-                let original_flow = flow + self.lower_in_original_graph[edge_id];
-                flows.push(original_flow);
-            };
-        }
-        flows
-    }
-
     #[inline]
     pub fn neighbors(&self, u: NodeId) -> ArcIdRange {
         ArcIdRange { cur: self.start[u.index()], end: self.start[u.index() + 1] }
@@ -243,137 +211,72 @@ where
         self.residual_capacity[arc_id.index()]
     }
 
-    pub(crate) fn flow(&self, edge_id: EdgeId) -> Option<F> {
+    pub fn calculate_objective_value_original_graph(&self) -> F {
+        let mut objective_value = F::zero();
+        for edge_id in 0..self.num_edges_original_graph {
+            let arc_id = self.edge_id_to_arc_id[edge_id];
+            let cost = if self.is_reversed_in_original_graph[edge_id] {
+                -self.cost[arc_id.index()]
+            } else {
+                self.cost[arc_id.index()]
+            };
+            objective_value += cost * self.flow_original_graph(EdgeId(edge_id)).unwrap();
+        }
+        objective_value
+    }
+
+    pub(crate) fn flow_original_graph(&self, edge_id: EdgeId) -> Option<F> {
         if edge_id.index() >= self.num_edges_original_graph {
             return None;
         }
         let arc_id = self.edge_id_to_arc_id[edge_id.index()];
-        Some(self.upper[arc_id.index()] - self.residual_capacity[arc_id.index()])
+        let flow = self.upper[arc_id.index()] - self.residual_capacity[arc_id.index()];
+
+        Some(if self.is_reversed_in_original_graph[edge_id.index()] {
+            self.upper[arc_id.index()] + self.lower_in_original_graph[edge_id.index()] - flow
+        } else {
+            flow + self.lower_in_original_graph[edge_id.index()]
+        })
     }
 
-    pub(crate) fn flows(&self) -> Vec<F> {
-        let mut flows = vec![F::zero(); self.num_edges_original_graph];
-        for edge_id in (0..self.num_edges_original_graph).map(EdgeId) {
-            let arc_id = self.edge_id_to_arc_id[edge_id.index()];
-            flows[edge_id.index()] = self.upper[arc_id.index()] - self.residual_capacity[arc_id.index()];
-        }
-        flows
+    pub(crate) fn flows_original_graph(&self) -> Vec<F> {
+        (0..self.num_edges_original_graph)
+            .map(|edge_id| self.flow_original_graph(EdgeId(edge_id)).unwrap())
+            .collect()
     }
 
-    pub(crate) fn potential(&self, node_id: NodeId) -> Option<F> {
+    pub(crate) fn potential_original_graph(&self, node_id: NodeId) -> Option<F> {
         if node_id.index() >= self.num_nodes_original_graph {
             return None;
         }
         Some(self.potentials[node_id.index()])
     }
 
-    pub(crate) fn potentials(&self) -> Vec<F> {
+    pub(crate) fn potentials_original_graph(&self) -> Vec<F> {
         self.potentials[..self.num_nodes_original_graph].to_vec()
     }
-}
 
-pub(crate) fn construct_extend_network_one_supply_one_demand<F>(
-    graph: &NormalizedNetwork<'_, F>,
-) -> (NodeId, NodeId, Vec<NormalizedEdge<F>>, Vec<F>)
-where
-    F: CostNum,
-{
-    let mut edges = Vec::new();
-    let mut excess = vec![F::zero(); graph.num_nodes() + 2];
-    let source = NodeId(graph.num_nodes());
-    let sink = NodeId(source.index() + 1);
-    let total_excess_positive = graph
-        .excesses()
-        .iter()
-        .filter(|&e| *e > F::zero())
-        .fold(F::zero(), |sum, &e| sum + e);
-    let total_excess_negative = graph
-        .excesses()
-        .iter()
-        .filter(|&e| *e < F::zero())
-        .fold(F::zero(), |sum, &e| sum + e);
+    pub(crate) fn check_optimality(&self) -> bool {
+        let mut ok = true;
+        for u in (0..self.num_nodes).map(NodeId) {
+            for arc_id in self.neighbors(u) {
+                if self.upper[arc_id.index()] == F::zero() {
+                    continue;
+                }
 
-    for u in 0..graph.num_nodes() {
-        if u == source.index() || u == sink.index() {
-            continue;
+                let f = self.upper[arc_id.index()] - self.residual_capacity[arc_id.index()];
+                let r = self.reduced_cost(u, arc_id);
+
+                // Complementary slackness (optimality witness by potentials)
+                ok &= if f == F::zero() {
+                    r >= F::zero()
+                } else if F::zero() < f && f < self.upper[arc_id.index()] {
+                    r == F::zero()
+                } else {
+                    r <= F::zero()
+                };
+            }
         }
-        if graph.excesses()[u] > F::zero() {
-            edges.push(NormalizedEdge {
-                u: source,
-                v: NodeId(u),
-                lower: F::zero(),
-                upper: graph.excesses()[u],
-                cost: F::zero(),
-                is_reversed: false,
-            });
-        }
-        if graph.excesses()[u] < F::zero() {
-            edges.push(NormalizedEdge {
-                u: NodeId(u),
-                v: sink,
-                lower: F::zero(),
-                upper: -graph.excesses()[u],
-                cost: F::zero(),
-                is_reversed: false,
-            });
-        }
-        excess[u] -= graph.excesses()[u];
+        ok
     }
-    excess[source.index()] = total_excess_positive;
-    excess[sink.index()] = total_excess_negative;
-
-    (source, sink, edges, excess)
-}
-
-pub(crate) fn construct_extend_network_feasible_solution<F>(
-    graph: &NormalizedNetwork<F>,
-) -> (NodeId, Vec<NormalizedEdge<F>>, Vec<F>, Vec<F>)
-where
-    F: CostNum,
-{
-    let inf_cost = graph
-        .iter_edges()
-        .map(|e| e.cost)
-        .fold(F::one(), |acc, cost| acc + cost); // all edge costs are non-negative
-
-    let root = NodeId(graph.num_nodes());
-    let mut artificial_edges = Vec::new();
-    let mut flows = vec![F::zero(); graph.num_edges()]; // flow in original graph is zero
-    let mut fix_excess = vec![F::zero(); graph.num_nodes() + 1]; // original graph + root
-    for u in 0..graph.num_nodes() {
-        if u == root.index() {
-            continue;
-        }
-
-        let excess = graph.excesses()[u];
-        if excess >= F::zero() {
-            // u -> root
-            let edge = NormalizedEdge {
-                u: NodeId(u),
-                v: root,
-                lower: F::zero(),
-                upper: excess,
-                cost: inf_cost,
-                is_reversed: false,
-            };
-            flows.push(excess);
-            artificial_edges.push(edge);
-        } else {
-            // root -> u
-            let edge = NormalizedEdge {
-                u: root,
-                v: NodeId(u),
-                lower: F::zero(),
-                upper: -excess,
-                cost: inf_cost,
-                is_reversed: false,
-            };
-            flows.push(-excess);
-            artificial_edges.push(edge);
-        }
-        fix_excess[u] -= excess;
-        fix_excess[root.index()] += excess;
-    }
-
-    (root, artificial_edges, flows, fix_excess)
 }

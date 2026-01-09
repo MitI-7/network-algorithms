@@ -2,7 +2,20 @@ use network_algorithms::core::numeric::CostNum;
 use network_algorithms::ids::EdgeId;
 use network_algorithms::minimum_cost_flow::prelude::*;
 use rstest::rstest;
-use std::{fs::read_to_string, path::PathBuf, time::Duration};
+use rstest_reuse::{self, *};
+use std::{fmt::Debug, fs::read_to_string, path::Path, path::PathBuf};
+
+#[template]
+#[rstest]
+#[case(Solver::CostScalingPushRelabel)]
+#[case(Solver::CycleCanceling)]
+#[case(Solver::OutOfKilter)]
+#[case(Solver::PrimalDual)]
+#[case(Solver::SuccessiveShortestPath)]
+#[case(Solver::DualNetworkSimplex)]
+#[case(Solver::ParametricNetworkSimplex)]
+#[case(Solver::PrimalNetworkSimplex)]
+fn all_solvers(#[case] solver: Solver) {}
 
 enum Solver {
     CostScalingPushRelabel,
@@ -16,7 +29,7 @@ enum Solver {
 }
 
 impl Solver {
-    pub fn should_skip(&self, path: &PathBuf) -> bool {
+    pub fn skip(&self, path: &Path) -> bool {
         let skip_for_lib = matches!(self, Solver::CycleCanceling);
         let a = skip_for_lib && path.to_str().map_or(false, |s| s.contains("LibraryChecker"));
         let skip_for_anti = matches!(
@@ -53,50 +66,42 @@ impl Solver {
     }
 }
 
-fn check_optimality<F: CostNum>(
+fn check_optimality<F: CostNum + Debug>(
     graph: &MinimumCostFlowGraph<F>,
     edges: &[EdgeId],
     flows: &[F],
     potentials: &[F],
 ) -> bool {
+    let mut ok = true;
     for &edge_id in edges {
         let edge = graph.get_edge(edge_id).unwrap();
         let (u, v) = (edge.u, edge.v);
-
         let f = flows[edge_id.index()];
-        let r = edge.data.cost - potentials[u.index()] + potentials[v.index()];
 
         // Feasibility (capacity)
         if f < edge.data.lower || f > edge.data.upper {
             return false;
         }
 
+        if edge.data.lower == edge.data.upper {
+            continue;
+        }
+
+        let r = edge.data.cost - potentials[u.index()] + potentials[v.index()];
+
         // Complementary slackness (optimality witness by potentials)
-        // if f > edge.data.lower && r > F::zero() {
-        //     return false;
-        // }
-        // if f < edge.data.upper && r < F::zero() {
-        //     return false;
-        // }
+        ok &= if f == edge.data.lower {
+            r >= F::zero()
+        } else if edge.data.lower < f && f < edge.data.upper {
+            r == F::zero()
+        } else {
+            r <= F::zero()
+        };
     }
-    true
+    ok
 }
 
-#[rstest]
-#[timeout(Duration::from_millis(1000))]
-#[case::cs(Solver::CostScalingPushRelabel)]
-#[case::cc(Solver::CycleCanceling)]
-#[case::ok(Solver::OutOfKilter)]
-#[case::pd(Solver::PrimalDual)]
-#[case::ssp(Solver::SuccessiveShortestPath)]
-#[case::ns_dual(Solver::DualNetworkSimplex)]
-#[case::ns_parametric(Solver::ParametricNetworkSimplex)]
-#[case::ns_primal(Solver::PrimalNetworkSimplex)]
-fn minimum_cost_flow(#[files("tests/minimum_cost_flow/*/*.txt")] path: PathBuf, #[case] solver: Solver) {
-    if solver.should_skip(&path) {
-        return;
-    }
-
+fn read_graph(path: &Path) -> (MinimumCostFlowGraph<i128>, Vec<EdgeId>, String) {
     let (mut num_nodes, mut num_edges, mut expected) = (0, 0, "dummy".to_string());
     let mut graph = MinimumCostFlowGraph::<i128>::default();
     let mut nodes = Vec::new();
@@ -127,6 +132,15 @@ fn minimum_cost_flow(#[files("tests/minimum_cost_flow/*/*.txt")] path: PathBuf, 
             }
         });
 
+    (graph, edges, expected)
+}
+
+#[apply(all_solvers)]
+fn minimum_cost_flow(#[files("tests/minimum_cost_flow/*/*.txt")] path: PathBuf, #[case] solver: Solver) {
+    if solver.skip(&path) {
+        return;
+    }
+    let (graph, edges, expected) = read_graph(&path);
     let mut s = solver.get(&graph);
     let actual = s.solve();
 
@@ -134,22 +148,14 @@ fn minimum_cost_flow(#[files("tests/minimum_cost_flow/*/*.txt")] path: PathBuf, 
         Ok(actual) => {
             let flows = s.flows();
             let potentials = s.potentials();
-            // assert!(check_optimality(&graph, &edges, &flows, &potentials));
+            assert!(check_optimality(&graph, &edges, &flows, &potentials));
             assert_eq!(actual, expected.parse().unwrap(), "{:?}", path);
         }
         _ => assert_eq!("infeasible", expected, "{:?}", path),
     }
 }
 
-#[rstest]
-#[case::cs(Solver::CostScalingPushRelabel)]
-#[case::cc(Solver::CycleCanceling)]
-#[case::ok(Solver::OutOfKilter)]
-#[case::pd(Solver::PrimalDual)]
-#[case::ssp(Solver::SuccessiveShortestPath)]
-#[case::ns_dual(Solver::DualNetworkSimplex)]
-#[case::ns_parametric(Solver::ParametricNetworkSimplex)]
-#[case::ns_primal(Solver::PrimalNetworkSimplex)]
+#[apply(all_solvers)]
 fn minimum_cost_flow_unbalance(#[case] solver: Solver) {
     let mut graph = MinimumCostFlowGraph::<i128>::default();
     let nodes = graph.add_nodes(2);
@@ -161,15 +167,7 @@ fn minimum_cost_flow_unbalance(#[case] solver: Solver) {
     assert_eq!(actual.err().unwrap(), Status::Unbalanced);
 }
 
-#[rstest]
-#[case::cs(Solver::CostScalingPushRelabel)]
-#[case::cc(Solver::CycleCanceling)]
-#[case::ok(Solver::OutOfKilter)]
-#[case::pd(Solver::PrimalDual)]
-#[case::ssp(Solver::SuccessiveShortestPath)]
-#[case::ns_dual(Solver::DualNetworkSimplex)]
-#[case::ns_parametric(Solver::ParametricNetworkSimplex)]
-#[case::ns_primal(Solver::PrimalNetworkSimplex)]
+#[apply(all_solvers)]
 fn minimum_cost_flow_no_edges(#[case] solver: Solver) {
     let mut graph = MinimumCostFlowGraph::<i128>::default();
     let nodes = graph.add_nodes(2);
@@ -180,15 +178,7 @@ fn minimum_cost_flow_no_edges(#[case] solver: Solver) {
     assert_eq!(actual.err().unwrap(), Status::Infeasible);
 }
 
-#[rstest]
-#[case::cs(Solver::CostScalingPushRelabel)]
-#[case::cc(Solver::CycleCanceling)]
-#[case::ok(Solver::OutOfKilter)]
-#[case::pd(Solver::PrimalDual)]
-#[case::ssp(Solver::SuccessiveShortestPath)]
-#[case::ns_dual(Solver::DualNetworkSimplex)]
-#[case::ns_parametric(Solver::ParametricNetworkSimplex)]
-#[case::ns_primal(Solver::PrimalNetworkSimplex)]
+#[apply(all_solvers)]
 fn minimum_cost_flow_no_nodes(#[case] solver: Solver) {
     let graph = MinimumCostFlowGraph::<i128>::default();
     let actual = solver.get(&graph).solve();
