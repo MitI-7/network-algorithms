@@ -15,9 +15,9 @@ fn make_graph() -> (MinimumCostFlowGraph<i32>, Vec<EdgeId>) {
         graph.add_edge(nodes[3], nodes[4], 0, 20, 2).unwrap(),
         graph.add_edge(nodes[4], nodes[2], 0, 5, 3).unwrap(),
     ];
-    graph.get_node_mut(nodes[0]).unwrap().data.b = 20;
-    graph.get_node_mut(nodes[3]).unwrap().data.b = -5;
-    graph.get_node_mut(nodes[4]).unwrap().data.b = -15;
+    graph.set_excess(nodes[0], 20);
+    graph.set_excess(nodes[3], -5);
+    graph.set_excess(nodes[4], -15);
 
     (graph, edges)
 }
