@@ -1,6 +1,18 @@
 use network_algorithms::{ids::NodeId, maximum_flow::prelude::*};
 use rstest::rstest;
+use rstest_reuse::*;
 use std::{fs::read_to_string, path::PathBuf};
+
+#[template]
+#[rstest]
+#[case::capacity_scaling(Solver::CapacityScaling)]
+#[case::dinic(Solver::Dinic)]
+#[case::edmonds_karp(Solver::EdmondsKarp)]
+#[case::ford_fulkerson(Solver::FordFulkerson)]
+#[case::push_relabel_fifo(Solver::PushRelabelFIFO)]
+#[case::push_relabel_highest_label(Solver::PushRelabelHighestLabel)]
+#[case::shortest_augmenting_path(Solver::ShortestAugmentingPath)]
+fn all_solvers(#[case] solver: Solver) {}
 
 enum Solver {
     CapacityScaling,
@@ -10,6 +22,29 @@ enum Solver {
     PushRelabelFIFO,
     PushRelabelHighestLabel,
     ShortestAugmentingPath,
+}
+
+impl Solver {
+    pub fn skip(&self, path: &PathBuf) -> bool {
+        let skip_for_libreoj = matches!(self, Solver::EdmondsKarp | Solver::FordFulkerson | Solver::PushRelabelFIFO);
+        skip_for_libreoj && path.to_str().map_or(false, |s| s.contains("LibreOJ"))
+    }
+
+    pub fn get(&self, graph: &MaximumFlowGraph<i64>) -> Box<dyn MaximumFlowSolver<i64>> {
+        match self {
+            Solver::CapacityScaling => Box::new(<CapacityScaling<i64> as MaximumFlowSolver<i64>>::new(graph)),
+            Solver::Dinic => Box::new(<Dinic<i64> as MaximumFlowSolver<i64>>::new(graph)),
+            Solver::EdmondsKarp => Box::new(<EdmondsKarp<i64> as MaximumFlowSolver<i64>>::new(graph)),
+            Solver::FordFulkerson => Box::new(<FordFulkerson<i64> as MaximumFlowSolver<i64>>::new(graph)),
+            Solver::PushRelabelFIFO => Box::new(<PushRelabelFifo<i64> as MaximumFlowSolver<i64>>::new(graph)),
+            Solver::ShortestAugmentingPath => {
+                Box::new(<ShortestAugmentingPath<i64> as MaximumFlowSolver<i64>>::new(graph))
+            }
+            Solver::PushRelabelHighestLabel => {
+                Box::new(<PushRelabelHighestLabel<i64> as MaximumFlowSolver<i64>>::new(graph))
+            }
+        }
+    }
 }
 
 fn load_graph(input_file_path: &PathBuf) -> (NodeId, NodeId, i64, MaximumFlowGraph<i64>) {
@@ -46,39 +81,9 @@ fn load_graph(input_file_path: &PathBuf) -> (NodeId, NodeId, i64, MaximumFlowGra
     (nodes[source], nodes[sink], expected, graph)
 }
 
-impl Solver {
-    pub fn should_skip(&self, path: &PathBuf) -> bool {
-        let skip_for_libreoj = matches!(self, Solver::EdmondsKarp | Solver::FordFulkerson | Solver::PushRelabelFIFO);
-        skip_for_libreoj && path.to_str().map_or(false, |s| s.contains("LibreOJ"))
-    }
-
-    pub fn get(&self, graph: &MaximumFlowGraph<i64>) -> Box<dyn MaximumFlowSolver<i64>> {
-        match self {
-            Solver::CapacityScaling => Box::new(<CapacityScaling<i64> as MaximumFlowSolver<i64>>::new(graph)),
-            Solver::Dinic => Box::new(<Dinic<i64> as MaximumFlowSolver<i64>>::new(graph)),
-            Solver::EdmondsKarp => Box::new(<EdmondsKarp<i64> as MaximumFlowSolver<i64>>::new(graph)),
-            Solver::FordFulkerson => Box::new(<FordFulkerson<i64> as MaximumFlowSolver<i64>>::new(graph)),
-            Solver::PushRelabelFIFO => Box::new(<PushRelabelFifo<i64> as MaximumFlowSolver<i64>>::new(graph)),
-            Solver::ShortestAugmentingPath => {
-                Box::new(<ShortestAugmentingPath<i64> as MaximumFlowSolver<i64>>::new(graph))
-            }
-            Solver::PushRelabelHighestLabel => {
-                Box::new(<PushRelabelHighestLabel<i64> as MaximumFlowSolver<i64>>::new(graph))
-            }
-        }
-    }
-}
-
-#[rstest]
-#[case::capacity_scaling(Solver::CapacityScaling)]
-#[case::dinic(Solver::Dinic)]
-#[case::edmonds_karp(Solver::EdmondsKarp)]
-#[case::ford_fulkerson(Solver::FordFulkerson)]
-#[case::push_relabel_fifo(Solver::PushRelabelFIFO)]
-#[case::push_relabel_highest_label(Solver::PushRelabelHighestLabel)]
-#[case::shortest_augmenting_path(Solver::ShortestAugmentingPath)]
+#[apply(all_solvers)]
 fn maximum_flow(#[files("tests/maximum_flow/*/*.txt")] path: PathBuf, #[case] solver: Solver) {
-    if solver.should_skip(&path) {
+    if solver.skip(&path) {
         return;
     }
 
@@ -87,35 +92,23 @@ fn maximum_flow(#[files("tests/maximum_flow/*/*.txt")] path: PathBuf, #[case] so
     assert_eq!(objective_value, expected);
 }
 
-#[rstest]
-#[case::capacity_scaling(Solver::CapacityScaling)]
-#[case::dinic(Solver::Dinic)]
-#[case::edmonds_karp(Solver::EdmondsKarp)]
-#[case::ford_fulkerson(Solver::FordFulkerson)]
-#[case::push_relabel_fifo(Solver::PushRelabelFIFO)]
-#[case::push_relabel_highest_label(Solver::PushRelabelHighestLabel)]
-#[case::shortest_augmenting_path(Solver::ShortestAugmentingPath)]
+#[apply(all_solvers)]
 fn maximum_flow_source_eq_sink(#[case] solver: Solver) {
     let mut graph = MaximumFlowGraph::default();
     let nodes = graph.add_nodes(2);
     graph.add_edge(nodes[0], nodes[1], 1);
 
     let actual = solver.get(&graph).solve(nodes[0], nodes[0]);
-    assert_eq!(actual.err().unwrap(), Status::BadInput);
+    let expected = Status::BadInput;
+    assert_eq!(actual.err().unwrap(), expected);
 }
 
-#[rstest]
-#[case::capacity_scaling(Solver::CapacityScaling)]
-#[case::dinic(Solver::Dinic)]
-#[case::edmonds_karp(Solver::EdmondsKarp)]
-#[case::ford_fulkerson(Solver::FordFulkerson)]
-#[case::push_relabel_fifo(Solver::PushRelabelFIFO)]
-#[case::push_relabel_highest_label(Solver::PushRelabelHighestLabel)]
-#[case::shortest_augmenting_path(Solver::ShortestAugmentingPath)]
+#[apply(all_solvers)]
 fn maximum_flow_no_edges(#[case] solver: Solver) {
     let mut graph = MaximumFlowGraph::default();
     let nodes = graph.add_nodes(10);
 
     let actual = solver.get(&graph).solve(nodes[0], nodes[9]);
-    assert_eq!(actual.unwrap(), 0);
+    let expected = 0;
+    assert_eq!(actual.unwrap(), expected);
 }

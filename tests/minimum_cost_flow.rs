@@ -2,7 +2,7 @@ use network_algorithms::core::numeric::CostNum;
 use network_algorithms::ids::EdgeId;
 use network_algorithms::minimum_cost_flow::prelude::*;
 use rstest::rstest;
-use rstest_reuse::{self, *};
+use rstest_reuse::*;
 use std::{fmt::Debug, fs::read_to_string, path::Path, path::PathBuf};
 
 #[template]
@@ -101,7 +101,7 @@ fn check_optimality<F: CostNum + Debug>(
     ok
 }
 
-fn read_graph(path: &Path) -> (MinimumCostFlowGraph<i128>, Vec<EdgeId>, String) {
+fn load_graph(path: &Path) -> (MinimumCostFlowGraph<i128>, Vec<EdgeId>, String) {
     let (mut num_nodes, mut num_edges, mut expected) = (0, 0, "dummy".to_string());
     let mut graph = MinimumCostFlowGraph::<i128>::default();
     let mut nodes = Vec::new();
@@ -140,7 +140,7 @@ fn minimum_cost_flow(#[files("tests/minimum_cost_flow/*/*.txt")] path: PathBuf, 
     if solver.skip(&path) {
         return;
     }
-    let (graph, edges, expected) = read_graph(&path);
+    let (graph, edges, expected) = load_graph(&path);
     let mut s = solver.get(&graph);
     let actual = s.solve();
 
@@ -168,6 +168,14 @@ fn minimum_cost_flow_unbalance(#[case] solver: Solver) {
 }
 
 #[apply(all_solvers)]
+fn minimum_cost_flow_no_nodes(#[case] solver: Solver) {
+    let graph = MinimumCostFlowGraph::<i128>::default();
+    let actual = solver.get(&graph).solve();
+    let expected = 0;
+    assert_eq!(actual.unwrap(), expected);
+}
+
+#[apply(all_solvers)]
 fn minimum_cost_flow_no_edges(#[case] solver: Solver) {
     let mut graph = MinimumCostFlowGraph::<i128>::default();
     let nodes = graph.add_nodes(2);
@@ -175,12 +183,6 @@ fn minimum_cost_flow_no_edges(#[case] solver: Solver) {
     graph.get_node_mut(nodes[1]).unwrap().data.b = -1;
 
     let actual = solver.get(&graph).solve();
-    assert_eq!(actual.err().unwrap(), Status::Infeasible);
-}
-
-#[apply(all_solvers)]
-fn minimum_cost_flow_no_nodes(#[case] solver: Solver) {
-    let graph = MinimumCostFlowGraph::<i128>::default();
-    let actual = solver.get(&graph).solve();
-    assert_eq!(actual.unwrap(), 0);
+    let expected = Status::Infeasible;
+    assert_eq!(actual.err().unwrap(), expected);
 }
