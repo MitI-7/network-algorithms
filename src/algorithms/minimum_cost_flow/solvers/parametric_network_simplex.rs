@@ -1,13 +1,13 @@
-use crate::minimum_cost_flow::residual_network::construct_extend_network_one_supply_one_demand;
-use crate::minimum_cost_flow::validate::{validate_balance_spanning_tree, validate_infeasible_spanning_tree};
 use crate::{
     algorithms::minimum_cost_flow::{
         edge::MinimumCostFlowEdge,
+        extend_network::construct_extend_network_one_supply_one_demand,
         node::MinimumCostFlowNode,
         normalized_network::NormalizedNetwork,
         solvers::{macros::impl_minimum_cost_flow_solver, solver::MinimumCostFlowSolver},
         spanning_tree_structure::{EdgeState, SpanningTreeStructure},
         status::Status,
+        validate::{validate_balance_spanning_tree, validate_infeasible_spanning_tree},
     },
     core::numeric::CostNum,
     graph::{
@@ -60,26 +60,6 @@ where
         debug_assert!(self.st.satisfy_optimality_conditions());
 
         self.run2();
-
-        // copy
-        // graph.excesses = self.st.excesses.clone().to_vec();
-        // for edge_id in 0..graph.num_edges() {
-        //     graph.edges[edge_id].flow = self.st.flow[edge_id];
-        // }
-        // graph.remove_artificial_sub_graph(&artificial_nodes, &artificial_edges);
-
-        // for edge_id in 0..graph.num_edges() {
-        //     let edge = &graph.edges[edge_id];
-        //     assert!(self.st.flow[edge_id] <= self.st.upper[edge_id]);
-        //
-        //     graph.edges[edge_id].data.flow = if edge.data.cost >= F::zero() {
-        //         self.st.flow[edge_id] + edge.data.lower
-        //     } else {
-        //         edge.data.upper - self.st.flow[edge_id]
-        //     };
-        //     assert!(graph.edges[edge_id].data.flow <= graph.edges[edge_id].data.upper);
-        //     assert!(graph.edges[edge_id].data.flow >= graph.edges[edge_id].data.lower);
-        // }
 
         if !self.st.satisfy_constraints() {
             return Err(Status::Infeasible);
@@ -270,24 +250,20 @@ where
             .attach_tree(self.st.root, attach_node, t2_new_root, entering_edge_id);
     }
 
-    fn make_minimum_cost_flow_in_original_graph(&self) -> Vec<F> {
-        self.st.make_minimum_cost_flow_in_original_graph()
-    }
-
     fn flow(&self, edge_id: EdgeId) -> Option<F> {
-        self.st.flow(edge_id)
+        self.st.flow_original_graph(edge_id)
     }
 
     fn flows(&self) -> Vec<F> {
-        self.st.flows()
+        self.st.flows_original_graph()
     }
-    
+
     fn potential(&self, node_id: NodeId) -> Option<F> {
-        self.st.potential(node_id)
+        self.st.potential_original_graph(node_id)
     }
 
     fn potentials(&self) -> Vec<F> {
-        self.st.potentials()
+        self.st.potentials_original_graph()
     }
 }
 

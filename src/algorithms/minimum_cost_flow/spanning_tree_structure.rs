@@ -39,10 +39,11 @@ pub struct SpanningTreeStructure<F> {
     pub(crate) last_descendent_dft: Box<[NodeId]>, // last descendants in depth-first thread
     pub(crate) num_successors: Box<[usize]>, // the number of successors of the node in the tree
 
-    pub(crate) _num_nodes_original_graph: usize,
+    // original graph
+    pub(crate) num_nodes_original_graph: usize,
     pub(crate) num_edges_original_graph: usize,
     pub(crate) b: Box<[F]>,
-    pub(crate) lower_in_original_graph: Box<[F]>,
+    pub(crate) lower_original_graph: Box<[F]>,
 }
 
 #[allow(dead_code)]
@@ -83,10 +84,10 @@ where
             last_descendent_dft: vec![INVALID_NODE_ID; num_nodes].into_boxed_slice(),
             num_successors: vec![0; num_nodes].into_boxed_slice(),
 
-            _num_nodes_original_graph: graph.num_nodes(),
+            num_nodes_original_graph: graph.num_nodes(),
             num_edges_original_graph: graph.num_edges(),
             b: vec![F::zero(); num_nodes].into_boxed_slice(),
-            lower_in_original_graph: vec![F::zero(); num_edges].into_boxed_slice(),
+            lower_original_graph: vec![F::zero(); num_edges].into_boxed_slice(),
         };
 
         st.build(graph, artificial_nodes, artificial_edges, initial_flows, fix_excesses);
@@ -127,7 +128,7 @@ where
             self.cost[edge_id] = edge.cost;
             self.state[edge_id] = EdgeState::Lower;
             self.is_reversed[edge_id] = edge.is_reversed;
-            self.lower_in_original_graph[edge_id] = edge.lower;
+            self.lower_original_graph[edge_id] = edge.lower;
         }
     }
 
@@ -411,54 +412,48 @@ where
 
     pub fn calculate_objective_value_in_original_graph(&self) -> F {
         let mut objective_value = F::zero();
+        // for edge_id in 0..self.num_edges {
+        //     objective_value += self.flow[edge_id] * self.cost[edge_id];
+        // }
+
         for edge_id in 0..self.num_edges_original_graph {
-            let flow = self.flow[edge_id];
-            if self.is_reversed[edge_id] {
-                let original_flow = self.upper[edge_id] + self.lower_in_original_graph[edge_id] - flow;
-                objective_value += original_flow * -self.cost[edge_id];
+            let cost = if self.is_reversed[edge_id] {
+                -self.cost[edge_id]
             } else {
-                let original_flow = flow + self.lower_in_original_graph[edge_id];
-                objective_value += original_flow * self.cost[edge_id];
+                self.cost[edge_id]
             };
+            objective_value += cost * self.flow_original_graph(EdgeId(edge_id)).unwrap();
         }
         objective_value
     }
 
-    pub fn make_minimum_cost_flow_in_original_graph(&self) -> Vec<F> {
-        let mut flows = Vec::with_capacity(self.num_edges_original_graph);
-        for edge_id in 0..self.num_edges_original_graph {
-            let flow = self.flow[edge_id];
-            if self.is_reversed[edge_id] {
-                let original_flow = self.upper[edge_id] + self.lower_in_original_graph[edge_id] - flow;
-                flows.push(original_flow);
-            } else {
-                let original_flow = flow + self.lower_in_original_graph[edge_id];
-                flows.push(original_flow);
-            };
-        }
-        flows
-    }
-    
-    pub(crate) fn flow(&self, edge_id: EdgeId) -> Option<F> {
+    pub(crate) fn flow_original_graph(&self, edge_id: EdgeId) -> Option<F> {
         if edge_id.index() >= self.num_edges {
             return None;
         }
-        Some(self.flow[edge_id.index()])
+        let flow = if self.is_reversed[edge_id.index()] {
+            self.upper[edge_id.index()] - self.flow[edge_id.index()]
+        } else {
+            self.flow[edge_id.index()]
+        };
+
+        Some(flow + self.lower_original_graph[edge_id.index()])
     }
 
-    pub(crate) fn flows(&self) -> Vec<F> {
-        self.flow[..self.num_edges].to_vec()
+    pub(crate) fn flows_original_graph(&self) -> Vec<F> {
+        (0..self.num_edges)
+            .map(|edge_id| self.flow_original_graph(EdgeId(edge_id)).unwrap())
+            .collect()
     }
-    
-    pub(crate) fn potential(&self, node_id: NodeId) -> Option<F> {
+
+    pub(crate) fn potential_original_graph(&self, node_id: NodeId) -> Option<F> {
         if node_id.index() >= self.num_nodes {
             return None;
         }
         Some(self.potentials[node_id.index()])
     }
-    
-    pub(crate) fn potentials(&self) -> Vec<F> {
-        self.potentials[..self.num_nodes].to_vec()
-    }
 
+    pub(crate) fn potentials_original_graph(&self) -> Vec<F> {
+        self.potentials[..self.num_nodes_original_graph].to_vec()
+    }
 }

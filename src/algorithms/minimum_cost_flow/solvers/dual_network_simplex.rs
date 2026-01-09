@@ -1,9 +1,9 @@
 use crate::{
     algorithms::minimum_cost_flow::{
         edge::MinimumCostFlowEdge,
+        extend_network::construct_extend_network_one_supply_one_demand,
         node::MinimumCostFlowNode,
         normalized_network::NormalizedNetwork,
-        residual_network::construct_extend_network_one_supply_one_demand,
         solvers::{
             macros::impl_minimum_cost_flow_solver, network_simplex_pivot_rules::BlockSearchPivotRule,
             network_simplex_pivot_rules::PivotRule, solver::MinimumCostFlowSolver,
@@ -302,24 +302,20 @@ where
         u
     }
 
-    fn make_minimum_cost_flow_in_original_graph(&self) -> Vec<F> {
-        self.st.make_minimum_cost_flow_in_original_graph()
-    }
-
     fn flow(&self, edge_id: EdgeId) -> Option<F> {
-        self.st.flow(edge_id)
+        self.st.flow_original_graph(edge_id)
     }
 
     fn flows(&self) -> Vec<F> {
-        self.st.flows()
+        self.st.flows_original_graph()
     }
 
     fn potential(&self, node_id: NodeId) -> Option<F> {
-        self.st.potential(node_id)
+        self.st.potential_original_graph(node_id)
     }
 
     fn potentials(&self) -> Vec<F> {
-        self.st.potentials()
+        self.st.potentials_original_graph()
     }
 }
 
