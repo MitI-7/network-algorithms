@@ -86,6 +86,7 @@ where
         assert!(self.rn.excesses[source.index()] > F::zero());
 
         // calculate the shortest path
+        let mut max_distance = F::zero();
         self.dist.fill(None);
         self.visited.fill(false);
         {
@@ -110,30 +111,18 @@ where
                     {
                         self.dist[to.index()] = Some(d.0 + self.rn.reduced_cost(u, edge_index));
                         bh.push((Reverse(self.dist[to.index()].unwrap()), to));
+                        max_distance = max_distance.max(self.dist[to.index()].unwrap());
                     }
                 }
             }
         }
 
         // update potentials
-        // for u in 0..self.rn.num_nodes {
-        //     if self.visited[u] {
-        //         self.rn.potentials[u] -= self.dist[u].unwrap();
-        //     }
-        // }
-
-        // sink reachable が確認できた後に
-        let mut d_max = F::zero();
-        for d in self.dist.iter().filter_map(|&x| x) {
-            if d > d_max {
-                d_max = d;
-            }
-        }
-
-        // visited だけでなく全頂点を更新
         for u in 0..self.rn.num_nodes {
-            let du = self.dist[u].unwrap_or(d_max);
-            self.rn.potentials[u] -= du;
+            if self.visited[u] {
+                // self.rn.potentials[u] -= self.dist[u].unwrap();
+                self.rn.potentials[u] = self.rn.potentials[u] - self.dist[u].unwrap() + max_distance;
+            }
         }
 
         self.visited[sink.index()]
@@ -197,8 +186,7 @@ where
         }
 
         let mut res = F::zero();
-        for arc_id in self.current_edge[u.index()]..self.rn.start[u.index() + 1] {
-            let arc_id = ArcId(arc_id);
+        for arc_id in (self.current_edge[u.index()]..self.rn.start[u.index() + 1]).map(ArcId) {
             self.current_edge[u.index()] = arc_id.index();
 
             if !self.is_admissible_edge(u, arc_id) || self.rn.reduced_cost(u, arc_id) != F::zero() {

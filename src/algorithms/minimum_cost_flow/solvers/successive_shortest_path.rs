@@ -21,7 +21,6 @@ use std::{cmp::Reverse, collections::BinaryHeap};
 pub struct SuccessiveShortestPath<F> {
     rn: ResidualNetwork<F>,
     source: NodeId,
-    sink: NodeId,
 }
 
 impl<F> SuccessiveShortestPath<F>
@@ -32,7 +31,7 @@ where
         let nn = NormalizedNetwork::new(graph);
         let (source, sink, artificial_edges, excess_fix) = construct_extend_network_one_supply_one_demand(&nn);
         let rn = ResidualNetwork::new(&nn, Some(&[source, sink]), Some(&artificial_edges), None, Some(&excess_fix));
-        Self { rn, source, sink }
+        Self { rn, source }
     }
 
     fn run(&mut self) -> Result<F, Status> {
@@ -85,8 +84,7 @@ where
                 return Some((u, visited, dist, prev));
             }
 
-            for arc_id in self.rn.start[u.index()]..self.rn.start[u.index() + 1] {
-                let arc_id = ArcId(arc_id);
+            for arc_id in (self.rn.start[u.index()]..self.rn.start[u.index() + 1]).map(ArcId) {
                 if self.rn.residual_capacity(arc_id) == F::zero() {
                     continue;
                 }
