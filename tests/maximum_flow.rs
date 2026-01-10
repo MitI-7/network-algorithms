@@ -115,6 +115,16 @@ fn maximum_flow(#[files("tests/maximum_flow/*/*.txt")] path: PathBuf, #[case] so
 }
 
 #[apply(all_solvers)]
+fn no_edges(#[case] solver: Solver) {
+    let mut graph = MaximumFlowGraph::default();
+    let nodes = graph.add_nodes(10);
+
+    let actual = solver.get(&graph).solve(nodes[0], nodes[9]);
+    let expected = 0;
+    assert_eq!(actual.unwrap(), expected);
+}
+
+#[apply(all_solvers)]
 fn source_eq_sink(#[case] solver: Solver) {
     let mut graph = MaximumFlowGraph::default();
     let nodes = graph.add_nodes(2);
@@ -123,16 +133,6 @@ fn source_eq_sink(#[case] solver: Solver) {
     let actual = solver.get(&graph).solve(nodes[0], nodes[0]);
     let expected = MaximumFlowError::InvalidTerminal { source: nodes[0], sink: nodes[0], num_nodes: 2 };
     assert_eq!(actual.err().unwrap(), expected);
-}
-
-#[apply(all_solvers)]
-fn no_edges(#[case] solver: Solver) {
-    let mut graph = MaximumFlowGraph::default();
-    let nodes = graph.add_nodes(10);
-
-    let actual = solver.get(&graph).solve(nodes[0], nodes[9]);
-    let expected = 0;
-    assert_eq!(actual.unwrap(), expected);
 }
 
 #[apply(all_solvers)]
