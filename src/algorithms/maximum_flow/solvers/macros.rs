@@ -16,26 +16,33 @@ macro_rules! impl_maximum_flow_solver {
                 Ok(objective_value)
             }
 
-            fn flow(&self, edge_id: EdgeId) -> Option<F> {
-                if edge_id.index() >= self.rn.num_edges {
-                    return None;
+            fn flow(&self, edge_id: EdgeId) -> Result<F, MaximumFlowError> {
+                // if edge_id.index() >= self.rn.num_edges {
+                //     return err();
+                // }
+                if self.status == Status::NotSolved {
+                    return Err(MaximumFlowError::NotSolved);
                 }
 
                 let arc_id = self.rn.edge_id_to_arc_id[edge_id.index()];
-                Some(self.rn.upper[arc_id.index()] - self.rn.residual_capacities[arc_id.index()])
+                Ok(self.rn.upper[arc_id.index()] - self.rn.residual_capacities[arc_id.index()])
             }
 
-            fn flows(&self) -> Vec<F> {
-                (0..self.rn.num_edges).map(|edge_id| self.flow(EdgeId(edge_id)).unwrap()).collect()
+            fn flows(&self) -> Result<Vec<F>, MaximumFlowError> {
+                if self.status == Status::NotSolved {
+                    return Err(MaximumFlowError::NotSolved);
+                }
+                Ok((0..self.rn.num_edges).map(|edge_id| self.flow(EdgeId(edge_id)).unwrap()).collect())
             }
 
             fn minimum_cut(&mut self) -> Result<Vec<bool>, MaximumFlowError> {
-                let source = self.source.ok_or(MaximumFlowError::NotSolved)?;
-                Ok(self.rn.reachable_from_source(source))
+                if self.status == Status::NotSolved {
+                    return Err(MaximumFlowError::NotSolved);
+                }
+                Ok(self.rn.reachable_from_source(self.source.unwrap()))
             }
         }
     };
 }
 
 pub(crate) use impl_maximum_flow_solver;
-use crate::algorithms::maximum_flow::error::MaximumFlowError;

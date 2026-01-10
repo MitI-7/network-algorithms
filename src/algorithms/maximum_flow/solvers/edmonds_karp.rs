@@ -1,6 +1,7 @@
 use crate::{
     algorithms::maximum_flow::{
         edge::MaximumFlowEdge,
+        error::MaximumFlowError,
         residual_network::ResidualNetwork,
         solvers::{macros::impl_maximum_flow_solver, solver::MaximumFlowSolver},
         status::Status,
@@ -14,12 +15,13 @@ use crate::{
     },
 };
 use std::collections::VecDeque;
-use crate::algorithms::maximum_flow::error::MaximumFlowError;
 
 pub struct EdmondsKarp<F> {
+    status: Status,
+    source: Option<NodeId>,
+
     rn: ResidualNetwork<F>,
     cutoff: Option<F>,
-    source: Option<NodeId>,
 }
 
 impl<F> EdmondsKarp<F>
@@ -28,7 +30,7 @@ where
 {
     fn new<N>(graph: &Graph<Directed, N, MaximumFlowEdge<F>>) -> Self {
         let rn = ResidualNetwork::new(graph);
-        Self { rn, cutoff: None, source: None }
+        Self { status: Status::NotSolved, source: None, rn, cutoff: None }
     }
 
     fn run(&mut self, source: NodeId, sink: NodeId) -> Result<F, MaximumFlowError> {
@@ -91,6 +93,7 @@ where
             residual -= delta;
         }
 
+        self.status = Status::Optimal;
         Ok(flow)
     }
 }

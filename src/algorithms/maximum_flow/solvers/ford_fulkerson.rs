@@ -1,6 +1,7 @@
 use crate::{
     algorithms::maximum_flow::{
         edge::MaximumFlowEdge,
+        error::MaximumFlowError,
         residual_network::ResidualNetwork,
         solvers::{macros::impl_maximum_flow_solver, solver::MaximumFlowSolver},
         status::Status,
@@ -10,16 +11,17 @@ use crate::{
     graph::{
         direction::Directed,
         graph::Graph,
-        ids::{EdgeId, INVALID_NODE_ID, NodeId},
+        ids::{EdgeId, NodeId},
     },
 };
-use crate::algorithms::maximum_flow::error::MaximumFlowError;
 
 pub struct FordFulkerson<F> {
+    status: Status,
+    source: Option<NodeId>,
+
     rn: ResidualNetwork<F>,
     visited: Box<[bool]>,
     cutoff: Option<F>,
-    source: Option<NodeId>,
 }
 
 impl<F> FordFulkerson<F>
@@ -29,7 +31,13 @@ where
     fn new<N>(graph: &Graph<Directed, N, MaximumFlowEdge<F>>) -> Self {
         let rn = ResidualNetwork::new(graph);
         let num_nodes = rn.num_nodes;
-        Self { rn, visited: vec![false; num_nodes].into_boxed_slice(), cutoff: None, source: None }
+        Self {
+            status: Status::NotSolved,
+            source: None,
+            rn,
+            visited: vec![false; num_nodes].into_boxed_slice(),
+            cutoff: None,
+        }
     }
 
     pub(crate) fn run(&mut self, source: NodeId, sink: NodeId) -> Result<F, MaximumFlowError> {
@@ -57,6 +65,7 @@ where
             }
         }
 
+        self.status = Status::Optimal;
         Ok(objective_value)
     }
 

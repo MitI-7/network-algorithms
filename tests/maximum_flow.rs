@@ -1,4 +1,4 @@
-use network_algorithms::{ids::NodeId, algorithms::maximum_flow::prelude::*};
+use network_algorithms::{algorithms::maximum_flow::prelude::*, ids::NodeId};
 use rstest::rstest;
 use rstest_reuse::*;
 use std::{fs::read_to_string, path::PathBuf};
@@ -103,7 +103,7 @@ fn maximum_flow(#[files("tests/maximum_flow/*/*.txt")] path: PathBuf, #[case] so
     let objective_value = s.solve(source, sink).unwrap();
     assert_eq!(objective_value, expected);
 
-    let flows = s.flows();
+    let flows = s.flows().unwrap();
     let reach = s.minimum_cut().unwrap();
     assert_eq!(check(&graph, &reach), expected);
 
@@ -115,7 +115,7 @@ fn maximum_flow(#[files("tests/maximum_flow/*/*.txt")] path: PathBuf, #[case] so
 }
 
 #[apply(all_solvers)]
-fn maximum_flow_source_eq_sink(#[case] solver: Solver) {
+fn source_eq_sink(#[case] solver: Solver) {
     let mut graph = MaximumFlowGraph::default();
     let nodes = graph.add_nodes(2);
     graph.add_edge(nodes[0], nodes[1], 1);
@@ -126,11 +126,24 @@ fn maximum_flow_source_eq_sink(#[case] solver: Solver) {
 }
 
 #[apply(all_solvers)]
-fn maximum_flow_no_edges(#[case] solver: Solver) {
+fn no_edges(#[case] solver: Solver) {
     let mut graph = MaximumFlowGraph::default();
     let nodes = graph.add_nodes(10);
 
     let actual = solver.get(&graph).solve(nodes[0], nodes[9]);
     let expected = 0;
     assert_eq!(actual.unwrap(), expected);
+}
+
+#[apply(all_solvers)]
+fn not_solved(#[case] solver: Solver) {
+    let mut graph = MaximumFlowGraph::default();
+    let nodes = graph.add_nodes(2);
+    let edge_id = graph.add_edge(nodes[0], nodes[1], 1).unwrap();
+
+    let mut solver = solver.get(&graph);
+
+    assert_eq!(solver.flow(edge_id).err().unwrap(), MaximumFlowError::NotSolved);
+    assert_eq!(solver.flows().err().unwrap(), MaximumFlowError::NotSolved);
+    assert_eq!(solver.minimum_cut().err().unwrap(), MaximumFlowError::NotSolved);
 }

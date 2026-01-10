@@ -1,5 +1,4 @@
 pub use super::graph::MaximumFlowGraph;
-pub use super::status::Status;
 pub use super::error::MaximumFlowError;
 pub use super::solvers::capacity_scaling::CapacityScaling;
 pub use super::solvers::dinic::Dinic;

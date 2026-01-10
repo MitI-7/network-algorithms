@@ -13,7 +13,7 @@ pub trait MaximumFlowSolver<F: FlowNum> {
     where
         Self: Sized;
     fn solve(&mut self, source: NodeId, sink: NodeId) -> Result<F, MaximumFlowError>;
-    fn flow(&self, u: EdgeId) -> Option<F>;
-    fn flows(&self) -> Vec<F>;
+    fn flow(&self, u: EdgeId) -> Result<F, MaximumFlowError>;
+    fn flows(&self) -> Result<Vec<F>, MaximumFlowError>;
     fn minimum_cut(&mut self) -> Result<Vec<bool>, MaximumFlowError>;
 }

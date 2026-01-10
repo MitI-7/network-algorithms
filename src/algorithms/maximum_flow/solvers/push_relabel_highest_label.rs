@@ -1,6 +1,7 @@
 use crate::{
     algorithms::maximum_flow::{
         edge::MaximumFlowEdge,
+        error::MaximumFlowError,
         residual_network::ResidualNetwork,
         solvers::{macros::impl_maximum_flow_solver, solver::MaximumFlowSolver},
         status::Status,
@@ -10,12 +11,14 @@ use crate::{
     graph::{
         direction::Directed,
         graph::Graph,
-        ids::{ArcId, EdgeId, INVALID_NODE_ID, NodeId},
+        ids::{ArcId, EdgeId, NodeId},
     },
 };
-use crate::algorithms::maximum_flow::error::MaximumFlowError;
 
 pub struct PushRelabelHighestLabel<F> {
+    status: Status,
+    source: Option<NodeId>,
+
     rn: ResidualNetwork<F>,
     current_arc: Vec<usize>,
 
@@ -29,7 +32,6 @@ pub struct PushRelabelHighestLabel<F> {
     bucket_idx: usize,
 
     distance_count: Vec<usize>,
-    source: Option<NodeId>,
 }
 
 impl<F> PushRelabelHighestLabel<F>
@@ -40,6 +42,8 @@ where
         let rn = ResidualNetwork::new(graph);
         let num_nodes = rn.num_nodes;
         Self {
+            status: Status::NotSolved,
+            source: None,
             rn,
             current_arc: Vec::new(),
 
@@ -53,7 +57,6 @@ where
             bucket_idx: 0,
 
             distance_count: Vec::new(),
-            source: None,
         }
     }
 
@@ -99,6 +102,7 @@ where
             self.push_flow_excess_back_to_source(source, sink);
         }
 
+        self.status = Status::Optimal;
         Ok(self.rn.excesses[sink.index()])
     }
 

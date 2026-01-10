@@ -1,6 +1,7 @@
 use crate::{
     algorithms::maximum_flow::{
         edge::MaximumFlowEdge,
+        error::MaximumFlowError,
         residual_network::ResidualNetwork,
         solvers::{macros::impl_maximum_flow_solver, solver::MaximumFlowSolver},
         status::Status,
@@ -10,16 +11,17 @@ use crate::{
     graph::{
         direction::Directed,
         graph::Graph,
-        ids::{ArcId, EdgeId, INVALID_NODE_ID, NodeId},
+        ids::{ArcId, EdgeId, NodeId},
     },
 };
-use crate::algorithms::maximum_flow::error::MaximumFlowError;
 
 pub struct ShortestAugmentingPath<F> {
+    status: Status,
+    source: Option<NodeId>,
+
     rn: ResidualNetwork<F>,
     current_edge: Box<[usize]>,
     cutoff: Option<F>,
-    source: Option<NodeId>,
 }
 
 impl<F> ShortestAugmentingPath<F>
@@ -30,7 +32,13 @@ where
         let rn = ResidualNetwork::new(graph);
         let num_nodes = rn.num_nodes;
 
-        Self { rn, current_edge: vec![0_usize; num_nodes].into_boxed_slice(), cutoff: None, source: None }
+        Self {
+            status: Status::NotSolved,
+            source: None,
+            rn,
+            current_edge: vec![0_usize; num_nodes].into_boxed_slice(),
+            cutoff: None,
+        }
     }
 
     fn run(&mut self, source: NodeId, sink: NodeId) -> Result<F, MaximumFlowError> {
@@ -56,6 +64,7 @@ where
             }
         }
 
+        self.status = Status::Optimal;
         Ok(flow)
     }
 

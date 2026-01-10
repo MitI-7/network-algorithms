@@ -1,6 +1,7 @@
 use crate::{
     algorithms::maximum_flow::{
         edge::MaximumFlowEdge,
+        error::MaximumFlowError,
         residual_network::ResidualNetwork,
         solvers::{macros::impl_maximum_flow_solver, solver::MaximumFlowSolver},
         status::Status,
@@ -10,19 +11,20 @@ use crate::{
     graph::{
         direction::Directed,
         graph::Graph,
-        ids::{ArcId, EdgeId, INVALID_NODE_ID, NodeId},
+        ids::{ArcId, EdgeId, NodeId},
     },
 };
 use num_traits::One;
 use std::collections::VecDeque;
-use crate::algorithms::maximum_flow::error::MaximumFlowError;
 
 pub struct CapacityScaling<F> {
+    status: Status,
+    source: Option<NodeId>,
+    
     rn: ResidualNetwork<F>,
     current_edge: Box<[usize]>,
     que: VecDeque<NodeId>,
     cutoff: Option<F>,
-    source: Option<NodeId>,
 }
 
 impl<F> CapacityScaling<F>
@@ -34,11 +36,12 @@ where
         let num_nodes = rn.num_nodes;
 
         Self {
+            status: Status::NotSolved,
+            source: None,
             rn,
             current_edge: vec![0_usize; num_nodes].into_boxed_slice(),
             que: VecDeque::new(),
             cutoff: None,
-            source: None,
         }
     }
 
@@ -84,6 +87,7 @@ where
             }
         }
 
+        self.status = Status::Optimal;
         Ok(flow)
     }
 

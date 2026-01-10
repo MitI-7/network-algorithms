@@ -1,8 +1,7 @@
-#[non_exhaustive]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
-pub enum Status {
+pub(crate) enum Status {
+    BadInput,
     #[default]
     NotSolved,
-    BadInput,
-    // Optimal,
+    Optimal,
 }

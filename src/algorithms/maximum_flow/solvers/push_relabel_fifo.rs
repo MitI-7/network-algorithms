@@ -1,6 +1,7 @@
 use crate::{
     algorithms::maximum_flow::{
         edge::MaximumFlowEdge,
+        error::MaximumFlowError,
         residual_network::ResidualNetwork,
         solvers::{macros::impl_maximum_flow_solver, solver::MaximumFlowSolver},
         status::Status,
@@ -10,13 +11,15 @@ use crate::{
     graph::{
         direction::Directed,
         graph::Graph,
-        ids::{ArcId, EdgeId, INVALID_NODE_ID, NodeId},
+        ids::{ArcId, EdgeId, NodeId},
     },
 };
 use std::collections::VecDeque;
-use crate::algorithms::maximum_flow::error::MaximumFlowError;
 
 pub struct PushRelabelFifo<F> {
+    status: Status,
+    source: Option<NodeId>,
+
     rn: ResidualNetwork<F>,
     global_relabel_freq: f64,
     value_only: bool,
@@ -25,7 +28,6 @@ pub struct PushRelabelFifo<F> {
     active_nodes: VecDeque<NodeId>,
     current_edge: Box<[usize]>,
     distance_count: Box<[usize]>,
-    source: Option<NodeId>,
 }
 
 impl<F> PushRelabelFifo<F>
@@ -37,6 +39,8 @@ where
         let num_nodes = rn.num_nodes;
 
         Self {
+            status: Status::NotSolved,
+            source: None,
             rn,
             global_relabel_freq: 1.0,
             value_only: false,
@@ -45,7 +49,6 @@ where
             active_nodes: VecDeque::new(),
             current_edge: vec![0_usize; num_nodes].into_boxed_slice(),
             distance_count: vec![0_usize; num_nodes + 1].into_boxed_slice(),
-            source: None,
         }
     }
 
@@ -86,6 +89,7 @@ where
             self.push_flow_excess_back_to_source(source, sink);
         }
 
+        self.status = Status::Optimal;
         Ok(self.rn.excesses[sink.index()])
     }
 

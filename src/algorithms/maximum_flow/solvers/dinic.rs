@@ -1,6 +1,7 @@
 use crate::{
     algorithms::maximum_flow::{
         edge::MaximumFlowEdge,
+        error::MaximumFlowError,
         residual_network::ResidualNetwork,
         solvers::{macros::impl_maximum_flow_solver, solver::MaximumFlowSolver},
         status::Status,
@@ -10,19 +11,20 @@ use crate::{
     graph::{
         direction::Directed,
         graph::Graph,
-        ids::{ArcId, EdgeId, INVALID_NODE_ID, NodeId},
+        ids::{ArcId, EdgeId, NodeId},
     },
 };
 use std::collections::VecDeque;
-use crate::algorithms::maximum_flow::error::MaximumFlowError;
 
 pub struct Dinic<F> {
+    status: Status,
+    source: Option<NodeId>,
+    
     pub(crate) rn: ResidualNetwork<F>,
     current_edge: Box<[usize]>,
     distances_to_sink: Box<[usize]>,
     que: VecDeque<NodeId>,
     cutoff: Option<F>,
-    source: Option<NodeId>,
 }
 
 impl<F> Dinic<F>
@@ -34,12 +36,13 @@ where
         let num_nodes = rn.num_nodes;
 
         Self {
+            status: Status::NotSolved,
+            source: None,
             rn,
             current_edge: vec![0_usize; num_nodes].into_boxed_slice(),
             distances_to_sink: vec![0; num_nodes].into_boxed_slice(),
             que: VecDeque::new(),
             cutoff: None,
-            source: None,
         }
     }
 
@@ -77,6 +80,7 @@ where
             }
         }
 
+        self.status = Status::Optimal;
         Ok(objective_value)
     }
 
