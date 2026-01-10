@@ -1,3 +1,4 @@
+use crate::algorithms::minimum_cost_flow::error::MinimumCostFlowError;
 use crate::{
     algorithms::minimum_cost_flow::normalized_network::{NormalizedEdge, NormalizedNetwork},
     core::numeric::CostNum,
@@ -231,36 +232,33 @@ where
             } else {
                 self.cost[arc_id.index()]
             };
-            objective_value += cost * self.flow_original_graph(EdgeId(edge_id)).unwrap();
+            objective_value += cost * self.flow_original_graph(EdgeId(edge_id));
         }
         objective_value
     }
 
-    pub(crate) fn flow_original_graph(&self, edge_id: EdgeId) -> Option<F> {
-        if edge_id.index() >= self.num_edges_original_graph {
-            return None;
-        }
+    pub(crate) fn flow_original_graph(&self, edge_id: EdgeId) -> F {
         let arc_id = self.edge_id_to_arc_id[edge_id.index()];
         let flow = self.upper[arc_id.index()] - self.residual_capacity[arc_id.index()];
 
-        Some(if self.is_reversed_in_original_graph[edge_id.index()] {
+        if self.is_reversed_in_original_graph[edge_id.index()] {
             self.upper[arc_id.index()] + self.lower_in_original_graph[edge_id.index()] - flow
         } else {
             flow + self.lower_in_original_graph[edge_id.index()]
-        })
+        }
     }
 
     pub(crate) fn flows_original_graph(&self) -> Vec<F> {
         (0..self.num_edges_original_graph)
-            .map(|edge_id| self.flow_original_graph(EdgeId(edge_id)).unwrap())
+            .map(|edge_id| self.flow_original_graph(EdgeId(edge_id)))
             .collect()
     }
 
-    pub(crate) fn potential_original_graph(&self, node_id: NodeId) -> Option<F> {
-        if node_id.index() >= self.num_nodes_original_graph {
-            return None;
-        }
-        Some(self.potentials[node_id.index()])
+    pub(crate) fn potential_original_graph(&self, node_id: NodeId) -> F {
+        // if node_id.index() >= self.num_nodes_original_graph {
+        //     return None;
+        // }
+        self.potentials[node_id.index()]
     }
 
     pub(crate) fn potentials_original_graph(&self) -> Vec<F> {

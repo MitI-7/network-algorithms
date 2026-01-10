@@ -11,23 +11,23 @@ macro_rules! impl_minimum_cost_flow_solver {
                 Self::new(graph)
             }
 
-            fn solve(&mut self) -> Result<F, Status> {
+            fn solve(&mut self) -> Result<F, MinimumCostFlowError> {
                 self.$run()
             }
 
-            fn flow(&self, edge_id: EdgeId) -> Option<F> {
+            fn flow(&self, edge_id: EdgeId) -> Result<F, MinimumCostFlowError> {
                 self.flow(edge_id)
             }
             
-            fn flows(&self) -> Vec<F> {
+            fn flows(&self) -> Result<Vec<F>, MinimumCostFlowError> {
                 self.flows()
             }
             
-            fn potential(&self, node_id: NodeId) -> Option<F> {
+            fn potential(&self, node_id: NodeId) -> Result<F, MinimumCostFlowError> {
                 self.potential(node_id)
             }
             
-            fn potentials(&self) -> Vec<F> {
+            fn potentials(&self) -> Result<Vec<F>, MinimumCostFlowError> {
                 self.potentials()
             }
         }
@@ -35,3 +35,4 @@ macro_rules! impl_minimum_cost_flow_solver {
 }
 
 pub(crate) use impl_minimum_cost_flow_solver;
+use crate::algorithms::minimum_cost_flow::error::MinimumCostFlowError;

@@ -18,8 +18,10 @@ use crate::{
 };
 use std::cmp::Reverse;
 use std::collections::{BinaryHeap, VecDeque};
+use crate::algorithms::minimum_cost_flow::error::MinimumCostFlowError;
 
 pub struct PrimalDual<F> {
+    status: Status,
     rn: ResidualNetwork<F>,
 
     // maximum flow(dinic)
@@ -48,6 +50,7 @@ where
         let num_nodes = rn.num_nodes;
 
         Self {
+            status: Status::NotSolved,
             rn,
             que: VecDeque::new(),
             distances: vec![0; num_nodes].into_boxed_slice(),
@@ -59,11 +62,12 @@ where
         }
     }
 
-    fn run(&mut self) -> Result<F, Status> {
+    fn run(&mut self) -> Result<F, MinimumCostFlowError> {
         validate_balance(&self.rn)?;
         validate_infeasible(&self.rn)?;
 
         if let Some(res) = trivial_solution_if_any(&self.rn) {
+            self.status = Status::Optimal;
             return res;
         }
 
@@ -75,8 +79,9 @@ where
         }
 
         if self.rn.have_excess() {
-            Err(Status::Infeasible)
+            Err(MinimumCostFlowError::Infeasible)
         } else {
+            self.status = Status::Optimal;
             Ok(self.rn.calculate_objective_value_original_graph())
         }
     }
@@ -220,20 +225,32 @@ where
             && self.distances[from.index()] == self.distances[self.rn.to[arc_id.index()].index()] + 1
     }
 
-    fn flow(&self, edge_id: EdgeId) -> Option<F> {
-        self.rn.flow_original_graph(edge_id)
+    fn flow(&self, edge_id: EdgeId) -> Result<F, MinimumCostFlowError> {
+        if self.status != Status::Optimal {
+            return Err(MinimumCostFlowError::NotSolved);
+        }
+        Ok(self.rn.flow_original_graph(edge_id))
     }
 
-    fn flows(&self) -> Vec<F> {
-        self.rn.flows_original_graph()
+    fn flows(&self) -> Result<Vec<F>, MinimumCostFlowError> {
+        if self.status != Status::Optimal {
+            return Err(MinimumCostFlowError::NotSolved);
+        }
+        Ok(self.rn.flows_original_graph())
     }
 
-    fn potential(&self, node_id: NodeId) -> Option<F> {
-        self.rn.potential_original_graph(node_id)
+    fn potential(&self, node_id: NodeId) -> Result<F, MinimumCostFlowError> {
+        if self.status != Status::Optimal {
+            return Err(MinimumCostFlowError::NotSolved);
+        }
+        Ok(self.rn.potential_original_graph(node_id))
     }
 
-    fn potentials(&self) -> Vec<F> {
-        self.rn.potentials_original_graph()
+    fn potentials(&self) -> Result<Vec<F>, MinimumCostFlowError> {
+        if self.status != Status::Optimal {
+            return Err(MinimumCostFlowError::NotSolved);
+        }
+        Ok(self.rn.potentials_original_graph())
     }
 }
 

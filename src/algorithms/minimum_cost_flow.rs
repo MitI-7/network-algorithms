@@ -1,4 +1,5 @@
 pub mod edge;
+pub mod error;
 mod extend_network;
 pub mod graph;
 pub mod node;

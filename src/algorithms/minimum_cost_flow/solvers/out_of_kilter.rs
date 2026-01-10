@@ -1,3 +1,4 @@
+use crate::algorithms::minimum_cost_flow::error::MinimumCostFlowError;
 use crate::{
     algorithms::minimum_cost_flow::{
         edge::MinimumCostFlowEdge,
@@ -20,6 +21,7 @@ use std::{cmp::Reverse, collections::BinaryHeap};
 
 // O(nU * (m + n) log n)
 pub struct OutOfKilter<F> {
+    status: Status,
     rn: ResidualNetwork<F>,
 }
 
@@ -38,13 +40,15 @@ where
             Some(&initial_flows),
             Some(&fix_excesses),
         );
-        OutOfKilter { rn }
+        OutOfKilter { status: Status::NotSolved, rn }
     }
 
-    fn run(&mut self) -> Result<F, Status> {
+    fn run(&mut self) -> Result<F, MinimumCostFlowError> {
         validate_balance(&self.rn)?;
         validate_infeasible(&self.rn)?;
+        
         if let Some(res) = trivial_solution_if_any(&self.rn) {
+            self.status = Status::Optimal;
             return res;
         }
 
@@ -81,8 +85,9 @@ where
         }
 
         if self.rn.have_excess() || self.rn.have_flow_in_artificial_arc() {
-            Err(Status::Infeasible)
+            Err(MinimumCostFlowError::Infeasible)
         } else {
+            self.status = Status::Optimal;
             Ok(self.rn.calculate_objective_value_original_graph())
         }
     }
@@ -156,19 +161,32 @@ where
         }
     }
 
-    fn flow(&self, edge_id: EdgeId) -> Option<F> {
-        self.rn.flow_original_graph(edge_id)
+    fn flow(&self, edge_id: EdgeId) -> Result<F, MinimumCostFlowError> {
+        if self.status != Status::Optimal {
+            return Err(MinimumCostFlowError::NotSolved);
+        }
+        Ok(self.rn.flow_original_graph(edge_id))
     }
 
-    fn flows(&self) -> Vec<F> {
-        self.rn.flows_original_graph()
+    fn flows(&self) -> Result<Vec<F>, MinimumCostFlowError> {
+        if self.status != Status::Optimal {
+            return Err(MinimumCostFlowError::NotSolved);
+        }
+        Ok(self.rn.flows_original_graph())
     }
 
-    fn potential(&self, node_id: NodeId) -> Option<F> {
-        self.rn.potential_original_graph(node_id)
+    fn potential(&self, node_id: NodeId) -> Result<F, MinimumCostFlowError> {
+        if self.status != Status::Optimal {
+            return Err(MinimumCostFlowError::NotSolved);
+        }
+        Ok(self.rn.potential_original_graph(node_id))
     }
 
-    fn potentials(&self) -> Vec<F> {
+    fn potentials(&self) -> Result<Vec<F>, MinimumCostFlowError> {
+        if self.status != Status::Optimal {
+            return Err(MinimumCostFlowError::NotSolved);
+        }
+
         let n = self.rn.num_nodes;
         let mut dist = vec![F::zero(); n]; // スーパーソースを全頂点に0で繋ぐのと等価
 
@@ -192,8 +210,7 @@ where
             }
         }
 
-        // ここが重要：check_optimality の r = c - π(u) + π(v) に合わせて π = -dist
-        dist.into_iter().map(|d| -d).collect()
+        Ok(dist.into_iter().map(|d| -d).collect())
     }
 }
 

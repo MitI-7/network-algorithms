@@ -1,3 +1,4 @@
+use crate::algorithms::minimum_cost_flow::error::MinimumCostFlowError;
 use crate::{
     algorithms::minimum_cost_flow::{
         edge::MinimumCostFlowEdge,
@@ -21,6 +22,7 @@ use crate::{
 };
 
 pub struct PrimalNetworkSimplex<F, P = BlockSearchPivotRule<F>> {
+    status: Status,
     st: SpanningTreeStructure<F>,
     pivot: P,
 
@@ -36,6 +38,7 @@ where
 {
     pub fn set_pivot<P2: PivotRule<F>>(self, new_pivot: P2) -> PrimalNetworkSimplex<F, P2> {
         PrimalNetworkSimplex {
+            status: Status::NotSolved,
             st: self.st,
             pivot: new_pivot,
             root: self.root,
@@ -61,10 +64,10 @@ where
         let mut pivot = P::default();
         pivot.initialize(st.num_edges);
 
-        Self { st, pivot, root, artificial_edges, inf_cost }
+        Self { status: Status::NotSolved, st, pivot, root, artificial_edges, inf_cost }
     }
 
-    fn run(&mut self) -> Result<F, Status> {
+    fn run(&mut self) -> Result<F, MinimumCostFlowError> {
         validate_balance_spanning_tree(&self.st)?;
         validate_infeasible_spanning_tree(&self.st)?;
 
@@ -80,11 +83,13 @@ where
         self.run2();
 
         self.pivot.clear();
-        if !self.st.satisfy_constraints() {
-            return Err(Status::Infeasible);
-        }
 
-        Ok(self.st.calculate_objective_value_original_graph())
+        if !self.st.satisfy_constraints() {
+            Err(MinimumCostFlowError::Infeasible)
+        } else {
+            self.status = Status::Optimal;
+            Ok(self.st.calculate_objective_value_original_graph())
+        }
     }
 
     pub(crate) fn run2(&mut self) {
@@ -225,20 +230,32 @@ where
         assert_eq!(self.st.parent[self.st.root.index()], INVALID_NODE_ID);
     }
 
-    fn flow(&self, edge_id: EdgeId) -> Option<F> {
-        self.st.flow_original_graph(edge_id)
+    fn flow(&self, edge_id: EdgeId) -> Result<F, MinimumCostFlowError> {
+        if self.status != Status::Optimal {
+            return Err(MinimumCostFlowError::NotSolved);
+        }
+        Ok(self.st.flow_original_graph(edge_id))
     }
 
-    fn flows(&self) -> Vec<F> {
-        self.st.flows_original_graph()
+    fn flows(&self) -> Result<Vec<F>, MinimumCostFlowError> {
+        if self.status != Status::Optimal {
+            return Err(MinimumCostFlowError::NotSolved);
+        }
+        Ok(self.st.flows_original_graph())
     }
 
-    fn potential(&self, node_id: NodeId) -> Option<F> {
-        self.st.potential_original_graph(node_id)
+    fn potential(&self, node_id: NodeId) -> Result<F, MinimumCostFlowError> {
+        if self.status != Status::Optimal {
+            return Err(MinimumCostFlowError::NotSolved);
+        }
+        Ok(self.st.potential_original_graph(node_id))
     }
 
-    fn potentials(&self) -> Vec<F> {
-        self.st.potentials_original_graph()
+    fn potentials(&self) -> Result<Vec<F>, MinimumCostFlowError> {
+        if self.status != Status::Optimal {
+            return Err(MinimumCostFlowError::NotSolved);
+        }
+        Ok(self.st.potentials_original_graph())
     }
 }
 

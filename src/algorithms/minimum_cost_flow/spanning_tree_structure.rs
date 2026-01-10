@@ -418,35 +418,29 @@ where
             } else {
                 self.cost[edge_id]
             };
-            objective_value += cost * self.flow_original_graph(EdgeId(edge_id)).unwrap();
+            objective_value += cost * self.flow_original_graph(EdgeId(edge_id));
         }
         objective_value
     }
 
-    pub(crate) fn flow_original_graph(&self, edge_id: EdgeId) -> Option<F> {
-        if edge_id.index() >= self.num_edges {
-            return None;
-        }
+    pub(crate) fn flow_original_graph(&self, edge_id: EdgeId) -> F {
         let flow = if self.is_reversed[edge_id.index()] {
             self.upper[edge_id.index()] - self.flow[edge_id.index()]
         } else {
             self.flow[edge_id.index()]
         };
 
-        Some(flow + self.lower_original_graph[edge_id.index()])
+        flow + self.lower_original_graph[edge_id.index()]
     }
 
     pub(crate) fn flows_original_graph(&self) -> Vec<F> {
         (0..self.num_edges)
-            .map(|edge_id| self.flow_original_graph(EdgeId(edge_id)).unwrap())
+            .map(|edge_id| self.flow_original_graph(EdgeId(edge_id)))
             .collect()
     }
 
-    pub(crate) fn potential_original_graph(&self, node_id: NodeId) -> Option<F> {
-        if node_id.index() >= self.num_nodes {
-            return None;
-        }
-        Some(self.potentials[node_id.index()])
+    pub(crate) fn potential_original_graph(&self, node_id: NodeId) -> F {
+        self.potentials[node_id.index()]
     }
 
     pub(crate) fn potentials_original_graph(&self) -> Vec<F> {

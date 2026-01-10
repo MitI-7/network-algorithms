@@ -4,6 +4,7 @@ use network_algorithms::algorithms::minimum_cost_flow::prelude::*;
 use rstest::rstest;
 use rstest_reuse::*;
 use std::{fmt::Debug, fs::read_to_string, path::Path, path::PathBuf};
+use network_algorithms::algorithms::minimum_cost_flow::error::MinimumCostFlowError;
 
 #[template]
 #[rstest]
@@ -146,8 +147,8 @@ fn minimum_cost_flow(#[files("tests/minimum_cost_flow/*/*.txt")] path: PathBuf, 
 
     match actual {
         Ok(actual) => {
-            let flows = s.flows();
-            let potentials = s.potentials();
+            let flows = s.flows().unwrap();
+            let potentials = s.potentials().unwrap();
             assert!(check_optimality(&graph, &edges, &flows, &potentials));
             assert_eq!(actual, expected.parse().unwrap(), "{:?}", path);
         }
@@ -156,7 +157,7 @@ fn minimum_cost_flow(#[files("tests/minimum_cost_flow/*/*.txt")] path: PathBuf, 
 }
 
 #[apply(all_solvers)]
-fn minimum_cost_flow_unbalance(#[case] solver: Solver) {
+fn unbalanced(#[case] solver: Solver) {
     let mut graph = MinimumCostFlowGraph::<i128>::default();
     let nodes = graph.add_nodes(2);
     graph.add_edge(nodes[0], nodes[1], 0, 1, 1);
@@ -164,11 +165,11 @@ fn minimum_cost_flow_unbalance(#[case] solver: Solver) {
     graph.get_node_mut(nodes[1]).unwrap().data.b = 1;
 
     let actual = solver.get(&graph).solve();
-    assert_eq!(actual.err().unwrap(), Status::Unbalanced);
+    assert_eq!(actual.err().unwrap(), MinimumCostFlowError::Unbalanced);
 }
 
 #[apply(all_solvers)]
-fn minimum_cost_flow_no_nodes(#[case] solver: Solver) {
+fn no_nodes(#[case] solver: Solver) {
     let graph = MinimumCostFlowGraph::<i128>::default();
     let actual = solver.get(&graph).solve();
     let expected = 0;
@@ -176,13 +177,13 @@ fn minimum_cost_flow_no_nodes(#[case] solver: Solver) {
 }
 
 #[apply(all_solvers)]
-fn minimum_cost_flow_no_edges(#[case] solver: Solver) {
+fn no_edges(#[case] solver: Solver) {
     let mut graph = MinimumCostFlowGraph::<i128>::default();
     let nodes = graph.add_nodes(2);
     graph.get_node_mut(nodes[0]).unwrap().data.b = 1;
     graph.get_node_mut(nodes[1]).unwrap().data.b = -1;
 
     let actual = solver.get(&graph).solve();
-    let expected = Status::Infeasible;
+    let expected = MinimumCostFlowError::Infeasible;
     assert_eq!(actual.err().unwrap(), expected);
 }
