@@ -1,3 +1,3 @@
-pub use crate::algorithms::branching::tarjan::Tarjan;
-pub use crate::algorithms::branching::edmonds::Edmonds;
-pub use crate::algorithms::branching::edge::WeightEdge;
+pub use super::edge::WeightEdge;
+pub use super::edmonds::Edmonds;
+pub use super::tarjan::Tarjan;

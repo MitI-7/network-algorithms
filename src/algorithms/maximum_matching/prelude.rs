@@ -1,2 +1,2 @@
-pub use crate::algorithms::maximum_matching::blossom::Blossom;
-pub use crate::algorithms::maximum_matching::graph::MaximumMatchingGraph;
+pub use super::blossom::Blossom;
+pub use super::graph::MaximumMatchingGraph;

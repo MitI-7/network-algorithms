@@ -4,6 +4,7 @@ use crate::{
     direction::{Directed, Undirected},
     graph::{graph::Graph, ids::NodeId},
 };
+use crate::prelude::maximum_flow::MaximumFlowError;
 
 pub struct GomoryHu<F> {
     solver: Dinic<F>,
@@ -21,7 +22,7 @@ where
     }
 
     /// 戻り値: (i, parent[i], weight[i]) の列（i=1..n-1）
-    pub fn build(&mut self) -> Result<Vec<(NodeId, NodeId, F)>, crate::algorithms::maximum_flow::status::Status> {
+    pub fn build(&mut self) -> Result<Vec<(NodeId, NodeId, F)>, MaximumFlowError> {
         let n = self.n;
         if n == 0 {
             return Ok(vec![]);

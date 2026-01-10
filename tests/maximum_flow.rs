@@ -121,7 +121,7 @@ fn maximum_flow_source_eq_sink(#[case] solver: Solver) {
     graph.add_edge(nodes[0], nodes[1], 1);
 
     let actual = solver.get(&graph).solve(nodes[0], nodes[0]);
-    let expected = Status::BadInput;
+    let expected = MaximumFlowError::InvalidTerminal { source: nodes[0], sink: nodes[0], num_nodes: 2 };
     assert_eq!(actual.err().unwrap(), expected);
 }
 
