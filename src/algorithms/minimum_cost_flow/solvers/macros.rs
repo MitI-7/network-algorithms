@@ -35,4 +35,3 @@ macro_rules! impl_minimum_cost_flow_solver {
 }
 
 pub(crate) use impl_minimum_cost_flow_solver;
-use crate::algorithms::minimum_cost_flow::error::MinimumCostFlowError;

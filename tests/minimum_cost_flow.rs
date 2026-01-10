@@ -1,10 +1,9 @@
+use network_algorithms::algorithms::minimum_cost_flow::prelude::*;
 use network_algorithms::core::numeric::CostNum;
 use network_algorithms::ids::EdgeId;
-use network_algorithms::algorithms::minimum_cost_flow::prelude::*;
 use rstest::rstest;
 use rstest_reuse::*;
 use std::{fmt::Debug, fs::read_to_string, path::Path, path::PathBuf};
-use network_algorithms::algorithms::minimum_cost_flow::error::MinimumCostFlowError;
 
 #[template]
 #[rstest]
@@ -157,18 +156,6 @@ fn minimum_cost_flow(#[files("tests/minimum_cost_flow/*/*.txt")] path: PathBuf, 
 }
 
 #[apply(all_solvers)]
-fn unbalanced(#[case] solver: Solver) {
-    let mut graph = MinimumCostFlowGraph::<i128>::default();
-    let nodes = graph.add_nodes(2);
-    graph.add_edge(nodes[0], nodes[1], 0, 1, 1);
-    graph.get_node_mut(nodes[0]).unwrap().data.b = 1;
-    graph.get_node_mut(nodes[1]).unwrap().data.b = 1;
-
-    let actual = solver.get(&graph).solve();
-    assert_eq!(actual.err().unwrap(), MinimumCostFlowError::Unbalanced);
-}
-
-#[apply(all_solvers)]
 fn no_nodes(#[case] solver: Solver) {
     let graph = MinimumCostFlowGraph::<i128>::default();
     let actual = solver.get(&graph).solve();
@@ -186,4 +173,30 @@ fn no_edges(#[case] solver: Solver) {
     let actual = solver.get(&graph).solve();
     let expected = MinimumCostFlowError::Infeasible;
     assert_eq!(actual.err().unwrap(), expected);
+}
+
+#[apply(all_solvers)]
+fn unbalanced(#[case] solver: Solver) {
+    let mut graph = MinimumCostFlowGraph::<i128>::default();
+    let nodes = graph.add_nodes(2);
+    graph.add_edge(nodes[0], nodes[1], 0, 1, 1);
+    graph.get_node_mut(nodes[0]).unwrap().data.b = 1;
+    graph.get_node_mut(nodes[1]).unwrap().data.b = 1;
+
+    let actual = solver.get(&graph).solve();
+    assert_eq!(actual.err().unwrap(), MinimumCostFlowError::Unbalanced);
+}
+
+#[apply(all_solvers)]
+fn not_solved(#[case] solver: Solver) {
+    let mut graph = MinimumCostFlowGraph::<i128>::default();
+    let nodes = graph.add_nodes(2);
+    let edge_id = graph.add_edge(nodes[0], nodes[1], 1, 1, 1).unwrap();
+
+    let solver = solver.get(&graph);
+
+    assert_eq!(solver.flow(edge_id).err().unwrap(), MinimumCostFlowError::NotSolved);
+    assert_eq!(solver.flows().err().unwrap(), MinimumCostFlowError::NotSolved);
+    assert_eq!(solver.potential(nodes[0]).err().unwrap(), MinimumCostFlowError::NotSolved);
+    assert_eq!(solver.potentials().err().unwrap(), MinimumCostFlowError::NotSolved);
 }

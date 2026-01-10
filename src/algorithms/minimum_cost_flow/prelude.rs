@@ -1,6 +1,6 @@
+pub use super::error::MinimumCostFlowError;
 pub use super::graph::MinimumCostFlowGraph;
 pub use super::result::MinimumCostFlowResult;
-pub use super::status::Status;
 pub use super::solvers::cost_scaling_push_relabel::CostScalingPushRelabel;
 pub use super::solvers::cycle_canceling::CycleCanceling;
 pub use super::solvers::dual_network_simplex::DualNetworkSimplex;
