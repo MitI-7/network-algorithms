@@ -1,6 +1,9 @@
-use crate::minimum_cost_flow::residual_network::ResidualNetwork;
-use crate::minimum_cost_flow::spanning_tree_structure::SpanningTreeStructure;
-use crate::{algorithms::minimum_cost_flow::status::Status, core::numeric::CostNum};
+use crate::{
+    algorithms::minimum_cost_flow::{
+        residual_network::ResidualNetwork, spanning_tree_structure::SpanningTreeStructure, status::Status,
+    },
+    core::numeric::CostNum,
+};
 
 pub(crate) fn validate_balance<F: CostNum>(rn: &ResidualNetwork<F>) -> Result<(), Status> {
     if rn.b.iter().fold(F::zero(), |sum, &e| sum + e) != F::zero() {

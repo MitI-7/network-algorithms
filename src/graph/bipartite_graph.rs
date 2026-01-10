@@ -10,7 +10,6 @@ use std::marker::PhantomData;
 pub struct BipartiteGraph<D, N = (), E = ()> {
     left_nodes: Vec<N>,
     right_nodes: Vec<N>,
-    num_edges: usize,
     pub(crate) edges: Vec<Edge<E>>,
     pub(crate) degree_left: Vec<usize>,
     pub(crate) degree_right: Vec<usize>,
@@ -29,7 +28,7 @@ impl<D: Direction, N: Default, E> BipartiteGraph<D, N, E> {
 
     #[inline]
     pub fn num_edges(&self) -> usize {
-        self.num_edges
+        self.edges.len()
     }
 
     pub fn add_left_node(&mut self) -> NodeId {
@@ -81,7 +80,6 @@ impl<D: Direction, N, E> Default for BipartiteGraph<D, N, E> {
         Self {
             left_nodes: Vec::new(),
             right_nodes: Vec::new(),
-            num_edges: 0,
             edges: Vec::new(),
             degree_left: Vec::new(),
             degree_right: Vec::new(),

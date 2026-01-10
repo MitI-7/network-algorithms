@@ -1,4 +1,4 @@
-use network_algorithms::algorithms::shortest_path::prelude::*;
+use network_algorithms::prelude::shortest_path::*;
 use rstest::rstest;
 use std::fs::read_to_string;
 use std::path::PathBuf;

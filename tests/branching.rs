@@ -1,7 +1,5 @@
-use network_algorithms::branching::{Edmonds, Tarjan};
+use network_algorithms::algorithms::branching::prelude::*;
 use network_algorithms::data_structures::union_find::UnionFind;
-// use network_algorithms::edge::weight::WeightEdge;
-use network_algorithms::branching::edge::WeightEdge;
 use network_algorithms::{Graph, direction::Directed};
 use rstest::rstest;
 use std::fs::read_to_string;
@@ -22,16 +20,25 @@ fn branching(#[files("tests/branching/*/*.txt")] f: PathBuf) {
     let mut nodes = Vec::new();
     let mut expected = 0_i128;
 
-    read_to_string(&f).unwrap().split('\n').enumerate().for_each(|(i, line)| {
-        let line: Vec<&str> = line.split_whitespace().collect();
-        if i == 0 {
-            (num_nodes, num_edges, expected) = (line[0].parse().unwrap(), line[1].parse().unwrap(), line[2].parse().unwrap());
-            nodes = graph.add_nodes(num_nodes);
-        } else {
-            let (from, to, weight) = (line[0].parse::<usize>().unwrap(), line[1].parse::<usize>().unwrap(), line[2].parse::<i128>().unwrap());
-            graph.add_edge(nodes[from], nodes[to], WeightEdge{weight});
-        }
-    });
+    read_to_string(&f)
+        .unwrap()
+        .split('\n')
+        .enumerate()
+        .for_each(|(i, line)| {
+            let line: Vec<&str> = line.split_whitespace().collect();
+            if i == 0 {
+                (num_nodes, num_edges, expected) =
+                    (line[0].parse().unwrap(), line[1].parse().unwrap(), line[2].parse().unwrap());
+                nodes = graph.add_nodes(num_nodes);
+            } else {
+                let (from, to, weight) = (
+                    line[0].parse::<usize>().unwrap(),
+                    line[1].parse::<usize>().unwrap(),
+                    line[2].parse::<i128>().unwrap(),
+                );
+                graph.add_edge(nodes[from], nodes[to], WeightEdge { weight });
+            }
+        });
 
     // let (cost, branching) = Edmonds::default().solve(&graph);
     let (cost, branching) = Tarjan::default().solve(&graph);

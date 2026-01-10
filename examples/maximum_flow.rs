@@ -1,5 +1,5 @@
 use network_algorithms::ids::{EdgeId, NodeId};
-use network_algorithms::maximum_flow::prelude::*;
+use network_algorithms::algorithms::maximum_flow::prelude::*;
 
 fn make_sample_graph() -> (Vec<NodeId>, Vec<EdgeId>, MaximumFlowGraph<i32>) {
     let mut graph = MaximumFlowGraph::default();

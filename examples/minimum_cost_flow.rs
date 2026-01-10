@@ -1,5 +1,5 @@
 use network_algorithms::ids::EdgeId;
-use network_algorithms::minimum_cost_flow::prelude::*;
+use network_algorithms::algorithms::minimum_cost_flow::prelude::*;
 
 fn make_graph() -> (MinimumCostFlowGraph<i32>, Vec<EdgeId>) {
     let mut graph = MinimumCostFlowGraph::<i32>::default();

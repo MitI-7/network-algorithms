@@ -1,7 +1,7 @@
-use crate::minimum_cost_flow::extend_network::construct_extend_network_one_supply_one_demand;
 use crate::{
     algorithms::minimum_cost_flow::{
         edge::MinimumCostFlowEdge,
+        extend_network::construct_extend_network_one_supply_one_demand,
         node::MinimumCostFlowNode,
         normalized_network::NormalizedNetwork,
         residual_network::ResidualNetwork,

@@ -1,9 +1,8 @@
 use crate::{
-    algorithms::maximum_flow::prelude::{Dinic, MaximumFlowSolver},
+    algorithms::maximum_flow::{edge::MaximumFlowEdge, solvers::dinic::Dinic, solvers::solver::MaximumFlowSolver},
     core::numeric::FlowNum,
     direction::{Directed, Undirected},
     graph::{graph::Graph, ids::NodeId},
-    maximum_flow::edge::MaximumFlowEdge,
 };
 
 pub struct GomoryHu<F> {
@@ -39,7 +38,7 @@ where
             // 1) s-t mincut (= maxflow)
             let w = self.solver.solve(s, t)?;
             let source_side = self.solver.minimum_cut()?;
-            
+
             // 2) parent 更新
             for v_idx in (s_idx + 1)..n {
                 if parent[v_idx] == t && source_side[v_idx] {
@@ -91,7 +90,7 @@ mod tests {
     use super::*;
     use crate::direction::Undirected;
     use crate::graph::{graph::Graph, ids::NodeId};
-    use crate::maximum_flow::edge::MaximumFlowEdge;
+    use crate::algorithms::maximum_flow::edge::MaximumFlowEdge;
 
     fn build_tree_adj(n: usize, tree: &[(NodeId, NodeId, i64)]) -> Vec<Vec<(usize, i64)>> {
         let mut adj = vec![Vec::<(usize, i64)>::new(); n];

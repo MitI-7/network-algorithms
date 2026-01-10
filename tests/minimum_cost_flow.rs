@@ -1,6 +1,6 @@
 use network_algorithms::core::numeric::CostNum;
 use network_algorithms::ids::EdgeId;
-use network_algorithms::minimum_cost_flow::prelude::*;
+use network_algorithms::algorithms::minimum_cost_flow::prelude::*;
 use rstest::rstest;
 use rstest_reuse::*;
 use std::{fmt::Debug, fs::read_to_string, path::Path, path::PathBuf};

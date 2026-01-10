@@ -1,7 +1,7 @@
 use crate::{
     core::numeric::FlowNum,
     graph::ids::NodeId,
-    maximum_flow::{residual_network::ResidualNetwork, status::Status},
+    algorithms::maximum_flow::{residual_network::ResidualNetwork, status::Status},
 };
 
 pub fn validate_input<F: FlowNum>(

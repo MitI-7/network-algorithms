@@ -1,4 +1,4 @@
-use network_algorithms::{ids::NodeId, maximum_flow::prelude::*};
+use network_algorithms::{ids::NodeId, algorithms::maximum_flow::prelude::*};
 use rstest::rstest;
 use rstest_reuse::*;
 use std::{fs::read_to_string, path::PathBuf};

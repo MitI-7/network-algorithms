@@ -1,7 +1,7 @@
 use crate::{
     core::numeric::CostNum,
     ids::NodeId,
-    minimum_cost_flow::normalized_network::{NormalizedEdge, NormalizedNetwork},
+    algorithms::minimum_cost_flow::normalized_network::{NormalizedEdge, NormalizedNetwork},
 };
 
 // transforms the minimum cost flow problem into a problem with a single excess node and a single deficit node.

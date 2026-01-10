@@ -1,4 +1,4 @@
-use network_algorithms::maximum_matching::prelude::*;
+use network_algorithms::algorithms::maximum_matching::prelude::*;
 use rstest::rstest;
 use std::fs::read_to_string;
 use std::path::PathBuf;
