@@ -15,13 +15,14 @@ use crate::{
 };
 use num_traits::One;
 use std::collections::VecDeque;
+use crate::algorithms::maximum_flow::error::MaximumFlowError;
 
 pub struct CapacityScaling<F> {
     rn: ResidualNetwork<F>,
     current_edge: Box<[usize]>,
     que: VecDeque<NodeId>,
     cutoff: Option<F>,
-    source: NodeId,
+    source: Option<NodeId>,
 }
 
 impl<F> CapacityScaling<F>
@@ -37,14 +38,14 @@ where
             current_edge: vec![0_usize; num_nodes].into_boxed_slice(),
             que: VecDeque::new(),
             cutoff: None,
-            source: INVALID_NODE_ID,
+            source: None,
         }
     }
 
-    fn run(&mut self, source: NodeId, sink: NodeId) -> Result<F, Status> {
+    fn run(&mut self, source: NodeId, sink: NodeId) -> Result<F, MaximumFlowError> {
         validate_input(&self.rn, source, sink)?;
 
-        self.source = source;
+        self.source = Some(source);
         let max_capacity = *self.rn.upper.iter().max().unwrap_or(&F::zero());
         let mut deltas: Vec<F> = Vec::new();
         let mut d = F::one();

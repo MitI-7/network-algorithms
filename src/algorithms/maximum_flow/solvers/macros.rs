@@ -11,7 +11,7 @@ macro_rules! impl_maximum_flow_solver {
                 Self::new(graph)
             }
 
-            fn solve(&mut self, source: NodeId, sink: NodeId) -> Result<F, Status> {
+            fn solve(&mut self, source: NodeId, sink: NodeId) -> Result<F, MaximumFlowError> {
                 let objective_value = self.$run(source, sink)?;
                 Ok(objective_value)
             }
@@ -29,11 +29,13 @@ macro_rules! impl_maximum_flow_solver {
                 (0..self.rn.num_edges).map(|edge_id| self.flow(EdgeId(edge_id)).unwrap()).collect()
             }
 
-            fn minimum_cut(&mut self) -> Result<Vec<bool>, Status> {
-                Ok(self.rn.reachable_from_source(self.source))
+            fn minimum_cut(&mut self) -> Result<Vec<bool>, MaximumFlowError> {
+                let source = self.source.ok_or(MaximumFlowError::NotSolved)?;
+                Ok(self.rn.reachable_from_source(source))
             }
         }
     };
 }
 
 pub(crate) use impl_maximum_flow_solver;
+use crate::algorithms::maximum_flow::error::MaximumFlowError;

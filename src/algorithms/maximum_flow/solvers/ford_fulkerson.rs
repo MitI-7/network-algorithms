@@ -13,12 +13,13 @@ use crate::{
         ids::{EdgeId, INVALID_NODE_ID, NodeId},
     },
 };
+use crate::algorithms::maximum_flow::error::MaximumFlowError;
 
 pub struct FordFulkerson<F> {
     rn: ResidualNetwork<F>,
     visited: Box<[bool]>,
     cutoff: Option<F>,
-    source: NodeId,
+    source: Option<NodeId>,
 }
 
 impl<F> FordFulkerson<F>
@@ -28,14 +29,14 @@ where
     fn new<N>(graph: &Graph<Directed, N, MaximumFlowEdge<F>>) -> Self {
         let rn = ResidualNetwork::new(graph);
         let num_nodes = rn.num_nodes;
-        Self { rn, visited: vec![false; num_nodes].into_boxed_slice(), cutoff: None, source: INVALID_NODE_ID }
+        Self { rn, visited: vec![false; num_nodes].into_boxed_slice(), cutoff: None, source: None }
     }
 
-    pub(crate) fn run(&mut self, source: NodeId, sink: NodeId) -> Result<F, Status> {
+    pub(crate) fn run(&mut self, source: NodeId, sink: NodeId) -> Result<F, MaximumFlowError> {
         validate_input(&self.rn, source, sink)?;
 
         // initialize
-        self.source = source;
+        self.source = Some(source);
         self.rn.residual_capacities.copy_from_slice(&self.rn.upper);
 
         let mut residual = self.cutoff.unwrap_or_else(|| {

@@ -5,3 +5,4 @@ pub mod residual_network;
 pub mod status;
 mod validate;
 pub mod solvers;
+mod error;

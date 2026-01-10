@@ -13,6 +13,7 @@ use crate::{
         ids::{ArcId, EdgeId, INVALID_NODE_ID, NodeId},
     },
 };
+use crate::algorithms::maximum_flow::error::MaximumFlowError;
 
 pub struct PushRelabelHighestLabel<F> {
     rn: ResidualNetwork<F>,
@@ -28,7 +29,7 @@ pub struct PushRelabelHighestLabel<F> {
     bucket_idx: usize,
 
     distance_count: Vec<usize>,
-    source: NodeId,
+    source: Option<NodeId>,
 }
 
 impl<F> PushRelabelHighestLabel<F>
@@ -52,7 +53,7 @@ where
             bucket_idx: 0,
 
             distance_count: Vec::new(),
-            source: INVALID_NODE_ID,
+            source: None,
         }
     }
 
@@ -66,10 +67,10 @@ where
         self
     }
 
-    fn run(&mut self, source: NodeId, sink: NodeId) -> Result<F, Status> {
+    fn run(&mut self, source: NodeId, sink: NodeId) -> Result<F, MaximumFlowError> {
         validate_input(&self.rn, source, sink)?;
 
-        self.source = source;
+        self.source = Some(source);
         self.pre_process(source, sink);
         loop {
             if self.buckets[self.bucket_idx].is_empty() {

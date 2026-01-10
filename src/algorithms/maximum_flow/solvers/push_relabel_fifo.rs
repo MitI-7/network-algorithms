@@ -14,6 +14,7 @@ use crate::{
     },
 };
 use std::collections::VecDeque;
+use crate::algorithms::maximum_flow::error::MaximumFlowError;
 
 pub struct PushRelabelFifo<F> {
     rn: ResidualNetwork<F>,
@@ -24,7 +25,7 @@ pub struct PushRelabelFifo<F> {
     active_nodes: VecDeque<NodeId>,
     current_edge: Box<[usize]>,
     distance_count: Box<[usize]>,
-    source: NodeId,
+    source: Option<NodeId>,
 }
 
 impl<F> PushRelabelFifo<F>
@@ -44,15 +45,15 @@ where
             active_nodes: VecDeque::new(),
             current_edge: vec![0_usize; num_nodes].into_boxed_slice(),
             distance_count: vec![0_usize; num_nodes + 1].into_boxed_slice(),
-            source: INVALID_NODE_ID,
+            source: None,
         }
     }
 
-    fn run(&mut self, source: NodeId, sink: NodeId) -> Result<F, Status> {
+    fn run(&mut self, source: NodeId, sink: NodeId) -> Result<F, MaximumFlowError> {
         validate_input(&self.rn, source, sink)?;
 
         // initialize
-        self.source = source;
+        self.source = Some(source);
         self.rn.residual_capacities.copy_from_slice(&self.rn.upper);
         self.rn.excesses.fill(F::zero());
 

@@ -14,11 +14,12 @@ use crate::{
     },
 };
 use std::collections::VecDeque;
+use crate::algorithms::maximum_flow::error::MaximumFlowError;
 
 pub struct EdmondsKarp<F> {
     rn: ResidualNetwork<F>,
     cutoff: Option<F>,
-    source: NodeId,
+    source: Option<NodeId>,
 }
 
 impl<F> EdmondsKarp<F>
@@ -27,13 +28,13 @@ where
 {
     fn new<N>(graph: &Graph<Directed, N, MaximumFlowEdge<F>>) -> Self {
         let rn = ResidualNetwork::new(graph);
-        Self { rn, cutoff: None, source: INVALID_NODE_ID }
+        Self { rn, cutoff: None, source: None }
     }
 
-    fn run(&mut self, source: NodeId, sink: NodeId) -> Result<F, Status> {
+    fn run(&mut self, source: NodeId, sink: NodeId) -> Result<F, MaximumFlowError> {
         validate_input(&self.rn, source, sink)?;
 
-        self.source = source;
+        self.source = Some(source);
         let mut prev = vec![(INVALID_NODE_ID, INVALID_ARC_ID); self.rn.num_nodes];
         let mut visited = vec![false; self.rn.num_nodes];
         let mut residual = self.cutoff.unwrap_or_else(|| {

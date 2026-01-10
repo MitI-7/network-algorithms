@@ -13,12 +13,13 @@ use crate::{
         ids::{ArcId, EdgeId, INVALID_NODE_ID, NodeId},
     },
 };
+use crate::algorithms::maximum_flow::error::MaximumFlowError;
 
 pub struct ShortestAugmentingPath<F> {
     rn: ResidualNetwork<F>,
     current_edge: Box<[usize]>,
     cutoff: Option<F>,
-    source: NodeId,
+    source: Option<NodeId>,
 }
 
 impl<F> ShortestAugmentingPath<F>
@@ -29,13 +30,13 @@ where
         let rn = ResidualNetwork::new(graph);
         let num_nodes = rn.num_nodes;
 
-        Self { rn, current_edge: vec![0_usize; num_nodes].into_boxed_slice(), cutoff: None, source: INVALID_NODE_ID }
+        Self { rn, current_edge: vec![0_usize; num_nodes].into_boxed_slice(), cutoff: None, source: None }
     }
 
-    fn run(&mut self, source: NodeId, sink: NodeId) -> Result<F, Status> {
+    fn run(&mut self, source: NodeId, sink: NodeId) -> Result<F, MaximumFlowError> {
         validate_input(&self.rn, source, sink)?;
 
-        self.source = source;
+        self.source = Some(source);
         self.rn.update_distances_to_sink(source, sink);
 
         let mut flow = F::zero();

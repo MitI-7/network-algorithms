@@ -14,6 +14,7 @@ use crate::{
     },
 };
 use std::collections::VecDeque;
+use crate::algorithms::maximum_flow::error::MaximumFlowError;
 
 pub struct Dinic<F> {
     pub(crate) rn: ResidualNetwork<F>,
@@ -21,7 +22,7 @@ pub struct Dinic<F> {
     distances_to_sink: Box<[usize]>,
     que: VecDeque<NodeId>,
     cutoff: Option<F>,
-    source: NodeId,
+    source: Option<NodeId>,
 }
 
 impl<F> Dinic<F>
@@ -38,15 +39,15 @@ where
             distances_to_sink: vec![0; num_nodes].into_boxed_slice(),
             que: VecDeque::new(),
             cutoff: None,
-            source: INVALID_NODE_ID,
+            source: None,
         }
     }
 
-    fn run(&mut self, source: NodeId, sink: NodeId) -> Result<F, Status> {
+    fn run(&mut self, source: NodeId, sink: NodeId) -> Result<F, MaximumFlowError> {
         validate_input(&self.rn, source, sink)?;
 
         // initialize
-        self.source = source;
+        self.source = Some(source);
         self.rn.residual_capacities.copy_from_slice(&self.rn.upper);
 
         let mut residual = self.cutoff.unwrap_or_else(|| {
