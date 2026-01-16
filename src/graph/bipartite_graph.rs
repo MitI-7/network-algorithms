@@ -48,7 +48,7 @@ impl<D: Direction, N, E> BipartiteGraph<D, N, E> {
     }
 
     pub fn add_right_node_with(&mut self, data: N) -> RightNodeId {
-        let node_id = RightNodeId(self.num_left_nodes());
+        let node_id = RightNodeId(self.num_right_nodes());
         self.right_nodes.push(Node { data });
         self.degree_right.push(0);
         node_id
