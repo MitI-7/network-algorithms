@@ -2,20 +2,21 @@ use crate::graph::{
     direction::{Directed, Direction, Undirected},
     edge::BipartiteEdge,
     ids::{EdgeId, LeftNodeId, RightNodeId},
+    node::Node,
 };
 use std::marker::PhantomData;
 
 #[derive(Clone, Debug)]
 pub struct BipartiteGraph<D, N = (), E = ()> {
-    left_nodes: Vec<N>,
-    right_nodes: Vec<N>,
+    left_nodes: Vec<Node<N>>,
+    right_nodes: Vec<Node<N>>,
     pub(crate) edges: Vec<BipartiteEdge<E>>,
     pub(crate) degree_left: Vec<usize>,
     pub(crate) degree_right: Vec<usize>,
     _direction: PhantomData<D>,
 }
 
-impl<D: Direction, N: Default, E> BipartiteGraph<D, N, E> {
+impl<D: Direction, N, E> BipartiteGraph<D, N, E> {
     #[inline]
     pub fn num_left_nodes(&self) -> usize {
         self.left_nodes.len()
@@ -30,24 +31,32 @@ impl<D: Direction, N: Default, E> BipartiteGraph<D, N, E> {
         self.edges.len()
     }
 
-    pub fn add_left_node(&mut self) -> LeftNodeId {
-        self.left_nodes.push(N::default());
+    pub fn add_left_node_with(&mut self, data: N) -> LeftNodeId {
+        let node_id = LeftNodeId(self.num_left_nodes());
+        self.left_nodes.push(Node { data });
         self.degree_left.push(0);
-        LeftNodeId(self.left_nodes.len() - 1)
+        node_id
     }
 
-    pub fn add_left_nodes(&mut self, n: usize) -> Vec<LeftNodeId> {
-        (0..n).map(|_| self.add_left_node()).collect()
+    pub fn add_left_nodes_with<I>(&mut self, datas: I) -> Vec<LeftNodeId>
+    where
+        I: IntoIterator<Item = N>,
+    {
+        datas.into_iter().map(|d| self.add_left_node_with(d)).collect()
     }
 
-    pub fn add_right_node(&mut self) -> RightNodeId {
-        self.right_nodes.push(N::default());
+    pub fn add_right_node_with(&mut self, data: N) -> RightNodeId {
+        let node_id = RightNodeId(self.num_left_nodes());
+        self.right_nodes.push(Node { data });
         self.degree_right.push(0);
-        RightNodeId(self.right_nodes.len() - 1)
+        node_id
     }
 
-    pub fn add_right_nodes(&mut self, n: usize) -> Vec<RightNodeId> {
-        (0..n).map(|_| self.add_right_node()).collect()
+    pub fn add_right_nodes_with<I>(&mut self, datas: I) -> Vec<RightNodeId>
+    where
+        I: IntoIterator<Item = N>,
+    {
+        datas.into_iter().map(|d| self.add_right_node_with(d)).collect()
     }
 
     // TODO: r -> lの有向辺をどうするか
@@ -71,6 +80,24 @@ impl<D: Direction, N: Default, E> BipartiteGraph<D, N, E> {
             return None;
         }
         Some(&self.edges[edge_id])
+    }
+}
+
+impl<D: Direction, N: Default, E> BipartiteGraph<D, N, E> {
+    pub fn add_left_node(&mut self) -> LeftNodeId {
+        self.add_left_node_with(N::default())
+    }
+
+    pub fn add_left_nodes(&mut self, n: usize) -> Vec<LeftNodeId> {
+        (0..n).map(|_| self.add_left_node()).collect()
+    }
+
+    pub fn add_right_node(&mut self) -> RightNodeId {
+        self.add_right_node_with(N::default())
+    }
+
+    pub fn add_right_nodes(&mut self, n: usize) -> Vec<RightNodeId> {
+        (0..n).map(|_| self.add_right_node()).collect()
     }
 }
 
