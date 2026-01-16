@@ -9,7 +9,7 @@ pub struct MaximumBipartiteMatchingGraph(BipartiteGraph<Undirected, (), ()>);
 
 impl MaximumBipartiteMatchingGraph {
     #[inline]
-    pub fn add_edge(&mut self, left: LeftNodeId, right: RightNodeId) -> EdgeId {
+    pub fn add_edge(&mut self, left: LeftNodeId, right: RightNodeId) -> Option<EdgeId> {
         self.0.add_edge(left, right, ())
     }
 }

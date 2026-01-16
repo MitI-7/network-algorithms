@@ -1,9 +1,11 @@
+use crate::graph::edge::Edge;
 use crate::graph::{
     direction::{Directed, Direction, Undirected},
     edge::BipartiteEdge,
     ids::{EdgeId, LeftNodeId, RightNodeId},
     node::Node,
 };
+use crate::ids::NodeId;
 use std::marker::PhantomData;
 
 #[derive(Clone, Debug)]
@@ -68,18 +70,62 @@ impl<D: Direction, N, E> BipartiteGraph<D, N, E> {
     //     EdgeId(self.edges.len() - 1)
     // }
 
-    pub fn add_edge(&mut self, u: LeftNodeId, v: RightNodeId, data: E) -> EdgeId {
+    pub fn add_edge(&mut self, u: LeftNodeId, v: RightNodeId, data: E) -> Option<EdgeId> {
+        if u.index() >= self.num_left_nodes() || v.index() >= self.num_right_nodes() {
+            return None;
+        }
+        let edge_id = EdgeId(self.edges.len());
         self.edges.push(BipartiteEdge { u, v, data });
         self.degree_left[u.index()] += 1;
         self.degree_right[v.index()] += 1;
-        EdgeId(self.edges.len() - 1)
+        Some(edge_id)
     }
 
-    pub fn get_edge(&self, edge_id: usize) -> Option<&BipartiteEdge<E>> {
-        if edge_id >= self.edges.len() {
+    pub fn get_left_node(&self, node_id: LeftNodeId) -> Option<&Node<N>> {
+        if node_id.index() >= self.num_left_nodes() {
             return None;
         }
-        Some(&self.edges[edge_id])
+        Some(&self.left_nodes[node_id.index()])
+    }
+
+    pub fn get_left_node_mut(&mut self, node_id: LeftNodeId) -> Option<&mut Node<N>> {
+        if node_id.index() >= self.num_left_nodes() {
+            return None;
+        }
+        Some(&mut self.left_nodes[node_id.index()])
+    }
+
+    pub fn get_right_node(&self, node_id: RightNodeId) -> Option<&Node<N>> {
+        if node_id.index() >= self.num_right_nodes() {
+            return None;
+        }
+        Some(&self.right_nodes[node_id.index()])
+    }
+
+    pub fn get_right_node_mut(&mut self, node_id: RightNodeId) -> Option<&mut Node<N>> {
+        if node_id.index() >= self.num_right_nodes() {
+            return None;
+        }
+        Some(&mut self.right_nodes[node_id.index()])
+    }
+
+    pub fn get_edge(&self, edge_id: EdgeId) -> Option<&BipartiteEdge<E>> {
+        if edge_id.index() >= self.edges.len() {
+            return None;
+        }
+        Some(&self.edges[edge_id.index()])
+    }
+
+    pub fn left_nodes(&self) -> std::slice::Iter<'_, Node<N>> {
+        self.left_nodes.iter()
+    }
+
+    pub fn right_nodes(&self) -> std::slice::Iter<'_, Node<N>> {
+        self.right_nodes.iter()
+    }
+
+    pub fn edges(&self) -> std::slice::Iter<'_, BipartiteEdge<E>> {
+        self.edges.iter()
     }
 }
 
