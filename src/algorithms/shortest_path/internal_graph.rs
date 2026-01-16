@@ -42,7 +42,7 @@ where
         }
 
         for u in 1..=self.num_nodes {
-            self.start[u] += self.start[u - 1] + degree[u - 1];
+            self.start[u] = self.start[u - 1] + degree[u - 1];
         }
 
         let mut counter = vec![0; self.num_nodes];
