@@ -22,6 +22,23 @@ fn make_graph() -> (MinimumCostFlowGraph<i32>, Vec<EdgeId>) {
     (graph, edges)
 }
 
+fn primal_dual() {
+    let (graph, edges) = make_graph();
+    let mut solver = PrimalDual::new(&graph);
+
+    match solver.solve() {
+        Ok(objective_value) => {
+            println!("minimum cost:{}", objective_value);
+            for edge_id in edges {
+                println!("{:?}: {}", graph.get_edge(edge_id), solver.flow(edge_id).unwrap());
+            }
+            assert_eq!(objective_value, 150);
+        }
+        _ => unreachable!(),
+    }
+}
+
+
 fn primal_network_simplex() {
     let (graph, edges) = make_graph();
     let mut solver = PrimalNetworkSimplex::new(&graph);
@@ -39,5 +56,6 @@ fn primal_network_simplex() {
 }
 
 fn main() {
+    primal_dual();
     primal_network_simplex();
 }
