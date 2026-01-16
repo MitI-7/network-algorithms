@@ -1,6 +1,6 @@
 use crate::{
     graph::{bipartite_graph::BipartiteGraph, direction::Undirected},
-    ids::{EdgeId, NodeId},
+    ids::{EdgeId, LeftNodeId, RightNodeId},
 };
 use std::collections::VecDeque;
 
@@ -25,15 +25,15 @@ pub enum WarmStart {
 pub struct HopcroftKarp {
     num_left_nodes: usize,
     num_right_nodes: usize,
-    mate: Box<[Option<NodeId>]>, // mate[right_node] = Some(left_node)
+    mate: Box<[Option<LeftNodeId>]>, // mate[right_node] = Some(left_node)
     distances: Box<[usize]>,
 
     // csr format(left -> right)
     start: Box<[usize]>,
-    to: Box<[NodeId]>,
+    to: Box<[RightNodeId]>,
 
     warm_start: WarmStart,
-    queue: VecDeque<NodeId>,
+    queue: VecDeque<LeftNodeId>,
 }
 
 impl HopcroftKarp {
@@ -71,7 +71,7 @@ impl HopcroftKarp {
                 break;
             }
 
-            for u in (0..self.num_left_nodes).map(NodeId) {
+            for u in (0..self.num_left_nodes).map(LeftNodeId) {
                 if self.distances[u.index()] == 0 {
                     self.dfs(u);
                 }
@@ -102,7 +102,7 @@ impl HopcroftKarp {
         self.num_right_nodes = graph.num_right_nodes();
 
         self.start = vec![0; self.num_left_nodes + 1].into_boxed_slice();
-        self.to = (0..graph.edges.len()).map(|_| NodeId(0)).collect();
+        self.to = (0..graph.edges.len()).map(|_| RightNodeId(0)).collect();
         self.mate = vec![None; self.num_right_nodes].into_boxed_slice();
         self.distances = vec![0_usize; self.num_left_nodes].into_boxed_slice();
         self.queue = VecDeque::with_capacity(self.num_left_nodes);
@@ -121,11 +121,11 @@ impl HopcroftKarp {
 
     // make initial matching(greedy)
     fn initial_solution_greedy(&mut self, degree_u: &[usize], degree_v: &[usize]) {
-        let mut deg_u: Vec<_> = (0..self.num_left_nodes).map(|u| (degree_u[u], NodeId(u))).collect();
+        let mut deg_u: Vec<_> = (0..self.num_left_nodes).map(|u| (degree_u[u], LeftNodeId(u))).collect();
         deg_u.sort_unstable();
 
         for (_, u) in deg_u {
-            let mut best_v: Option<NodeId> = None;
+            let mut best_v: Option<RightNodeId> = None;
             for i in self.neighbors(u).map(EdgeId) {
                 let v = self.to[i.index()];
                 if self.mate[v.index()].is_none()
@@ -175,7 +175,7 @@ impl HopcroftKarp {
 
         // phase-1
         while let Some(node_id) = que.pop_front() {
-            let node_id = NodeId(node_id);
+            let node_id = LeftNodeId(node_id);
             if node_id.index() < self.num_left_nodes {
                 let u = node_id;
                 if used_left[u.index()] || degree_left[u.index()] != 1 {
@@ -211,11 +211,11 @@ impl HopcroftKarp {
                     None => continue,
                 };
 
-                self.mate[v] = Some(NodeId(u));
+                self.mate[v] = Some(LeftNodeId(u));
                 used_left[u] = true;
                 used_right[v] = true;
 
-                for i in self.neighbors(NodeId(u)) {
+                for i in self.neighbors(LeftNodeId(u)) {
                     let v2 = self.to[i];
                     if !used_right[v2.index()] {
                         degree_right[v2.index()] -= 1;
@@ -229,14 +229,14 @@ impl HopcroftKarp {
 
         // phase-2 greedy
         let mut nodes: Vec<_> = (0..self.num_left_nodes)
-            .map(NodeId)
+            .map(LeftNodeId)
             .filter(|&u| !used_left[u.index()])
             .collect();
         nodes.sort_unstable_by_key(|&u| degree_left[u.index()]);
 
         for u in nodes {
             assert!(!used_left[u.index()]);
-            let mut best_v: Option<NodeId> = None;
+            let mut best_v: Option<RightNodeId> = None;
             for i in self.neighbors(u) {
                 let v = self.to[i];
                 if self.mate[v.index()].is_none()
@@ -262,7 +262,7 @@ impl HopcroftKarp {
         self.queue.clear();
         for (u, &d) in self.distances.iter().enumerate() {
             if d == 0 {
-                self.queue.push_back(NodeId(u));
+                self.queue.push_back(LeftNodeId(u));
             }
         }
 
@@ -288,7 +288,7 @@ impl HopcroftKarp {
         found
     }
 
-    fn dfs(&mut self, u: NodeId) -> bool {
+    fn dfs(&mut self, u: LeftNodeId) -> bool {
         let now_dist = std::mem::replace(&mut self.distances[u.index()], usize::MAX); // use node u
 
         for i in self.neighbors(u).map(EdgeId) {
@@ -304,7 +304,7 @@ impl HopcroftKarp {
     }
 
     #[inline(always)]
-    pub fn neighbors(&self, u: NodeId) -> std::ops::Range<usize> {
+    pub fn neighbors(&self, u: LeftNodeId) -> std::ops::Range<usize> {
         self.start[u.index()]..self.start[u.index() + 1]
     }
 }

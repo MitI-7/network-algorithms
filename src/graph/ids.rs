@@ -11,6 +11,27 @@ impl NodeId {
 
 #[repr(transparent)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub struct LeftNodeId(pub(crate) usize);
+impl LeftNodeId {
+    #[inline(always)]
+    pub fn index(self) -> usize {
+        self.0
+    }
+}
+
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub struct RightNodeId(pub(crate) usize);
+
+impl RightNodeId {
+    #[inline(always)]
+    pub fn index(self) -> usize {
+        self.0
+    }
+}
+
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct EdgeId(pub(crate) usize);
 
 impl EdgeId {

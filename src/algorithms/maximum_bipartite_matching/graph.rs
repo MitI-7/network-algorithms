@@ -1,7 +1,7 @@
 use crate::graph::{
     bipartite_graph::BipartiteGraph,
     direction::Undirected,
-    ids::{EdgeId, NodeId},
+    ids::{EdgeId, LeftNodeId, RightNodeId},
 };
 use std::ops::{Deref, DerefMut};
 
@@ -9,7 +9,7 @@ pub struct MaximumBipartiteMatchingGraph(BipartiteGraph<Undirected, (), ()>);
 
 impl MaximumBipartiteMatchingGraph {
     #[inline]
-    pub fn add_edge(&mut self, left: NodeId, right: NodeId) -> EdgeId {
+    pub fn add_edge(&mut self, left: LeftNodeId, right: RightNodeId) -> EdgeId {
         self.0.add_edge(left, right, ())
     }
 }
