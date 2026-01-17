@@ -1,3 +1,4 @@
+use crate::graph::edge::Edge;
 use crate::{
     algorithms::maximum_flow::{
         edge::MaximumFlowEdge,
@@ -35,7 +36,28 @@ where
     F: FlowNum,
 {
     fn new<N>(graph: &Graph<Directed, N, MaximumFlowEdge<F>>) -> Self {
-        let rn = ResidualNetwork::from(graph);
+        let rn = ResidualNetwork::from(graph, |e| e.data.upper);
+        let num_nodes = rn.num_nodes;
+
+        Self {
+            status: Status::NotSolved,
+            source: None,
+            rn,
+            global_relabel_freq: 1.0,
+            value_only: false,
+            threshold: 0,
+            work: 0,
+            active_nodes: VecDeque::new(),
+            current_edge: vec![0_usize; num_nodes].into_boxed_slice(),
+            distance_count: vec![0_usize; num_nodes + 1].into_boxed_slice(),
+        }
+    }
+
+    pub fn new_with<N, E, UF>(graph: &Graph<Directed, N, E>, upper_fn: UF) -> Self
+    where
+        UF: Fn(&Edge<E>) -> F,
+    {
+        let rn = ResidualNetwork::from(graph, upper_fn);
         let num_nodes = rn.num_nodes;
 
         Self {

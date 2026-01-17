@@ -1,3 +1,4 @@
+use crate::graph::edge::Edge;
 use crate::{
     algorithms::maximum_flow::{
         edge::MaximumFlowEdge,
@@ -19,7 +20,7 @@ use std::collections::VecDeque;
 pub struct Dinic<F> {
     status: Status,
     source: Option<NodeId>,
-    
+
     pub(crate) rn: ResidualNetwork<F>,
     current_edge: Box<[usize]>,
     distances_to_sink: Box<[usize]>,
@@ -32,7 +33,25 @@ where
     F: FlowNum,
 {
     fn new<N>(graph: &Graph<Directed, N, MaximumFlowEdge<F>>) -> Self {
-        let rn = ResidualNetwork::from(graph);
+        let rn = ResidualNetwork::from(graph, |e| e.data.upper);
+        let num_nodes = rn.num_nodes;
+
+        Self {
+            status: Status::NotSolved,
+            source: None,
+            rn,
+            current_edge: vec![0_usize; num_nodes].into_boxed_slice(),
+            distances_to_sink: vec![0; num_nodes].into_boxed_slice(),
+            que: VecDeque::new(),
+            cutoff: None,
+        }
+    }
+
+    pub fn new_with<N, E, UF>(graph: &Graph<Directed, N, E>, upper_fn: UF) -> Self
+    where
+        UF: Fn(&Edge<E>) -> F,
+    {
+        let rn = ResidualNetwork::from(graph, upper_fn);
         let num_nodes = rn.num_nodes;
 
         Self {

@@ -1,4 +1,5 @@
 use crate::data_structures::BitVector;
+use crate::graph::edge::Edge;
 use crate::ids::EdgeId;
 use crate::{
     algorithms::shortest_path::{
@@ -27,8 +28,18 @@ where
         Self { csr, reached: BitVector::new(num_nodes), distances: vec![W::max_value(); num_nodes].into_boxed_slice() }
     }
 
+    pub fn new_graph_with<N, E, WF>(graph: &Graph<Directed, N, E>, weight_fn: WF) -> Self
+    where
+        WF: Fn(&Edge<E>) -> W,
+    {
+        let csr = InternalGraph::from(graph, weight_fn);
+        let num_nodes = csr.num_nodes;
+        Self { csr, reached: BitVector::new(num_nodes), distances: vec![W::max_value(); num_nodes].into_boxed_slice() }
+    }
+
     fn run(&mut self, source: NodeId) -> Result<(), Status> {
         self.reached.clear();
+        self.distances.fill(W::max_value());
         self.distances[source.index()] = W::zero();
 
         let mut num_loop = 0;
@@ -42,7 +53,7 @@ where
                 for edge_id in self.csr.neighbors(u).map(EdgeId) {
                     let to = self.csr.to[edge_id.index()];
                     let w = self.csr.weight[edge_id.index()];
-                    let new_dist = self.distances[to.index()] + w;
+                    let new_dist = self.distances[u.index()] + w;
                     if new_dist < self.distances[to.index()] {
                         self.distances[to.index()] = self.distances[u.index()] + w;
                         self.reached.set(to.index(), true);

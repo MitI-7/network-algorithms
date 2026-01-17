@@ -17,9 +17,9 @@ macro_rules! impl_maximum_flow_solver {
             }
 
             fn flow(&self, edge_id: EdgeId) -> Result<F, MaximumFlowError> {
-                // if edge_id.index() >= self.rn.num_edges {
-                //     return err();
-                // }
+                if edge_id.index() >= self.rn.num_edges {
+                    return Err(MaximumFlowError::InvalidEdgeId {edge_id});
+                }
                 if self.status == Status::NotSolved {
                     return Err(MaximumFlowError::NotSolved);
                 }
@@ -46,3 +46,4 @@ macro_rules! impl_maximum_flow_solver {
 }
 
 pub(crate) use impl_maximum_flow_solver;
+use crate::prelude::maximum_flow::MaximumFlowError;

@@ -1,3 +1,4 @@
+use crate::graph::edge::Edge;
 use crate::{
     algorithms::maximum_flow::{
         edge::MaximumFlowEdge,
@@ -20,7 +21,7 @@ use std::collections::VecDeque;
 pub struct CapacityScaling<F> {
     status: Status,
     source: Option<NodeId>,
-    
+
     rn: ResidualNetwork<F>,
     current_edge: Box<[usize]>,
     que: VecDeque<NodeId>,
@@ -32,7 +33,7 @@ where
     F: FlowNum + One,
 {
     fn new<N>(graph: &Graph<Directed, N, MaximumFlowEdge<F>>) -> Self {
-        let rn = ResidualNetwork::from(graph);
+        let rn = ResidualNetwork::from(graph, |e| e.data.upper);
         let num_nodes = rn.num_nodes;
 
         Self {
@@ -45,6 +46,22 @@ where
         }
     }
 
+    pub fn new_with<N, E, UF>(graph: &Graph<Directed, N, E>, upper_fn: UF) -> Self
+    where
+        UF: Fn(&Edge<E>) -> F,
+    {
+        let rn = ResidualNetwork::from(graph, upper_fn);
+        let num_nodes = rn.num_nodes;
+
+        Self {
+            status: Status::NotSolved,
+            source: None,
+            rn,
+            current_edge: vec![0_usize; num_nodes].into_boxed_slice(),
+            que: VecDeque::new(),
+            cutoff: None,
+        }
+    }
     fn run(&mut self, source: NodeId, sink: NodeId) -> Result<F, MaximumFlowError> {
         validate_input(&self.rn, source, sink)?;
 

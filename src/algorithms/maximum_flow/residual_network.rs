@@ -1,4 +1,5 @@
 use crate::direction::Direction;
+use crate::graph::edge::Edge;
 use crate::{
     algorithms::maximum_flow::edge::MaximumFlowEdge,
     core::numeric::FlowNum,
@@ -31,7 +32,10 @@ impl<F> ResidualNetwork<F>
 where
     F: FlowNum,
 {
-    pub fn from<D: Direction, N>(graph: &Graph<D, N, MaximumFlowEdge<F>>) -> Self {
+    pub fn from<D: Direction, N, E, UF>(graph: &Graph<D, N, E>, upper_fn: UF) -> Self
+    where
+        UF: Fn(&Edge<E>) -> F,
+    {
         let mut rn = Self {
             num_nodes: graph.num_nodes(),
             num_edges: graph.num_edges(),
@@ -45,12 +49,15 @@ where
             distances_to_sink: vec![0; graph.num_nodes()].into_boxed_slice(),
             que: VecDeque::new(),
         };
-        rn.build(graph);
+        rn.build(graph, upper_fn);
 
         rn
     }
 
-    fn build<D: Direction, N>(&mut self, graph: &Graph<D, N, MaximumFlowEdge<F>>) {
+    fn build<D: Direction, N, E, UF>(&mut self, graph: &Graph<D, N, E>, upper_fn: UF)
+    where
+        UF: Fn(&Edge<E>) -> F,
+    {
         let mut degree = vec![0; self.num_nodes].into_boxed_slice();
 
         for edge in graph.edges() {
@@ -72,7 +79,7 @@ where
 
             self.edge_id_to_arc_id[edge_index] = arc_id_u;
 
-            let upper = e.data.upper;
+            let upper = upper_fn(e);
             let rev_init = if D::IS_DIRECTED { F::zero() } else { upper };
 
             // u -> v
@@ -139,7 +146,7 @@ where
         self.residual_capacities[arc_id.index()] > F::zero()
             && self.distances_to_sink[from.index()] == self.distances_to_sink[self.to[arc_id.index()].index()] + 1
     }
-    
+
     pub(crate) fn reachable_from_source(&self, source: NodeId) -> Vec<bool> {
         let mut seen = vec![false; self.num_nodes];
         let mut que = VecDeque::new();

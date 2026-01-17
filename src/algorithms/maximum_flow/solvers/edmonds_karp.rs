@@ -1,3 +1,4 @@
+use crate::graph::edge::Edge;
 use crate::{
     algorithms::maximum_flow::{
         edge::MaximumFlowEdge,
@@ -29,7 +30,15 @@ where
     F: FlowNum,
 {
     fn new<N>(graph: &Graph<Directed, N, MaximumFlowEdge<F>>) -> Self {
-        let rn = ResidualNetwork::from(graph);
+        let rn = ResidualNetwork::from(graph, |e| e.data.upper);
+        Self { status: Status::NotSolved, source: None, rn, cutoff: None }
+    }
+
+    pub fn new_with<N, E, UF>(graph: &Graph<Directed, N, E>, upper_fn: UF) -> Self
+    where
+        UF: Fn(&Edge<E>) -> F,
+    {
+        let rn = ResidualNetwork::from(graph, upper_fn);
         Self { status: Status::NotSolved, source: None, rn, cutoff: None }
     }
 
