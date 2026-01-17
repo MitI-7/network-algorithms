@@ -1,11 +1,9 @@
-use crate::graph::edge::Edge;
 use crate::graph::{
     direction::{Directed, Direction, Undirected},
     edge::BipartiteEdge,
     ids::{EdgeId, LeftNodeId, RightNodeId},
     node::Node,
 };
-use crate::ids::NodeId;
 use std::marker::PhantomData;
 
 #[derive(Clone, Debug)]

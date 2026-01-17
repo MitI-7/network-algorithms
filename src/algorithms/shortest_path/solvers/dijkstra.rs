@@ -9,6 +9,7 @@ use crate::{
     core::numeric::FlowNum,
     graph::{
         direction::Directed,
+        edge::Edge,
         graph::Graph,
         ids::{EdgeId, INVALID_NODE_ID, NodeId},
     },
@@ -31,6 +32,19 @@ where
         Self { csr, reached: BitVector::new(num_nodes), distances: vec![W::max_value(); num_nodes].into_boxed_slice() }
     }
 
+    pub fn new_graph_with<N, E, WF>(graph: &Graph<Directed, N, E>, weight_fn: WF) -> Self
+    where
+        WF: Fn(EdgeId, &Edge<E>) -> W,
+    {
+        let csr = InternalGraph::new_graph_with(graph, weight_fn);
+        let num_nodes = csr.num_nodes;
+        Self {
+            csr,
+            reached: BitVector::new(num_nodes),
+            distances: vec![W::max_value(); num_nodes].into_boxed_slice(),
+        }
+    }
+
     fn run(&mut self, source: NodeId) -> Result<(), Status> {
         if self.csr.weight.iter().any(|&w| w < W::zero()) {
             return Err(Status::BadInput);
@@ -39,21 +53,20 @@ where
         let mut heap = BinaryHeap::new();
         heap.push((Reverse(W::zero()), source));
 
-        let mut visited = BitVector::new(self.csr.num_nodes);
         let mut prev = vec![INVALID_NODE_ID; self.csr.num_nodes];
         self.distances[source.index()] = W::zero();
 
         while let Some((d, u)) = heap.pop() {
-            if visited.get(u.index()) {
+            if self.reached.get(u.index()) {
                 continue;
             }
-            visited.set(u.index(), true);
+            self.reached.set(u.index(), true);
 
             for edge_id in self.csr.neighbors(u).map(EdgeId) {
                 let to = self.csr.to[edge_id.index()];
                 let w = self.csr.weight[edge_id.index()];
 
-                if visited.get(to.index()) {
+                if self.reached.get(to.index()) {
                     continue;
                 }
 
