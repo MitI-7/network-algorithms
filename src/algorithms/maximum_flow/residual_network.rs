@@ -1,8 +1,8 @@
-use crate::direction::Direction;
-use crate::graph::edge::Edge;
 use crate::{
     core::numeric::FlowNum,
+    direction::Direction,
     graph::{
+        edge::Edge,
         graph::Graph,
         ids::{ArcId, INVALID_ARC_ID, INVALID_NODE_ID, NodeId},
         iter::ArcIdRange,
