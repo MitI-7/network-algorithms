@@ -1,7 +1,6 @@
 use crate::direction::Direction;
 use crate::graph::edge::Edge;
 use crate::{
-    algorithms::maximum_flow::edge::MaximumFlowEdge,
     core::numeric::FlowNum,
     graph::{
         graph::Graph,
