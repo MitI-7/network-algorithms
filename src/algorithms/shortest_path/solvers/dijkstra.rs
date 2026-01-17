@@ -1,12 +1,12 @@
-use crate::data_structures::BitVector;
 use crate::{
     algorithms::shortest_path::{
-        internal_graph::InternalGraph,
         edge::WeightEdge,
+        internal_graph::InternalGraph,
         solvers::{macros::impl_shortest_path_solver, solver::ShortestPathSolver},
         status::Status,
     },
     core::numeric::FlowNum,
+    data_structures::BitVector,
     graph::{
         direction::Directed,
         edge::Edge,
@@ -27,22 +27,18 @@ where
     W: FlowNum,
 {
     pub fn new(graph: &Graph<Directed, (), WeightEdge<W>>) -> Self {
-        let csr = InternalGraph::new(graph);
+        let csr = InternalGraph::from(graph, |e| e.data.weight);
         let num_nodes = csr.num_nodes;
         Self { csr, reached: BitVector::new(num_nodes), distances: vec![W::max_value(); num_nodes].into_boxed_slice() }
     }
 
     pub fn new_graph_with<N, E, WF>(graph: &Graph<Directed, N, E>, weight_fn: WF) -> Self
     where
-        WF: Fn(EdgeId, &Edge<E>) -> W,
+        WF: Fn(&Edge<E>) -> W,
     {
-        let csr = InternalGraph::new_graph_with(graph, weight_fn);
+        let csr = InternalGraph::from(graph, weight_fn);
         let num_nodes = csr.num_nodes;
-        Self {
-            csr,
-            reached: BitVector::new(num_nodes),
-            distances: vec![W::max_value(); num_nodes].into_boxed_slice(),
-        }
+        Self { csr, reached: BitVector::new(num_nodes), distances: vec![W::max_value(); num_nodes].into_boxed_slice() }
     }
 
     fn run(&mut self, source: NodeId) -> Result<(), Status> {

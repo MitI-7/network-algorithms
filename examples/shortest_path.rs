@@ -53,7 +53,7 @@ fn dijkstra_original_edge() {
     edges.push(graph.add_edge(nodes[3], nodes[5], MyEdge { distance: 2 }).unwrap());
     edges.push(graph.add_edge(nodes[4], nodes[5], MyEdge { distance: 3 }).unwrap());
 
-    let mut solver = Dijkstra::new_graph_with(&graph, |_, e| e.data.distance);
+    let mut solver = Dijkstra::new_graph_with(&graph, |e| e.data.distance);
 
     match solver.solve(nodes[0]) {
         Ok(()) => {

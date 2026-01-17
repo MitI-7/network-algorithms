@@ -17,7 +17,7 @@ impl<W> ShortestPathGraph<W> {
         if u.index() >= self.0.num_nodes() || v.index() >= self.0.num_nodes() {
             return None;
         }
-        self.0.add_edge(u, v, WeightEdge { weight })
+        self.0.add_edge(u, v, WeightEdge { weight: weight })
     }
 }
 

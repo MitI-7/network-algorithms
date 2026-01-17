@@ -2,8 +2,8 @@ use crate::data_structures::BitVector;
 use crate::ids::EdgeId;
 use crate::{
     algorithms::shortest_path::{
-        internal_graph::InternalGraph,
         edge::WeightEdge,
+        internal_graph::InternalGraph,
         solvers::{macros::impl_shortest_path_solver, solver::ShortestPathSolver},
         status::Status,
     },
@@ -22,7 +22,7 @@ where
     W: FlowNum,
 {
     pub fn new(graph: &Graph<Directed, (), WeightEdge<W>>) -> Self {
-        let csr = InternalGraph::new(graph);
+        let csr = InternalGraph::from(graph, |e| e.data.weight);
         let num_nodes = csr.num_nodes;
         Self { csr, reached: BitVector::new(num_nodes), distances: vec![W::max_value(); num_nodes].into_boxed_slice() }
     }
