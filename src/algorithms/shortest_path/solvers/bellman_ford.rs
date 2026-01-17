@@ -28,6 +28,7 @@ where
     }
 
     fn run(&mut self, source: NodeId) -> Result<(), Status> {
+        self.reached.clear();
         self.distances[source.index()] = W::zero();
 
         let mut num_loop = 0;

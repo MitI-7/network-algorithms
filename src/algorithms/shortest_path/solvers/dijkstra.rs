@@ -54,6 +54,8 @@ where
         heap.push((Reverse(W::zero()), source));
 
         let mut prev = vec![INVALID_NODE_ID; self.csr.num_nodes];
+        self.reached.clear();
+        self.distances.fill(W::max_value());
         self.distances[source.index()] = W::zero();
 
         while let Some((d, u)) = heap.pop() {
