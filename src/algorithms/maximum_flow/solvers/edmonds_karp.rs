@@ -31,7 +31,7 @@ where
 {
     fn new<N>(graph: &Graph<Directed, N, MaximumFlowEdge<F>>) -> Self {
         let rn = ResidualNetwork::from(graph, |e| e.data.upper);
-        Self { status: Status::NotSolved, source: None, rn, cutoff: None }
+        Self::new_with_residual_network(rn)
     }
 
     pub fn new_with<N, E, UF>(graph: &Graph<Directed, N, E>, upper_fn: UF) -> Self
@@ -39,6 +39,10 @@ where
         UF: Fn(&Edge<E>) -> F,
     {
         let rn = ResidualNetwork::from(graph, upper_fn);
+        Self::new_with_residual_network(rn)
+    }
+
+    fn new_with_residual_network(rn: ResidualNetwork<F>) -> Self {
         Self { status: Status::NotSolved, source: None, rn, cutoff: None }
     }
 
