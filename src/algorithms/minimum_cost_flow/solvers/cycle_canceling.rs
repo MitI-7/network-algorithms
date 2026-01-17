@@ -34,7 +34,7 @@ where
 
         let (root, artificial_edges, initial_flows, excess_fix) = construct_extend_network_feasible_solution(&nn);
         let rn =
-            ResidualNetwork::new(&nn, Some(&[root]), Some(&artificial_edges), Some(&initial_flows), Some(&excess_fix));
+            ResidualNetwork::from(&nn, Some(&[root]), Some(&artificial_edges), Some(&initial_flows), Some(&excess_fix));
         let num_nodes = rn.num_nodes;
         CycleCanceling {
             status: Status::NotSolved,

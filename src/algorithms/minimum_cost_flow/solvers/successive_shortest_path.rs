@@ -32,7 +32,7 @@ where
     pub fn new(graph: &Graph<Directed, MinimumCostFlowNode<F>, MinimumCostFlowEdge<F>>) -> Self {
         let nn = NormalizedNetwork::new(graph);
         let (source, sink, artificial_edges, excess_fix) = construct_extend_network_one_supply_one_demand(&nn);
-        let rn = ResidualNetwork::new(&nn, Some(&[source, sink]), Some(&artificial_edges), None, Some(&excess_fix));
+        let rn = ResidualNetwork::from(&nn, Some(&[source, sink]), Some(&artificial_edges), None, Some(&excess_fix));
         Self { status: Status::NotSolved, rn, source }
     }
 

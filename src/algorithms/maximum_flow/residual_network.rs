@@ -31,7 +31,7 @@ impl<F> ResidualNetwork<F>
 where
     F: FlowNum,
 {
-    pub fn new<D: Direction, N>(graph: &Graph<D, N, MaximumFlowEdge<F>>) -> Self {
+    pub fn from<D: Direction, N>(graph: &Graph<D, N, MaximumFlowEdge<F>>) -> Self {
         let mut rn = Self {
             num_nodes: graph.num_nodes(),
             num_edges: graph.num_edges(),

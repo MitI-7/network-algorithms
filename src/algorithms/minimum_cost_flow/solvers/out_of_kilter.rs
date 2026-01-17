@@ -33,7 +33,7 @@ where
         let nn = NormalizedNetwork::new(graph);
 
         let (root, artificial_edges, initial_flows, fix_excesses) = construct_extend_network_feasible_solution(&nn);
-        let rn = ResidualNetwork::new(
+        let rn = ResidualNetwork::from(
             &nn,
             Some(&[root]),
             Some(&artificial_edges),

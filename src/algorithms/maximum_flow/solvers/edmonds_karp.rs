@@ -29,7 +29,7 @@ where
     F: FlowNum,
 {
     fn new<N>(graph: &Graph<Directed, N, MaximumFlowEdge<F>>) -> Self {
-        let rn = ResidualNetwork::new(graph);
+        let rn = ResidualNetwork::from(graph);
         Self { status: Status::NotSolved, source: None, rn, cutoff: None }
     }
 

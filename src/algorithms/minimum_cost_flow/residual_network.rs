@@ -37,7 +37,7 @@ impl<F> ResidualNetwork<F>
 where
     F: CostNum,
 {
-    pub fn new(
+    pub fn from(
         graph: &NormalizedNetwork<'_, F>,
         artificial_nodes: Option<&[NodeId]>,
         artificial_edges: Option<&[NormalizedEdge<F>]>,
