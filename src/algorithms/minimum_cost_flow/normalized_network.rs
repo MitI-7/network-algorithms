@@ -42,11 +42,9 @@ where
         }
 
         for e in base.edges() {
-            let u = e.u.index();
-            let v = e.v.index();
-            let lower = lower_fn(e);
-            let upper = upper_fn(e);
-            let cost = cost_fn(e);
+            let (u, v) = (e.u.index(), e.v.index());
+            let (lower, upper, cost) = (lower_fn(e), upper_fn(e), cost_fn(e));
+            debug_assert!(lower <= upper);
 
             if cost >= F::zero() {
                 b[u] -= lower;
