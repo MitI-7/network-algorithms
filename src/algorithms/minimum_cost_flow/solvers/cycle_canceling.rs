@@ -1,5 +1,6 @@
 use crate::algorithms::minimum_cost_flow::error::MinimumCostFlowError;
 use crate::{
+    Edge, Node,
     algorithms::minimum_cost_flow::{
         edge::MinimumCostFlowEdge,
         extend_network::construct_extend_network_feasible_solution,
@@ -31,7 +32,33 @@ where
 {
     pub fn new(graph: &Graph<Directed, MinimumCostFlowNode<F>, MinimumCostFlowEdge<F>>) -> Self {
         let nn = NormalizedNetwork::from(graph, |e| e.data.lower, |e| e.data.upper, |e| e.data.cost, |n| n.data.b);
+        Self::new_with_normalized_network(nn)
+    }
 
+    pub fn new_with<N, E, LF, UF, CF, BF>(
+        graph: &Graph<Directed, N, E>,
+        lower_fn: LF,
+        upper_fn: UF,
+        cost_fn: CF,
+        b_fn: BF,
+    ) -> Self
+    where
+        LF: Fn(&Edge<E>) -> F,
+        UF: Fn(&Edge<E>) -> F,
+        CF: Fn(&Edge<E>) -> F,
+        BF: Fn(&Node<N>) -> F,
+    {
+        let nn = NormalizedNetwork::from(graph, lower_fn, upper_fn, cost_fn, b_fn);
+        Self::new_with_normalized_network(nn)
+    }
+
+    fn new_with_normalized_network<N, E, LF, UF, CF, BF>(nn: NormalizedNetwork<F, N, E, LF, UF, CF, BF>) -> Self
+    where
+        LF: Fn(&Edge<E>) -> F,
+        UF: Fn(&Edge<E>) -> F,
+        CF: Fn(&Edge<E>) -> F,
+        BF: Fn(&Node<N>) -> F,
+    {
         let (root, artificial_edges, initial_flows, excess_fix) = construct_extend_network_feasible_solution(&nn);
         let rn =
             ResidualNetwork::from(&nn, Some(&[root]), Some(&artificial_edges), Some(&initial_flows), Some(&excess_fix));

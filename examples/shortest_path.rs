@@ -1,8 +1,9 @@
-use network_algorithms::Graph;
-use network_algorithms::algorithms::shortest_path::prelude::*;
-use network_algorithms::direction::Directed;
-use network_algorithms::ids::{EdgeId, NodeId};
-use network_algorithms::prelude::maximum_flow::MaximumFlowGraph;
+use network_algorithms::{
+    algorithms::shortest_path::prelude::*,
+    direction::Directed,
+    ids::{EdgeId, NodeId},
+    Graph,
+};
 
 fn make_sample_graph() -> (Vec<NodeId>, Vec<EdgeId>, ShortestPathGraph<i32>) {
     let mut graph = ShortestPathGraph::default();

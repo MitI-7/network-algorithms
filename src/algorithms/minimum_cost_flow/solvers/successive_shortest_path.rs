@@ -1,5 +1,6 @@
 use crate::algorithms::minimum_cost_flow::error::MinimumCostFlowError;
 use crate::{
+    Edge, Node,
     algorithms::minimum_cost_flow::{
         edge::MinimumCostFlowEdge,
         extend_network::construct_extend_network_one_supply_one_demand,
@@ -31,9 +32,36 @@ where
 {
     pub fn new(graph: &Graph<Directed, MinimumCostFlowNode<F>, MinimumCostFlowEdge<F>>) -> Self {
         let nn = NormalizedNetwork::from(graph, |e| e.data.lower, |e| e.data.upper, |e| e.data.cost, |n| n.data.b);
+        Self::new_with_normalized_network(nn)
+    }
+
+    fn new_with_normalized_network<N, E, LF, UF, CF, BF>(nn: NormalizedNetwork<F, N, E, LF, UF, CF, BF>) -> Self
+    where
+        LF: Fn(&Edge<E>) -> F,
+        UF: Fn(&Edge<E>) -> F,
+        CF: Fn(&Edge<E>) -> F,
+        BF: Fn(&Node<N>) -> F,
+    {
         let (source, sink, artificial_edges, excess_fix) = construct_extend_network_one_supply_one_demand(&nn);
         let rn = ResidualNetwork::from(&nn, Some(&[source, sink]), Some(&artificial_edges), None, Some(&excess_fix));
         Self { status: Status::NotSolved, rn, source }
+    }
+
+    pub fn new_with<N, E, LF, UF, CF, BF>(
+        graph: &Graph<Directed, N, E>,
+        lower_fn: LF,
+        upper_fn: UF,
+        cost_fn: CF,
+        b_fn: BF,
+    ) -> Self
+    where
+        LF: Fn(&Edge<E>) -> F,
+        UF: Fn(&Edge<E>) -> F,
+        CF: Fn(&Edge<E>) -> F,
+        BF: Fn(&Node<N>) -> F,
+    {
+        let nn = NormalizedNetwork::from(graph, lower_fn, upper_fn, cost_fn, b_fn);
+        Self::new_with_normalized_network(nn)
     }
 
     fn run(&mut self) -> Result<F, MinimumCostFlowError> {

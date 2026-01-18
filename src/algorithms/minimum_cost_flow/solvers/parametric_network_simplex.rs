@@ -9,13 +9,14 @@ use crate::{
         spanning_tree_structure::{EdgeState, SpanningTreeStructure},
         status::Status,
         validate::{validate_balance_spanning_tree, validate_infeasible_spanning_tree},
-    },
-    core::numeric::CostNum,
+    }, core::numeric::CostNum,
     graph::{
         direction::Directed,
         graph::Graph,
-        ids::{EdgeId, INVALID_EDGE_ID, INVALID_NODE_ID, NodeId},
+        ids::{EdgeId, NodeId, INVALID_EDGE_ID, INVALID_NODE_ID},
     },
+    Edge,
+    Node,
 };
 use std::collections::VecDeque;
 
@@ -31,7 +32,33 @@ where
 {
     fn new(graph: &Graph<Directed, MinimumCostFlowNode<F>, MinimumCostFlowEdge<F>>) -> Self {
         let nn = NormalizedNetwork::from(graph, |e| e.data.lower, |e| e.data.upper, |e| e.data.cost, |n| n.data.b);
+        Self::new_with_normalized_network(nn)
+    }
 
+    pub fn new_with<N, E, LF, UF, CF, BF>(
+        graph: &Graph<Directed, N, E>,
+        lower_fn: LF,
+        upper_fn: UF,
+        cost_fn: CF,
+        b_fn: BF,
+    ) -> Self
+    where
+        LF: Fn(&Edge<E>) -> F,
+        UF: Fn(&Edge<E>) -> F,
+        CF: Fn(&Edge<E>) -> F,
+        BF: Fn(&Node<N>) -> F,
+    {
+        let nn = NormalizedNetwork::from(graph, lower_fn, upper_fn, cost_fn, b_fn);
+        Self::new_with_normalized_network(nn)
+    }
+
+    fn new_with_normalized_network<N, E, LF, UF, CF, BF>(nn: NormalizedNetwork<F, N, E, LF, UF, CF, BF>) -> Self
+    where
+        LF: Fn(&Edge<E>) -> F,
+        UF: Fn(&Edge<E>) -> F,
+        CF: Fn(&Edge<E>) -> F,
+        BF: Fn(&Node<N>) -> F,
+    {
         let (source, sink, artificial_edges, fix_excesses) = construct_extend_network_one_supply_one_demand(&nn);
         let mut st =
             SpanningTreeStructure::new(&nn, Some(&[source, sink]), Some(&artificial_edges), None, Some(&fix_excesses));

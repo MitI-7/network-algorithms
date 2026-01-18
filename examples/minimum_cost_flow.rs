@@ -1,5 +1,4 @@
-use network_algorithms::ids::EdgeId;
-use network_algorithms::algorithms::minimum_cost_flow::prelude::*;
+use network_algorithms::{algorithms::minimum_cost_flow::prelude::*, ids::EdgeId};
 
 fn make_graph() -> (MinimumCostFlowGraph<i32>, Vec<EdgeId>) {
     let mut graph = MinimumCostFlowGraph::<i32>::default();
@@ -37,7 +36,6 @@ fn primal_dual() {
         _ => unreachable!(),
     }
 }
-
 
 fn primal_network_simplex() {
     let (graph, edges) = make_graph();

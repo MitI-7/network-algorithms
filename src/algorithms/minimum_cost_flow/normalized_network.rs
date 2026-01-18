@@ -23,7 +23,7 @@ where
     lower_fn: LF,
     upper_fn: UF,
     cost_fn: CF,
-    b_fn: BF,
+    _b_fn: BF,
 }
 
 impl<'a, F, N, E, LF, UF, CF, BF> NormalizedNetwork<'a, F, N, E, LF, UF, CF, BF>
@@ -57,7 +57,7 @@ where
             }
         }
 
-        Self { base, b, lower_fn, upper_fn, cost_fn, b_fn }
+        Self { base, b, lower_fn, upper_fn, cost_fn, _b_fn: b_fn }
     }
 
     pub fn num_nodes(&self) -> usize {

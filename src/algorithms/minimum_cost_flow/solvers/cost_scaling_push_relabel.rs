@@ -36,15 +36,7 @@ where
 {
     pub fn new(graph: &Graph<Directed, MinimumCostFlowNode<F>, MinimumCostFlowEdge<F>>) -> Self {
         let nn = NormalizedNetwork::from(graph, |e| e.data.lower, |e| e.data.upper, |e| e.data.cost, |n| n.data.b);
-        let (root, artificial_edges, initial_flows, fix_excesses) = construct_extend_network_feasible_solution(&nn);
-        let rn = ResidualNetwork::from(
-            &nn,
-            Some(&[root]),
-            Some(&artificial_edges),
-            Some(&initial_flows),
-            Some(&fix_excesses),
-        );
-        Self::new_with_residual_network(rn)
+        Self::new_with_normalized_network(nn)
     }
 
     pub fn new_with<N, E, LF, UF, CF, BF>(
@@ -61,6 +53,16 @@ where
         BF: Fn(&Node<N>) -> F,
     {
         let nn = NormalizedNetwork::from(graph, lower_fn, upper_fn, cost_fn, b_fn);
+        Self::new_with_normalized_network(nn)
+    }
+
+    fn new_with_normalized_network<N, E, LF, UF, CF, BF>(nn: NormalizedNetwork<F, N, E, LF, UF, CF, BF>) -> Self
+    where
+        LF: Fn(&Edge<E>) -> F,
+        UF: Fn(&Edge<E>) -> F,
+        CF: Fn(&Edge<E>) -> F,
+        BF: Fn(&Node<N>) -> F,
+    {
         let (root, artificial_edges, initial_flows, fix_excesses) = construct_extend_network_feasible_solution(&nn);
         let rn = ResidualNetwork::from(
             &nn,
@@ -69,10 +71,7 @@ where
             Some(&initial_flows),
             Some(&fix_excesses),
         );
-        Self::new_with_residual_network(rn)
-    }
 
-    fn new_with_residual_network(rn: ResidualNetwork<F>) -> Self {
         Self {
             status: Status::NotSolved,
             rn,

@@ -9,13 +9,14 @@ use crate::{
         solvers::{macros::impl_minimum_cost_flow_solver, solver::MinimumCostFlowSolver},
         status::Status,
         validate::{trivial_solution_if_any, validate_balance, validate_infeasible},
-    },
-    core::numeric::CostNum,
+    }, core::numeric::CostNum,
     graph::{
         direction::Directed,
         graph::Graph,
         ids::{ArcId, EdgeId, NodeId},
     },
+    Edge,
+    Node,
 };
 use std::{cmp::Reverse, collections::BinaryHeap};
 
@@ -31,7 +32,16 @@ where
 {
     fn new(graph: &Graph<Directed, MinimumCostFlowNode<F>, MinimumCostFlowEdge<F>>) -> Self {
         let nn = NormalizedNetwork::from(graph, |e| e.data.lower, |e| e.data.upper, |e| e.data.cost, |n| n.data.b);
+        Self::new_with_normalized_network(nn)
+    }
 
+    fn new_with_normalized_network<N, E, LF, UF, CF, BF>(nn: NormalizedNetwork<F, N, E, LF, UF, CF, BF>) -> Self
+    where
+        LF: Fn(&Edge<E>) -> F,
+        UF: Fn(&Edge<E>) -> F,
+        CF: Fn(&Edge<E>) -> F,
+        BF: Fn(&Node<N>) -> F,
+    {
         let (root, artificial_edges, initial_flows, fix_excesses) = construct_extend_network_feasible_solution(&nn);
         let rn = ResidualNetwork::from(
             &nn,
@@ -46,7 +56,7 @@ where
     fn run(&mut self) -> Result<F, MinimumCostFlowError> {
         validate_balance(&self.rn)?;
         validate_infeasible(&self.rn)?;
-        
+
         if let Some(res) = trivial_solution_if_any(&self.rn) {
             self.status = Status::Optimal;
             return res;
