@@ -76,7 +76,8 @@ where
         self.base.edges().map(|edge| {
             let (mut u, mut v) = (edge.u, edge.v);
             let mut cost = (self.cost_fn)(edge);
-            let upper = (self.upper_fn)(edge) - (self.lower_fn)(edge);
+            let lower = (self.lower_fn)(edge);
+            let upper = (self.upper_fn)(edge) - lower;
             let mut is_reversed = false;
 
             if cost < F::zero() {
@@ -88,7 +89,7 @@ where
             debug_assert!(cost >= F::zero());
             debug_assert!(upper >= F::zero());
 
-            NormalizedEdge { u, v, lower: (self.lower_fn)(edge), upper, cost, is_reversed }
+            NormalizedEdge { u, v, lower, upper, cost, is_reversed }
         })
     }
 }
