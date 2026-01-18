@@ -48,7 +48,7 @@ where
     }
 
     fn new(graph: &Graph<Directed, MinimumCostFlowNode<F>, MinimumCostFlowEdge<F>>) -> Self {
-        let nn = NormalizedNetwork::new(graph);
+        let nn = NormalizedNetwork::from(graph, |e| e.data.lower, |e| e.data.upper, |e| e.data.cost, |n| n.data.b);
 
         let inf_cost = nn.iter_edges().map(|e| e.cost).fold(F::one(), |acc, cost| acc + cost); // all edge costs are non-negative
 

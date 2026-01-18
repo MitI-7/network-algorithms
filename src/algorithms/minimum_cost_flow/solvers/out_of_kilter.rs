@@ -30,7 +30,7 @@ where
     F: CostNum,
 {
     fn new(graph: &Graph<Directed, MinimumCostFlowNode<F>, MinimumCostFlowEdge<F>>) -> Self {
-        let nn = NormalizedNetwork::new(graph);
+        let nn = NormalizedNetwork::from(graph, |e| e.data.lower, |e| e.data.upper, |e| e.data.cost, |n| n.data.b);
 
         let (root, artificial_edges, initial_flows, fix_excesses) = construct_extend_network_feasible_solution(&nn);
         let rn = ResidualNetwork::from(

@@ -1,4 +1,5 @@
 use crate::{
+    Edge, Node,
     algorithms::minimum_cost_flow::normalized_network::{NormalizedEdge, NormalizedNetwork},
     core::numeric::CostNum,
     graph::{
@@ -37,13 +38,19 @@ impl<F> ResidualNetwork<F>
 where
     F: CostNum,
 {
-    pub fn from(
-        graph: &NormalizedNetwork<'_, F>,
+    pub fn from<N, E, LF, UF, CF, BF>(
+        graph: &NormalizedNetwork<'_, F, N, E, LF, UF, CF, BF>,
         artificial_nodes: Option<&[NodeId]>,
         artificial_edges: Option<&[NormalizedEdge<F>]>,
         initial_flows: Option<&[F]>,
         fix_excesses: Option<&[F]>,
-    ) -> Self {
+    ) -> Self
+    where
+        LF: Fn(&Edge<E>) -> F,
+        UF: Fn(&Edge<E>) -> F,
+        CF: Fn(&Edge<E>) -> F,
+        BF: Fn(&Node<N>) -> F,
+    {
         let num_nodes = graph.num_nodes() + artificial_nodes.unwrap_or(&[]).len();
         let num_edges = graph.num_edges() + artificial_edges.unwrap_or(&[]).len();
 
@@ -72,14 +79,20 @@ where
 
         rn
     }
-    fn build(
+
+    fn build<N, E, LF, UF, CF, BF>(
         &mut self,
-        graph: &NormalizedNetwork<'_, F>,
+        graph: &NormalizedNetwork<'_, F, N, E, LF, UF, CF, BF>,
         _artificial_nodes: Option<&[NodeId]>,
         artificial_edges: Option<&[NormalizedEdge<F>]>,
         initial_flows: Option<&[F]>,
         fix_excesses: Option<&[F]>,
-    ) {
+    ) where
+        LF: Fn(&Edge<E>) -> F,
+        UF: Fn(&Edge<E>) -> F,
+        CF: Fn(&Edge<E>) -> F,
+        BF: Fn(&Node<N>) -> F,
+    {
         if graph.num_nodes() == 0 {
             return;
         }

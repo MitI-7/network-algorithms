@@ -1,6 +1,8 @@
 use crate::{
+    Edge, Node,
     algorithms::minimum_cost_flow::{
         edge::MinimumCostFlowEdge,
+        error::MinimumCostFlowError,
         extend_network::construct_extend_network_feasible_solution,
         node::MinimumCostFlowNode,
         normalized_network::NormalizedNetwork,
@@ -18,7 +20,6 @@ use crate::{
 };
 use num_traits::FromPrimitive;
 use std::collections::VecDeque;
-use crate::algorithms::minimum_cost_flow::error::MinimumCostFlowError;
 
 pub struct CostScalingPushRelabel<F> {
     status: Status,
@@ -34,7 +35,7 @@ where
     F: CostNum + FromPrimitive,
 {
     pub fn new(graph: &Graph<Directed, MinimumCostFlowNode<F>, MinimumCostFlowEdge<F>>) -> Self {
-        let nn = NormalizedNetwork::new(graph);
+        let nn = NormalizedNetwork::from(graph, |e| e.data.lower, |e| e.data.upper, |e| e.data.cost, |n| n.data.b);
         let (root, artificial_edges, initial_flows, fix_excesses) = construct_extend_network_feasible_solution(&nn);
         let rn = ResidualNetwork::from(
             &nn,
@@ -43,6 +44,35 @@ where
             Some(&initial_flows),
             Some(&fix_excesses),
         );
+        Self::new_with_residual_network(rn)
+    }
+
+    pub fn new_with<N, E, LF, UF, CF, BF>(
+        graph: &Graph<Directed, N, E>,
+        lower_fn: LF,
+        upper_fn: UF,
+        cost_fn: CF,
+        b_fn: BF,
+    ) -> Self
+    where
+        LF: Fn(&Edge<E>) -> F,
+        UF: Fn(&Edge<E>) -> F,
+        CF: Fn(&Edge<E>) -> F,
+        BF: Fn(&Node<N>) -> F,
+    {
+        let nn = NormalizedNetwork::from(graph, lower_fn, upper_fn, cost_fn, b_fn);
+        let (root, artificial_edges, initial_flows, fix_excesses) = construct_extend_network_feasible_solution(&nn);
+        let rn = ResidualNetwork::from(
+            &nn,
+            Some(&[root]),
+            Some(&artificial_edges),
+            Some(&initial_flows),
+            Some(&fix_excesses),
+        );
+        Self::new_with_residual_network(rn)
+    }
+
+    fn new_with_residual_network(rn: ResidualNetwork<F>) -> Self {
         Self {
             status: Status::NotSolved,
             rn,
@@ -273,7 +303,7 @@ where
         }
         Ok(self.rn.flows_original_graph())
     }
-    
+
     fn potential(&self, node_id: NodeId) -> Result<F, MinimumCostFlowError> {
         if self.status != Status::Optimal {
             return Err(MinimumCostFlowError::NotSolved);
@@ -285,7 +315,7 @@ where
         if self.status != Status::Optimal {
             return Err(MinimumCostFlowError::NotSolved);
         }
-        
+
         let n = self.rn.num_nodes;
         let mut dist = vec![F::zero(); n]; // スーパーソースを全頂点に0で繋ぐのと等価
 

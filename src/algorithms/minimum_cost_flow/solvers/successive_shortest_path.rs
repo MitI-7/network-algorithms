@@ -1,3 +1,4 @@
+use crate::algorithms::minimum_cost_flow::error::MinimumCostFlowError;
 use crate::{
     algorithms::minimum_cost_flow::{
         edge::MinimumCostFlowEdge,
@@ -17,7 +18,6 @@ use crate::{
     },
 };
 use std::{cmp::Reverse, collections::BinaryHeap};
-use crate::algorithms::minimum_cost_flow::error::MinimumCostFlowError;
 
 pub struct SuccessiveShortestPath<F> {
     status: Status,
@@ -30,7 +30,7 @@ where
     F: CostNum,
 {
     pub fn new(graph: &Graph<Directed, MinimumCostFlowNode<F>, MinimumCostFlowEdge<F>>) -> Self {
-        let nn = NormalizedNetwork::new(graph);
+        let nn = NormalizedNetwork::from(graph, |e| e.data.lower, |e| e.data.upper, |e| e.data.cost, |n| n.data.b);
         let (source, sink, artificial_edges, excess_fix) = construct_extend_network_one_supply_one_demand(&nn);
         let rn = ResidualNetwork::from(&nn, Some(&[source, sink]), Some(&artificial_edges), None, Some(&excess_fix));
         Self { status: Status::NotSolved, rn, source }
@@ -139,7 +139,6 @@ where
         self.rn.excesses[t.index()] += delta;
         self.rn.excesses[s.index()] -= delta;
     }
-
 
     fn flow(&self, edge_id: EdgeId) -> Result<F, MinimumCostFlowError> {
         if self.status != Status::Optimal {

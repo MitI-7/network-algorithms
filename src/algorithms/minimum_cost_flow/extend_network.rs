@@ -1,15 +1,20 @@
 use crate::{
+    Edge, Node,
+    algorithms::minimum_cost_flow::normalized_network::{NormalizedEdge, NormalizedNetwork},
     core::numeric::CostNum,
     ids::NodeId,
-    algorithms::minimum_cost_flow::normalized_network::{NormalizedEdge, NormalizedNetwork},
 };
 
 // transforms the minimum cost flow problem into a problem with a single excess node and a single deficit node.
-pub(crate) fn construct_extend_network_one_supply_one_demand<F>(
-    graph: &NormalizedNetwork<'_, F>,
+pub(crate) fn construct_extend_network_one_supply_one_demand<F, N, E, LF, UF, CF, BF>(
+    graph: &NormalizedNetwork<'_, F, N, E, LF, UF, CF, BF>,
 ) -> (NodeId, NodeId, Vec<NormalizedEdge<F>>, Vec<F>)
 where
     F: CostNum,
+    LF: Fn(&Edge<E>) -> F,
+    UF: Fn(&Edge<E>) -> F,
+    CF: Fn(&Edge<E>) -> F,
+    BF: Fn(&Node<N>) -> F,
 {
     let source = NodeId(graph.num_nodes());
     let sink = NodeId(source.index() + 1);
@@ -61,11 +66,15 @@ where
     (source, sink, edges, excesses)
 }
 
-pub(crate) fn construct_extend_network_feasible_solution<F>(
-    graph: &NormalizedNetwork<F>,
+pub(crate) fn construct_extend_network_feasible_solution<F, N, E, LF, UF, CF, BF>(
+    graph: &NormalizedNetwork<'_, F, N, E, LF, UF, CF, BF>,
 ) -> (NodeId, Vec<NormalizedEdge<F>>, Vec<F>, Vec<F>)
 where
     F: CostNum,
+    LF: Fn(&Edge<E>) -> F,
+    UF: Fn(&Edge<E>) -> F,
+    CF: Fn(&Edge<E>) -> F,
+    BF: Fn(&Node<N>) -> F,
 {
     let inf_cost = graph
         .iter_edges()

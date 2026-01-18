@@ -1,4 +1,5 @@
 use crate::{
+    Edge, Node,
     algorithms::minimum_cost_flow::normalized_network::{NormalizedEdge, NormalizedNetwork},
     core::numeric::CostNum,
     graph::ids::{EdgeId, INVALID_EDGE_ID, INVALID_NODE_ID, NodeId},
@@ -51,13 +52,19 @@ impl<F> SpanningTreeStructure<F>
 where
     F: CostNum,
 {
-    pub fn new(
-        graph: &NormalizedNetwork<F>,
+    pub fn new<N, E, LF, UF, CF, BF>(
+        graph: &NormalizedNetwork<F, N, E, LF, UF, CF, BF>,
         artificial_nodes: Option<&[NodeId]>,
         artificial_edges: Option<&[NormalizedEdge<F>]>,
         initial_flows: Option<&[F]>,
         fix_excesses: Option<&[F]>,
-    ) -> Self {
+    ) -> Self
+    where
+        LF: Fn(&Edge<E>) -> F,
+        UF: Fn(&Edge<E>) -> F,
+        CF: Fn(&Edge<E>) -> F,
+        BF: Fn(&Node<N>) -> F,
+    {
         let num_nodes = graph.num_nodes() + artificial_nodes.unwrap_or(&[]).len();
         let num_edges = graph.num_edges() + artificial_edges.unwrap_or(&[]).len();
 
@@ -94,14 +101,19 @@ where
         st
     }
 
-    fn build(
+    fn build<N, E, LF, UF, CF, BF>(
         &mut self,
-        graph: &NormalizedNetwork<F>,
+        graph: &NormalizedNetwork<F, N, E, LF, UF, CF, BF>,
         _artificial_nodes: Option<&[NodeId]>,
         artificial_edges: Option<&[NormalizedEdge<F>]>,
         initial_flows: Option<&[F]>,
         fix_excesses: Option<&[F]>,
-    ) {
+    ) where
+        LF: Fn(&Edge<E>) -> F,
+        UF: Fn(&Edge<E>) -> F,
+        CF: Fn(&Edge<E>) -> F,
+        BF: Fn(&Node<N>) -> F,
+    {
         for (u, e) in graph.excesses().iter().enumerate() {
             self.excesses[u] = *e;
         }

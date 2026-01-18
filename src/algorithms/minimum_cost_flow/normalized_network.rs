@@ -1,9 +1,7 @@
 use crate::{
-    algorithms::minimum_cost_flow::{
-        edge::MinimumCostFlowEdge, node::MinimumCostFlowNode,
-    },
-    graph::{direction::Directed, graph::Graph, ids::NodeId},
+    Edge, Node,
     core::numeric::CostNum,
+    graph::{direction::Directed, graph::Graph, ids::NodeId},
 };
 
 #[derive(Clone, Copy, Debug)]
@@ -11,36 +9,44 @@ pub struct NormalizedEdge<F> {
     pub u: NodeId,
     pub v: NodeId,
     pub lower: F,
-    pub upper: F,          // original.upper - original.lower
-    pub cost: F,           // non-negative
+    pub upper: F, // original.upper - original.lower
+    pub cost: F,  // non-negative
     pub is_reversed: bool,
 }
 
-pub struct NormalizedNetwork<'a, F>
+pub struct NormalizedNetwork<'a, F, N, E, LF, UF, CF, BF>
 where
     F: CostNum,
 {
-    base: &'a Graph<Directed, MinimumCostFlowNode<F>, MinimumCostFlowEdge<F>>,
+    base: &'a Graph<Directed, N, E>,
     b: Vec<F>,
+    lower_fn: LF,
+    upper_fn: UF,
+    cost_fn: CF,
+    b_fn: BF,
 }
 
-impl<'a, F> NormalizedNetwork<'a, F>
+impl<'a, F, N, E, LF, UF, CF, BF> NormalizedNetwork<'a, F, N, E, LF, UF, CF, BF>
 where
     F: CostNum,
+    LF: Fn(&Edge<E>) -> F,
+    UF: Fn(&Edge<E>) -> F,
+    CF: Fn(&Edge<E>) -> F,
+    BF: Fn(&Node<N>) -> F,
 {
-    pub fn new(base: &'a Graph<Directed, MinimumCostFlowNode<F>, MinimumCostFlowEdge<F>>) -> Self {
+    pub fn from(base: &'a Graph<Directed, N, E>, lower_fn: LF, upper_fn: UF, cost_fn: CF, b_fn: BF) -> Self {
         let n = base.num_nodes();
         let mut b = Vec::with_capacity(n);
         for u in 0..n {
-            b.push(base.get_node(NodeId(u)).unwrap().data.b);
+            b.push(b_fn(base.get_node(NodeId(u)).unwrap()));
         }
 
         for e in base.edges() {
             let u = e.u.index();
             let v = e.v.index();
-            let lower = e.data.lower;
-            let upper = e.data.upper;
-            let cost = e.data.cost;
+            let lower = lower_fn(e);
+            let upper = upper_fn(e);
+            let cost = cost_fn(e);
 
             if cost >= F::zero() {
                 b[u] -= lower;
@@ -51,7 +57,7 @@ where
             }
         }
 
-        Self { base, b }
+        Self { base, b, lower_fn, upper_fn, cost_fn, b_fn }
     }
 
     pub fn num_nodes(&self) -> usize {
@@ -69,8 +75,8 @@ where
     pub fn iter_edges(&self) -> impl Iterator<Item = NormalizedEdge<F>> + '_ {
         self.base.edges().map(|edge| {
             let (mut u, mut v) = (edge.u, edge.v);
-            let mut cost = edge.data.cost;
-            let upper = edge.data.upper - edge.data.lower;
+            let mut cost = (self.cost_fn)(edge);
+            let upper = (self.upper_fn)(edge) - (self.lower_fn)(edge);
             let mut is_reversed = false;
 
             if cost < F::zero() {
@@ -82,14 +88,7 @@ where
             debug_assert!(cost >= F::zero());
             debug_assert!(upper >= F::zero());
 
-            NormalizedEdge {
-                u,
-                v,
-                lower: edge.data.lower,
-                upper,
-                cost,
-                is_reversed,
-            }
+            NormalizedEdge { u, v, lower: (self.lower_fn)(edge), upper, cost, is_reversed }
         })
     }
 }

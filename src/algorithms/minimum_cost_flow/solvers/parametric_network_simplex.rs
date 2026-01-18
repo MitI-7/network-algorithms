@@ -30,7 +30,7 @@ where
     F: CostNum,
 {
     fn new(graph: &Graph<Directed, MinimumCostFlowNode<F>, MinimumCostFlowEdge<F>>) -> Self {
-        let nn = NormalizedNetwork::new(&graph);
+        let nn = NormalizedNetwork::from(graph, |e| e.data.lower, |e| e.data.upper, |e| e.data.cost, |n| n.data.b);
 
         let (source, sink, artificial_edges, fix_excesses) = construct_extend_network_one_supply_one_demand(&nn);
         let mut st =
